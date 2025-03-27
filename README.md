@@ -1,13 +1,23 @@
-# Sample Hardhat Project
+# Passport contracts
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a Hardhat Ignition module that deploys that contract.
+## Overview
 
-Try running some of the following tasks:
+This is the implementation of contracts for passport verification and management of passport credentials in Privado ID.
 
-```shell
-npx hardhat help
-npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat node
-npx hardhat ignition deploy ./ignition/modules/Lock.ts
+## Building contracts
+
+1. Install dependencies:
+```bash
+npm i
 ```
+2. Compile contracts:
+```bash
+npm run compile
+```
+
+## Testing
+Run the different tests: 
+```shell
+npm test
+```
+
