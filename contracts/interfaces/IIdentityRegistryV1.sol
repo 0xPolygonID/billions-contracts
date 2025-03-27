@@ -42,67 +42,6 @@ interface IIdentityRegistryV1 {
     function rootTimestamps(uint256 root) external view returns (uint256);
 
     /**
-     * @notice Checks if the identity commitment Merkle tree contains the specified root.
-     * @param root The Merkle tree root to check.
-     * @return True if the root exists in the tree, false otherwise.
-     */
-    function checkIdentityCommitmentRoot(
-        uint256 root
-    ) external view returns (bool);
-
-    /**
-     * @notice Retrieves the total number of identity commitments in the Merkle tree.
-     * @return The size (i.e., count) of the identity commitment Merkle tree.
-     */
-    function getIdentityCommitmentMerkleTreeSize() external view returns (uint256);
-
-    /**
-     * @notice Retrieves the current Merkle root of the identity commitments.
-     * @return The current identity commitment Merkle root.
-     */
-    function getIdentityCommitmentMerkleRoot() external view returns (uint256);
-
-    /**
-     * @notice Retrieves the index of a specific identity commitment in the Merkle tree.
-     * @param commitment The identity commitment to locate.
-     * @return The index position of the provided commitment.
-     */
-    function getIdentityCommitmentIndex(
-        uint256 commitment
-    ) external view returns (uint256);
-
-    /**
-     * @notice Retrieves the current passport number OFAC root.
-     * @return The current passport number OFAC root value.
-     */
-    function getPassportNoOfacRoot() external view returns (uint256);
-
-    /**
-     * @notice Retrieves the current name and date of birth OFAC root.
-     * @return The current name and date of birth OFAC root value.
-     */
-    function getNameAndDobOfacRoot() external view returns (uint256);
-
-    /**
-     * @notice Retrieves the current name and year of birth OFAC root.
-     * @return The current name and year of birth OFAC root value.
-     */
-    function getNameAndYobOfacRoot() external view returns (uint256);
-
-    /**
-     * @notice Checks if the provided OFAC roots match the stored OFAC roots.
-     * @param passportNoRoot The passport number OFAC root to verify.
-     * @param nameAndDobRoot The name and date of birth OFAC root to verify.
-     * @param nameAndYobRoot The name and year of birth OFAC root to verify.
-     * @return True if all provided roots match the stored values, false otherwise.
-     */
-    function checkOfacRoots(
-        uint256 passportNoRoot,
-        uint256 nameAndDobRoot,
-        uint256 nameAndYobRoot
-    ) external view returns (bool);
-
-    /**
      * @notice Retrieves the current CSCA root.
      * @return The current CSCA root value.
      */
@@ -146,19 +85,6 @@ interface IIdentityRegistryV1 {
     function getDscKeyCommitmentIndex(
         uint256 commitment
     ) external view returns (uint256);
-
-    /**
-     * @notice Registers a new identity commitment.
-     * @dev Must be called by the identity verification hub. Reverts if the nullifier has already been used.
-     * @param attestationId The attestation identifier associated with the commitment.
-     * @param nullifier A unique nullifier to prevent double registration.
-     * @param commitment The identity commitment to register.
-     */
-    function registerCommitment(
-        bytes32 attestationId,
-        uint256 nullifier,
-        uint256 commitment
-    ) external;
 
     /**
      * @notice Registers a new DSC key commitment.

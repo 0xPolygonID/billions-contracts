@@ -8,14 +8,7 @@ const config: HardhatUserConfig = {
       optimizer: {
         enabled: true,
         runs: 200,
-        details: {
-          yul: true
-        }
       },
-      metadata: {
-        bytecodeHash: "none"
-      },
-      viaIR: false,
     },
   }
 };
