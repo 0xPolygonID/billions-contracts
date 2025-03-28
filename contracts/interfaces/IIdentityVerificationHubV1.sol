@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.27;
 
 import {IDscCircuitVerifier} from "./IDscCircuitVerifier.sol";
 import {CircuitConstants} from "../constants/CircuitConstants.sol";
 
 /**
  * @title IIdentityVerificationHubV1
- * @notice Interface for the Identity Verification Hub for verifying zero-knowledge proofs using VC and Disclose circuits.
- * @dev Defines data structures and external functions for verifying proofs and recovering human-readable data.
+ * @notice Interface for the Identity Verification Hub for verifying
+ * zero-knowledge proofs using VC and Disclose circuits.
+ * @dev Defines data structures and external functions for verifying
+ * proofs and recovering human-readable data.
  */
 interface IIdentityVerificationHubV1 {
     /**
@@ -19,8 +21,7 @@ interface IIdentityVerificationHubV1 {
     function registerDscKeyCommitment(
         uint256 dscCircuitVerifierId,
         IDscCircuitVerifier.DscCircuitProof memory dscCircuitProof
-    )
-        external;
+    ) external;
 
     /**
      * @notice Returns the address of the Identity Registry.
@@ -33,10 +34,5 @@ interface IIdentityVerificationHubV1 {
      * @param typeId The signature type identifier.
      * @return verifier The address of the DSC circuit verifier.
      */
-    function sigTypeToDscCircuitVerifiers(
-        uint256 typeId
-    )
-        external
-        view
-        returns (address verifier);
-} 
+    function sigTypeToDscCircuitVerifiers(uint256 typeId) external view returns (address verifier);
+}

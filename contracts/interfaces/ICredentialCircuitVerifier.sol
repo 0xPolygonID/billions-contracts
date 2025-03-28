@@ -1,28 +1,28 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 /**
- * @title ISignatureCircuitVerifier
- * @notice Interface for verifying signature circuit proofs.
- * @dev This interface defines the structure of a signature circuit proof and exposes a function to verify such proofs.
+ * @title ICredentialCircuitVerifier
+ * @notice Interface for verifying credential circuit proofs.
+ * @dev This interface defines the structure of a credential circuit proof and exposes a function to verify such proofs.
  */
-interface ISignatureCircuitVerifier {
+interface ICredentialCircuitVerifier {
     /**
-     * @notice Represents a signature circuit proof.
+     * @notice Represents a credential circuit proof.
      * @dev This structure encapsulates the required proof elements.
      * @param a An array of two unsigned integers representing the proof component 'a'.
      * @param b A 2x2 array of unsigned integers representing the proof component 'b'.
      * @param c An array of two unsigned integers representing the proof component 'c'.
      * @param pubSignals An array of three unsigned integers representing the public signals associated with the proof.
      */
-    struct SignatureCircuitProof {
+    struct CredentialCircuitProof {
         uint[2] a;
         uint[2][2] b;
         uint[2] c;
-        uint[4] pubSignals;
+        uint[15] pubSignals;
     }
 
     /**
-     * @notice Verifies a given signature circuit proof.
+     * @notice Verifies a given credential circuit proof.
      * @dev This function checks the validity of the provided proof parameters.
      * @param a The 'a' component of the proof.
      * @param b The 'b' component of the proof.
@@ -34,6 +34,6 @@ interface ISignatureCircuitVerifier {
         uint[2] calldata a,
         uint[2][2] calldata b,
         uint[2] calldata c,
-        uint[4] calldata pubSignals
+        uint[15] calldata pubSignals
     ) external view returns (bool isValid);
 }

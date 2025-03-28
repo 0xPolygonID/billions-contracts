@@ -33,18 +33,9 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
 
   const newBalance = "0x" + ethers.parseEther("10000").toString(16);
 
-  await ethers.provider.send("hardhat_setBalance", [
-    await owner.getAddress(),
-    newBalance,
-  ]);
-  await ethers.provider.send("hardhat_setBalance", [
-    await user1.getAddress(),
-    newBalance,
-  ]);
-  await ethers.provider.send("hardhat_setBalance", [
-    await user2.getAddress(),
-    newBalance,
-  ]);
+  await ethers.provider.send("hardhat_setBalance", [await owner.getAddress(), newBalance]);
+  await ethers.provider.send("hardhat_setBalance", [await user1.getAddress(), newBalance]);
+  await ethers.provider.send("hardhat_setBalance", [await user2.getAddress(), newBalance]);
 
   mockPassport = genMockPassportData(
     "sha256",
@@ -52,7 +43,7 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
     "rsa_sha256_65537_4096",
     "FRA",
     "940131",
-    "401031"
+    "401031",
   );
 
   // Deploy dsc verifier
@@ -60,16 +51,13 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
   const dscVerifierFactory = await ethers.getContractFactory(
     dscVerifierArtifact.abi,
     dscVerifierArtifact.bytecode,
-    owner
+    owner,
   );
   dscVerifier = await dscVerifierFactory.deploy();
   await dscVerifier.waitForDeployment();
 
   // Deploy PoseidonT3
-  const PoseidonT3Factory = await ethers.getContractFactory(
-    "PoseidonT3",
-    owner
-  );
+  const PoseidonT3Factory = await ethers.getContractFactory("PoseidonT3", owner);
   const poseidonT3 = await PoseidonT3Factory.deploy();
   await poseidonT3.waitForDeployment();
 
@@ -81,7 +69,7 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
         PoseidonT3: poseidonT3.target,
       },
     },
-    owner
+    owner,
   );
   identityRegistryImpl = await IdentityRegistryImplFactory.deploy();
   await identityRegistryImpl.waitForDeployment();
@@ -89,58 +77,47 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
   // Deploy IdentityVerificationHubImplV1
   const IdentityVerificationHubImplFactory = await ethers.getContractFactory(
     "IdentityVerificationHubImplV1",
-    owner
+    owner,
   );
-  identityVerificationHubImpl =
-    await IdentityVerificationHubImplFactory.deploy();
+  identityVerificationHubImpl = await IdentityVerificationHubImplFactory.deploy();
   await identityVerificationHubImpl.waitForDeployment();
 
   // Deploy registry with temporary hub address
   const temporaryHubAddress = "0x0000000000000000000000000000000000000000";
-  const registryInitData = identityRegistryImpl.interface.encodeFunctionData(
-    "initialize",
-    [temporaryHubAddress]
-  );
-  const registryProxyFactory = await ethers.getContractFactory(
-    "IdentityRegistry",
-    owner
-  );
+  const registryInitData = identityRegistryImpl.interface.encodeFunctionData("initialize", [
+    temporaryHubAddress,
+  ]);
+  const registryProxyFactory = await ethers.getContractFactory("IdentityRegistry", owner);
   identityRegistryProxy = await registryProxyFactory.deploy(
     identityRegistryImpl.target,
-    registryInitData
+    registryInitData,
   );
   await identityRegistryProxy.waitForDeployment();
 
   // Deploy hub with deployed registry and verifiers
-  const initializeData =
-    identityVerificationHubImpl.interface.encodeFunctionData("initialize", [
-      identityRegistryProxy.target,
-      [DscVerifierId.dsc_sha256_rsa_65537_4096],
-      [dscVerifier.target],
-    ]);
-  const hubFactory = await ethers.getContractFactory(
-    "IdentityVerificationHub",
-    owner
-  );
+  const initializeData = identityVerificationHubImpl.interface.encodeFunctionData("initialize", [
+    identityRegistryProxy.target,
+    [DscVerifierId.dsc_sha256_rsa_65537_4096],
+    [dscVerifier.target],
+  ]);
+  const hubFactory = await ethers.getContractFactory("IdentityVerificationHub", owner);
   identityVerificationHubProxy = await hubFactory.deploy(
     identityVerificationHubImpl.target,
-    initializeData
+    initializeData,
   );
   await identityVerificationHubProxy.waitForDeployment();
 
   // Get contracts with implementation ABI and update hub address
   const registryContract = (await ethers.getContractAt(
     "IdentityRegistryImplV1",
-    identityRegistryProxy.target
+    identityRegistryProxy.target,
   )) as IdentityRegistryImplV1;
-  const updateHubTx = await registryContract.updateHub(
-    identityVerificationHubProxy.target
-  );
+  const updateHubTx = await registryContract.updateHub(identityVerificationHubProxy.target);
   await updateHubTx.wait();
 
   const hubContract = (await ethers.getContractAt(
     "IdentityVerificationHubImplV1",
-    identityVerificationHubProxy.target
+    identityVerificationHubProxy.target,
   )) as IdentityVerificationHubImplV1;
 
   // Initialize roots
