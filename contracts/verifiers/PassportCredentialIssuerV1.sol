@@ -181,16 +181,6 @@ contract PassportCredentialIssuerV1 is IdentityBase, Ownable2StepUpgradeable {
         $.nullifiers[nullifier] = false;
     }
 
-    function _credentialVerifiers(string memory circuitId) internal view returns (address) {
-        PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
-        return $._credentialVerifiers[circuitId];
-    }
-
-    function _signatureVerifiers(string memory circuitId) internal view returns (address) {
-        PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
-        return $._signatureVerifiers[circuitId];
-    }
-
     function verifyPassportCredential(
         string memory credentialCircuitId,
         ICredentialCircuitVerifier.CredentialCircuitProof memory credentialCircuitProof,
@@ -206,7 +196,8 @@ contract PassportCredentialIssuerV1 is IdentityBase, Ownable2StepUpgradeable {
         string memory credentialCircuitId,
         ICredentialCircuitVerifier.CredentialCircuitProof memory credentialCircuitProof
     ) internal view {
-        address verifier = _credentialVerifiers(credentialCircuitId);
+        PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
+        address verifier = $._credentialVerifiers[credentialCircuitId];
         if (verifier == address(0)) {
             revert NoVerifierSet();
         }
@@ -228,7 +219,7 @@ contract PassportCredentialIssuerV1 is IdentityBase, Ownable2StepUpgradeable {
         ISignatureCircuitVerifier.SignatureCircuitProof memory signatureCircuitProof
     ) internal view {
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
-        address verifier = _signatureVerifiers(signatureCircuitId);
+        address verifier = $._signatureVerifiers[signatureCircuitId];
         if (verifier == address(0)) {
             revert NoVerifierSet();
         }
