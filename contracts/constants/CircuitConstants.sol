@@ -32,19 +32,14 @@ library CircuitConstants {
     uint256 constant SIGNATURE_NULLIFIER_INDEX = 0;
 
     /**
-     * @notice Index to access the commitment in the signature circuit public signals.
-     */
-    uint256 constant SIGNATURE_COMMITMENT_INDEX = 1;
-
-    /**
      * @notice Index to access the linkId in the signature circuit public signals.
      */
-    uint256 constant SIGNATURE_LINKID_INDEX = 2;
+    uint256 constant SIGNATURE_LINKID_INDEX = 1;
 
     /**
      * @notice Index to access the Merkle root in the signature circuit public signals.
      */
-    uint256 constant SIGNATURE_MERKLE_ROOT_INDEX = 3;
+    uint256 constant SIGNATURE_MERKLE_ROOT_INDEX = 2;
 
     // ---------------------------
     // CREDENTIAL Circuit Constants

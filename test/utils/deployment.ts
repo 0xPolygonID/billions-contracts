@@ -18,7 +18,7 @@ import {
 import { poseidonContract } from "circomlibjs";
 // Verifier artifacts
 import DscVerifierArtifact from "../../artifacts/contracts/verifiers/dsc/Verifier_dsc_sha256_rsa_65537_4096.sol/Verifier_dsc_sha256_rsa_65537_4096.json";
-import SignatureVerifierArtifact from "../../artifacts/contracts/verifiers/signature/Verifier_signature_sha1_sha256_sha256_rsa_65537_4096.sol/Verifier_signature_sha1_sha256_sha256_rsa_65537_4096.json";
+import SignatureVerifierArtifact from "../../artifacts/contracts/verifiers/signature/Verifier_signature_sha256_sha256_sha256_rsa_65537_4096.sol/Verifier_signature_sha256_sha256_sha256_rsa_65537_4096.json";
 import CredentialVerifierArtifact from "../../artifacts/contracts/verifiers/credential/Verifier_credential_sha256.sol/Verifier_credential_sha256.json";
 
 import { PassportCredentialIssuer, PassportCredentialIssuerImplV1 } from "../../typechain-types";
@@ -47,13 +47,19 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
   await ethers.provider.send("hardhat_setBalance", [await user1.getAddress(), newBalance]);
   await ethers.provider.send("hardhat_setBalance", [await user2.getAddress(), newBalance]);
 
+  const lastName = 'KUZNETSOV';
+  const firstName = 'VALERIY';
+
   mockPassport = genMockPassportData(
     "sha256",
     "sha256",
     "rsa_sha256_65537_4096",
-    "FRA",
-    "940131",
-    "401031",
+    "UKR",
+    '960309',
+    '350803',
+    'AC1234567',
+    lastName,
+    firstName
   );
 
   // Deploy dsc verifier
@@ -175,7 +181,7 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
   await passportCredentialIssuerImpl.waitForDeployment();
 
   const expirationTime = BigInt(60 * 60 * 24 * 7); // 1 week
-  const templateRoot = BigInt(5);
+  const templateRoot = BigInt("11355012832755671330307538002239263753806804904003813746452342893352381210514");
   const passportCredentialIssuerInitData =
     passportCredentialIssuerImpl.interface.encodeFunctionData("initializeIssuer", [
       expirationTime,
@@ -183,7 +189,7 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
       registryContract.target,
       ["credential_sha256"],
       [credentialVerifier.target],
-      ["signature_sha1_sha256_sha256_rsa_65537_4096"],
+      ["signature_sha256_sha256_sha256_rsa_65537_4096"],
       [signatureVerifier.target],
       stContracts.state.target,
       stContracts.defaultIdType,

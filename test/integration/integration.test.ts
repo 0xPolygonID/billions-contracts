@@ -6,11 +6,12 @@ import {
   DscVerifierId,
   CIRCUIT_CONSTANTS,
 } from "../../../passport-circuits/utils/constants/constants";
-import { generateDscProof } from "../utils/generateProof";
+import { generateCredentialProof, generateDscProof, generateSignatureProof } from "../utils/generateProof";
 import { generateRandomFieldElement } from "../utils/utils";
 import { TransactionReceipt, ZeroAddress } from "ethers";
 import { LeanIMT } from "@openpassport/zk-kit-lean-imt";
 import { poseidon2 } from "poseidon-lite";
+import { signature } from "../../typechain-types/contracts/verifiers";
 
 describe("Commitment Registration Tests", function () {
   this.timeout(0);
@@ -18,18 +19,28 @@ describe("Commitment Registration Tests", function () {
   let deployedActors: DeployedActors;
   let snapshotId: string;
   let baseDscProof: any;
+  let baseSignatureProof: any;
+  let baseCredentialProof: any;
   let dscProof: any;
+  let signatureProof: any;
+  let credentialProof: any;
   let signatureSecret: any;
 
   before(async () => {
     deployedActors = await deploySystemFixtures();
     signatureSecret = generateRandomFieldElement();
+    baseCredentialProof = await generateCredentialProof(
+      deployedActors.mockPassport
+    );
+    baseSignatureProof = await generateSignatureProof(deployedActors.mockPassport);
     baseDscProof = await generateDscProof(deployedActors.mockPassport.dsc);
     snapshotId = await ethers.provider.send("evm_snapshot", []);
   });
 
   beforeEach(async () => {
     dscProof = structuredClone(baseDscProof);
+    signatureProof = structuredClone(baseSignatureProof);
+    credentialProof = structuredClone(baseCredentialProof);
   });
 
   afterEach(async () => {
@@ -39,11 +50,14 @@ describe("Commitment Registration Tests", function () {
 
   describe("Register Commitment", () => {
     describe("Initialization", () => {
-      it("should have consistent addresses between registry and hub", async () => {
-        const { hub, registry } = deployedActors;
+      it("should have consistent addresses between registry, hub and passport credential issuer", async () => {
+        const { hub, registry, passportCredentialIssuer } = deployedActors;
 
         expect(await registry.hub()).to.equal(hub.target);
         expect(await hub.registry()).to.equal(registry.target);
+        expect(await passportCredentialIssuer.getRegistry()).to.equal(
+          registry.target
+        );
       });
     });
 
@@ -165,7 +179,7 @@ describe("Commitment Registration Tests", function () {
       });
 
       it("Should fail when the registerDscKeyCommitment is called by non-hub address", async () => {
-        const { registry, dsc, owner } = deployedActors;
+        const { registry, dscVerifier, owner } = deployedActors;
         const IdentityVerificationHubImplFactory =
           await ethers.getContractFactory(
             "IdentityVerificationHubImplV1",
@@ -179,7 +193,7 @@ describe("Commitment Registration Tests", function () {
           [
             registry.target,
             [DscVerifierId.dsc_sha256_rsa_65537_4096],
-            [dsc.target],
+            [dscVerifier.target],
           ]
         );
         const hubFactory = await ethers.getContractFactory(
@@ -282,6 +296,17 @@ describe("Commitment Registration Tests", function () {
           )
         ).to.be.revertedWithCustomError(hubImpl, "UUPSUnauthorizedCallContext");
       });
+    });
+  });
+
+  describe("Verify passport", async () => {
+    it("Should veify passport successfully", async () => {
+      const { passportCredentialIssuer } = deployedActors;
+
+      const credentialCircuitId = "credential_sha256";
+      const signatureCircuitId = "signature_sha256_sha256_sha256_rsa_65537_4096";  
+
+      await passportCredentialIssuer.verifyPassportCredential(credentialCircuitId, credentialProof, signatureCircuitId, signatureProof);
     });
   });
 });

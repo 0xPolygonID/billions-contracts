@@ -19,7 +19,7 @@ export type CredentialCircuitProof = any;
 // Verifier type imports
 import type { Verifier_dsc_sha256_rsa_65537_4096 as ProdDscVerifier } from "../../typechain-types/contracts/verifiers/dsc/Verifier_dsc_sha256_rsa_65537_4096";
 import type { Verifier_credential_sha256 as ProdCredentialVerifier } from "../../typechain-types/contracts/verifiers/credential/Verifier_credential_sha256";
-import type { Verifier_signature_sha1_sha1_sha1_rsa_65537_4096 as ProdSignatureVerifier } from "../../typechain-types/contracts/verifiers/signature/Verifier_signature_sha1_sha1_sha1_rsa_65537_4096";
+import type { Verifier_signature_sha256_sha256_sha256_rsa_65537_4096 as ProdSignatureVerifier } from "../../typechain-types/contracts/verifiers/signature/Verifier_signature_sha256_sha256_sha256_rsa_65537_4096";
 
 // Type definitions
 export type DscVerifier = ProdDscVerifier;

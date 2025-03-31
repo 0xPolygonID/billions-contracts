@@ -37,7 +37,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       expect(await passportCredentialIssuer.credentialVerifiers(credentialCircuitId)).to.equal(
         credentialVerifier.target,
       );
-      const signatureCircuitId = "signature_sha1_sha256_sha256_rsa_65537_4096";
+      const signatureCircuitId = "signature_sha256_sha256_sha256_rsa_65537_4096";
       expect(await passportCredentialIssuer.signatureVerifiers(signatureCircuitId)).to.equal(
         signatureVerifier.target,
       );
@@ -353,7 +353,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
 
     it("should return correct signature circuit verifier address", async () => {
       const { passportCredentialIssuer, signatureVerifier } = deployedActors;
-      const signatureCircuitId = "signature_sha1_sha256_sha256_rsa_65537_4096";
+      const signatureCircuitId = "signature_sha256_sha256_sha256_rsa_65537_4096";
       expect(await passportCredentialIssuer.signatureVerifiers(signatureCircuitId)).to.equal(
         signatureVerifier.target,
       );
@@ -361,7 +361,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
 
     it("should not return when view function is called by non-proxy", async () => {
       const { passportCredentialIssuerImpl } = deployedActors;
-      const signatureCircuitId = "signature_sha1_sha256_sha256_rsa_65537_4096";
+      const signatureCircuitId = "signature_sha256_sha256_sha256_rsa_65537_4096";
       await expect(
         passportCredentialIssuerImpl.signatureVerifiers(signatureCircuitId),
       ).to.be.revertedWithCustomError(passportCredentialIssuerImpl, "UUPSUnauthorizedCallContext");

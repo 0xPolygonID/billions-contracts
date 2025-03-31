@@ -6,6 +6,7 @@
     "compile": "npx hardhat clean && npx hardhat compile",
     "test": "npx hardhat test",
     "test:coverage": "npx hardhat coverage",
+    "test:integration": "npx hardhat test test/integration/integration.test.ts",
     "lint:contracts": "npx solhint contracts/**/*.sol",
     "prettier:contracts": "prettier --write --plugin=prettier-plugin-solidity 'contracts/**/*.sol'"
   },
@@ -15,6 +16,7 @@
   "description": "",
   "devDependencies": {
     "@iden3/contracts": "^2.5.0",
+    "@iden3/js-crypto": "^1.3.0",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@openpassport/zk-kit-lean-imt": "^0.0.6",
     "@openpassport/zk-kit-smt": "^0.0.1",

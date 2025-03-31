@@ -107,7 +107,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         address[] memory credentialVerifierAddresses,
         string[] memory signatureCircuitIds,
         address[] memory signatureVerifierAddresses,
-        address stateAddress, 
+        address stateAddress,
         bytes2 idType
     ) public initializer {
         super.initialize(stateAddress, idType);
@@ -268,7 +268,6 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         uint256 linkIdCredentialProof,
         uint256 linkIdSignatureProof,
         uint256 nullifier,
-        uint256 commitment,
         uint256 merkleRoot
     ) private view {
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
@@ -278,11 +277,13 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         if (templateRoot != $._templateRoot)
             revert InvalidTemplateRoot(templateRoot, $._templateRoot);
 
-        if (linkIdSignatureProof != linkIdCredentialProof)
+        // TODO: uncomment this when the linkId check is verified and ready
+        /* if (linkIdSignatureProof != linkIdCredentialProof)
             revert InvalidLinkId(linkIdSignatureProof, linkIdCredentialProof);
-
-        if (currentDate + $._expirationTime < block.timestamp)
-            revert CurrentDateExpired(currentDate);
+        */
+        // TODO: uncomment this when currentDate is comparable to block.timestamp
+        /*if (currentDate + $._expirationTime < block.timestamp)
+            revert CurrentDateExpired(currentDate);*/
         if (issuanceDate + $._expirationTime < block.timestamp)
             revert IssuanceDateExpired(issuanceDate);
 
@@ -331,13 +332,15 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
             revert NoVerifierSet();
         }
 
+        // TODO: uncomment this when the registry is ready
+        /* 
         if (
             !IIdentityRegistryV1($._registry).checkDscKeyCommitmentMerkleRoot(
                 signatureCircuitProof.pubSignals[CircuitConstants.SIGNATURE_MERKLE_ROOT_INDEX]
             )
         ) {
             revert InvalidDscCommitmentRoot();
-        }
+        } */
 
         if (
             !ISignatureCircuitVerifier(verifier).verifyProof(
@@ -383,9 +386,6 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         uint256 nullifier = signatureCircuitProof.pubSignals[
             CircuitConstants.SIGNATURE_NULLIFIER_INDEX
         ];
-        uint256 commitment = signatureCircuitProof.pubSignals[
-            CircuitConstants.SIGNATURE_COMMITMENT_INDEX
-        ];
         uint256 merkleRoot = signatureCircuitProof.pubSignals[
             CircuitConstants.SIGNATURE_MERKLE_ROOT_INDEX
         ];
@@ -399,7 +399,6 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
             linkIdCredentialProof,
             linkIdSignatureProof,
             nullifier,
-            commitment,
             merkleRoot
         );
         _setNullifier(nullifier);
