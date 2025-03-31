@@ -65,15 +65,6 @@ abstract contract IdentityRegistryStorageV1 is ImplRoot {
     /// @notice Mapping to determine if a DSC key commitment is registered.
     mapping(uint256 => bool) internal _isRegisteredDscKeyCommitment;
 
-    /// @notice Current passport number OFAC root.
-    uint256 internal _passportNoOfacRoot;
-
-    /// @notice Current name and date of birth OFAC root.
-    uint256 internal _nameAndDobOfacRoot;
-
-    /// @notice Current name and year of birth OFAC root.
-    uint256 internal _nameAndYobOfacRoot;
-
     /// @notice Current CSCA root.
     uint256 internal _cscaRoot;
 }
@@ -96,12 +87,6 @@ contract IdentityRegistryImplV1 is IdentityRegistryStorageV1, IIdentityRegistryV
     event HubUpdated(address hub);
     /// @notice Emitted when the CSCA root is updated.
     event CscaRootUpdated(uint256 cscaRoot);
-    /// @notice Emitted when the passport number OFAC root is updated.
-    event PassportNoOfacRootUpdated(uint256 passportNoOfacRoot);
-    /// @notice Emitted when the name and date of birth OFAC root is updated.
-    event NameAndDobOfacRootUpdated(uint256 nameAndDobOfacRoot);
-    /// @notice Emitted when the name and year of birth OFAC root is updated.
-    event NameAndYobOfacRootUpdated(uint256 nameAndYobOfacRoot);
     /// @notice Emitted when an identity commitment is successfully registered.
     event CommitmentRegistered(
         bytes32 indexed attestationId,
@@ -292,48 +277,6 @@ contract IdentityRegistryImplV1 is IdentityRegistryStorageV1, IIdentityRegistryV
     }
 
     /**
-     * @notice Retrieves the current passport number OFAC root.
-     * @return The stored passport number OFAC root.
-     */
-    function getPassportNoOfacRoot() external view onlyProxy returns (uint256) {
-        return _passportNoOfacRoot;
-    }
-
-    /**
-     * @notice Retrieves the current name and date of birth OFAC root.
-     * @return The stored name and date of birth OFAC root.
-     */
-    function getNameAndDobOfacRoot() external view onlyProxy returns (uint256) {
-        return _nameAndDobOfacRoot;
-    }
-
-    /**
-     * @notice Retrieves the current name and year of birth OFAC root.
-     * @return The stored name and year of birth OFAC root.
-     */
-    function getNameAndYobOfacRoot() external view onlyProxy returns (uint256) {
-        return _nameAndYobOfacRoot;
-    }
-
-    /**
-     * @notice Validates whether the provided OFAC roots match the stored values.
-     * @param passportNoRoot The passport number OFAC root to validate.
-     * @param nameAndDobRoot The name and date of birth OFAC root to validate.
-     * @param nameAndYobRoot The name and year of birth OFAC root to validate.
-     * @return True if all provided roots match the stored values, false otherwise.
-     */
-    function checkOfacRoots(
-        uint256 passportNoRoot,
-        uint256 nameAndDobRoot,
-        uint256 nameAndYobRoot
-    ) external view onlyProxy returns (bool) {
-        return
-            _passportNoOfacRoot == passportNoRoot &&
-            _nameAndDobOfacRoot == nameAndDobRoot &&
-            _nameAndYobOfacRoot == nameAndYobRoot;
-    }
-
-    /**
      * @notice Retrieves the current CSCA root.
      * @return The stored CSCA root.
      */
@@ -444,36 +387,6 @@ contract IdentityRegistryImplV1 is IdentityRegistryStorageV1, IIdentityRegistryV
     function updateHub(address newHubAddress) external onlyProxy onlyOwner {
         _hub = newHubAddress;
         emit HubUpdated(newHubAddress);
-    }
-
-    /**
-     * @notice Updates the passport number OFAC root.
-     * @dev Callable only via a proxy and restricted to the contract owner.
-     * @param newPassportNoOfacRoot The new passport number OFAC root value.
-     */
-    function updatePassportNoOfacRoot(uint256 newPassportNoOfacRoot) external onlyProxy onlyOwner {
-        _passportNoOfacRoot = newPassportNoOfacRoot;
-        emit PassportNoOfacRootUpdated(newPassportNoOfacRoot);
-    }
-
-    /**
-     * @notice Updates the name and date of birth OFAC root.
-     * @dev Callable only via a proxy and restricted to the contract owner.
-     * @param newNameAndDobOfacRoot The new name and date of birth OFAC root value.
-     */
-    function updateNameAndDobOfacRoot(uint256 newNameAndDobOfacRoot) external onlyProxy onlyOwner {
-        _nameAndDobOfacRoot = newNameAndDobOfacRoot;
-        emit NameAndDobOfacRootUpdated(newNameAndDobOfacRoot);
-    }
-
-    /**
-     * @notice Updates the name and year of birth OFAC root.
-     * @dev Callable only via a proxy and restricted to the contract owner.
-     * @param newNameAndYobOfacRoot The new name and year of birth OFAC root value.
-     */
-    function updateNameAndYobOfacRoot(uint256 newNameAndYobOfacRoot) external onlyProxy onlyOwner {
-        _nameAndYobOfacRoot = newNameAndYobOfacRoot;
-        emit NameAndYobOfacRootUpdated(newNameAndYobOfacRoot);
     }
 
     /**

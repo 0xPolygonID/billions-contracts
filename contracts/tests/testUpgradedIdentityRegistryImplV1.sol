@@ -106,29 +106,6 @@ contract testUpgradedIdentityRegistryImplV1 is
         return _identityCommitmentIMT._indexOf(commitment);
     }
 
-    function getPassportNoOfacRoot() external view onlyProxy returns (uint256) {
-        return _passportNoOfacRoot;
-    }
-
-    function getNameAndDobOfacRoot() external view onlyProxy returns (uint256) {
-        return _nameAndDobOfacRoot;
-    }
-
-    function getNameAndYobOfacRoot() external view onlyProxy returns (uint256) {
-        return _nameAndYobOfacRoot;
-    }
-
-    function checkOfacRoots(
-        uint256 passportNoRoot,
-        uint256 nameAndDobRoot,
-        uint256 nameAndYobRoot
-    ) external view onlyProxy returns (bool) {
-        return
-            _passportNoOfacRoot == passportNoRoot &&
-            _nameAndDobOfacRoot == nameAndDobRoot &&
-            _nameAndYobOfacRoot == nameAndYobRoot;
-    }
-
     function getCscaRoot() external view onlyProxy returns (uint256) {
         return _cscaRoot;
     }

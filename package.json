@@ -25,6 +25,7 @@
     "@zk-kit/imt": "^2.0.0-beta.8",
     "@zk-kit/imt.sol": "^2.0.0-beta.12",
     "@zk-kit/lean-imt": "^2.2.3",
+    "circomlibjs": "^0.1.7",
     "hardhat": "^2.22.19",
     "poseidon-lite": "^0.3.0",
     "prettier": "^3.5.3",

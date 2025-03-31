@@ -3,11 +3,11 @@ pragma solidity 0.8.27;
 
 import {IdentityLib} from "@iden3/contracts/lib/IdentityLib.sol";
 import {IdentityBase} from "@iden3/contracts/lib/IdentityBase.sol";
-import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {ICredentialCircuitVerifier} from "../interfaces/ICredentialCircuitVerifier.sol";
 import {ISignatureCircuitVerifier} from "../interfaces/ISignatureCircuitVerifier.sol";
 import {CircuitConstants} from "../constants/CircuitConstants.sol";
 import {IIdentityRegistryV1} from "../interfaces/IIdentityRegistryV1.sol";
+import {ImplRoot} from "../upgradeable/ImplRoot.sol";
 
 error InvalidResponsesLength(uint256 length, uint256 expectedLength);
 error InvalidLinkId(uint256 linkId1, uint256 linkId2);
@@ -19,7 +19,7 @@ error IssuanceDateExpired(uint256 issuanceDate);
 error NullifierAlreadyExists(uint256 nullifier);
 error LengthMismatch(uint256 length1, uint256 length2);
 error NoVerifierSet();
-error InvalidCommitmentRoot();
+error InvalidDscCommitmentRoot();
 error InvalidCredentialProof();
 error InvalidSignatureProof();
 
@@ -27,15 +27,15 @@ error InvalidSignatureProof();
  * @dev Address ownership credential issuer.
  * This issuer issue non-merklized credentials decentralized.
  */
-contract PassportCredentialIssuerV1 is IdentityBase, Ownable2StepUpgradeable {
+contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
     using IdentityLib for IdentityLib.Data;
 
     /// @custom:storage-location erc7201:polygonid.storage.PassportCredentialIssuerV1
     struct PassportCredentialIssuerV1Storage {
-        uint256 expirationTime;
-        uint256 templateRoot;
-        mapping(uint256 => bool) nullifiers;
-        address registry;
+        uint256 _expirationTime;
+        uint256 _templateRoot;
+        mapping(uint256 => bool) _nullifiers;
+        address _registry;
         mapping(string circuitId => address verifier) _credentialVerifiers;
         mapping(string circuitId => address verifier) _signatureVerifiers;
     }
@@ -67,22 +67,56 @@ contract PassportCredentialIssuerV1 is IdentityBase, Ownable2StepUpgradeable {
      * @param verifier The new verifier address for the signature circuit.
      */
     event SignatureCircuitVerifierUpdated(string circuitId, address verifier);
+    /**
+     * @notice Emitted when the registry address is updated.
+     * @param registry The new registry address.
+     */
+    event RegistryUpdated(address registry);
+    /**
+     * @notice Emitted when the expiration time is updated.
+     * @param expirationTime The new expiration time.
+     */
+    event ExpirationTimeUpdated(uint256 expirationTime);
+    /**
+     * @notice Emitted when the template root is updated.
+     * @param tampletRoot The new template root.
+     */
+    event TemplateRootUpdated(uint256 tampletRoot);
 
-    function initialize(
+    // ====================================================
+    // Constructor
+    // ====================================================
+
+    /**
+     * @notice Constructor that disables initializers.
+     * @dev Prevents direct initialization of the implementation contract.
+     */
+    constructor() {
+        _disableInitializers();
+    }
+
+    // ====================================================
+    // Initializer
+    // ====================================================
+
+    function initializeIssuer(
         uint256 expirationTime,
         uint256 templateRoot,
         address registry,
         string[] memory credentialCircuitIds,
         address[] memory credentialVerifierAddresses,
         string[] memory signatureCircuitIds,
-        address[] memory signatureVerifierAddresses
+        address[] memory signatureVerifierAddresses,
+        address stateAddress, 
+        bytes2 idType
     ) public initializer {
+        super.initialize(stateAddress, idType);
         __Ownable_init(msg.sender);
 
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
-        $.expirationTime = expirationTime;
-        $.templateRoot = templateRoot;
-        $.registry = registry;
+        $._expirationTime = expirationTime;
+        $._templateRoot = templateRoot;
+        $._registry = registry;
         if (credentialCircuitIds.length != credentialVerifierAddresses.length) {
             revert LengthMismatch(credentialCircuitIds.length, credentialVerifierAddresses.length);
         }
@@ -98,6 +132,57 @@ contract PassportCredentialIssuerV1 is IdentityBase, Ownable2StepUpgradeable {
     }
 
     /**
+     * @notice Retrieves the Identity Registry address.
+     * @return The address of the Identity Registry.
+     */
+    function getRegistry() external view virtual onlyProxy returns (address) {
+        return _getPassportCredentialIssuerV1Storage()._registry;
+    }
+
+    /**
+     * @notice Sets the Identity Registry address.
+     * @param registry The new Identity Registry address.
+     */
+    function setRegistry(address registry) external onlyProxy onlyOwner {
+        _getPassportCredentialIssuerV1Storage()._registry = registry;
+        emit RegistryUpdated(registry);
+    }
+
+    /**
+     * @notice Retrieves the expiration time.
+     * @return The expiration time.
+     */
+    function getExpirationTime() external view virtual onlyProxy onlyOwner returns (uint256) {
+        return _getPassportCredentialIssuerV1Storage()._expirationTime;
+    }
+
+    /**
+     * @notice Sets the expiration time.
+     * @param expirationTime The new expiration time.
+     */
+    function setExpirationTime(uint256 expirationTime) external onlyProxy onlyOwner {
+        _getPassportCredentialIssuerV1Storage()._expirationTime = expirationTime;
+        emit ExpirationTimeUpdated(expirationTime);
+    }
+
+    /**
+     * @notice Retrieves the template root.
+     * @return The template root.
+     */
+    function getTemplateRoot() external view virtual onlyProxy returns (uint256) {
+        return _getPassportCredentialIssuerV1Storage()._templateRoot;
+    }
+
+    /**
+     * @notice Sets the template root.
+     * @param templateRoot The new template root.
+     */
+    function setTemplateRoot(uint256 templateRoot) external onlyProxy onlyOwner {
+        _getPassportCredentialIssuerV1Storage()._templateRoot = templateRoot;
+        emit TemplateRootUpdated(templateRoot);
+    }
+
+    /**
      * @dev Updates the signature circuit verifiers for a specific circuit identifiers.
      * @param circuitIds The signature circuit identifiers.
      * @param verifierAddresses The new signature circuit verifier addresses.
@@ -105,7 +190,7 @@ contract PassportCredentialIssuerV1 is IdentityBase, Ownable2StepUpgradeable {
     function updateSignatureVerifiers(
         string[] memory circuitIds,
         address[] memory verifierAddresses
-    ) external virtual onlyOwner {
+    ) external virtual onlyProxy onlyOwner {
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
         if (circuitIds.length != verifierAddresses.length) {
             revert LengthMismatch(circuitIds.length, verifierAddresses.length);
@@ -124,7 +209,7 @@ contract PassportCredentialIssuerV1 is IdentityBase, Ownable2StepUpgradeable {
     function updateCredentialVerifiers(
         string[] memory circuitIds,
         address[] memory verifierAddresses
-    ) external virtual onlyOwner {
+    ) external virtual onlyProxy onlyOwner {
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
         if (circuitIds.length != verifierAddresses.length) {
             revert LengthMismatch(circuitIds.length, verifierAddresses.length);
@@ -133,6 +218,45 @@ contract PassportCredentialIssuerV1 is IdentityBase, Ownable2StepUpgradeable {
             $._credentialVerifiers[circuitIds[i]] = verifierAddresses[i];
             emit CredentialCircuitVerifierUpdated(circuitIds[i], verifierAddresses[i]);
         }
+    }
+
+    /**
+     * @notice Retrieves the credential verifier address for a given circuit id.
+     * @param circuitId The circuit id identifier.
+     * @return The credential verifier address.
+     */
+    function credentialVerifiers(
+        string memory circuitId
+    ) external view virtual onlyProxy returns (address) {
+        return _getPassportCredentialIssuerV1Storage()._credentialVerifiers[circuitId];
+    }
+
+    /**
+     * @notice Retrieves the signature verifier address for a given circuit id.
+     * @param circuitId The circuit id identifier.
+     * @return The signature verifier address.
+     */
+    function signatureVerifiers(
+        string memory circuitId
+    ) external view virtual onlyProxy returns (address) {
+        return _getPassportCredentialIssuerV1Storage()._signatureVerifiers[circuitId];
+    }
+
+    function cleanNullifier(uint256 nullifier) public onlyOwner {
+        PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
+        require($._nullifiers[nullifier], "Nullifier does not exist");
+        $._nullifiers[nullifier] = false;
+    }
+
+    function verifyPassportCredential(
+        string memory credentialCircuitId,
+        ICredentialCircuitVerifier.CredentialCircuitProof memory credentialCircuitProof,
+        string memory signatureCircuitId,
+        ISignatureCircuitVerifier.SignatureCircuitProof memory signatureCircuitProof
+    ) external {
+        _verifyCredentialProof(credentialCircuitId, credentialCircuitProof);
+        _verifySignatureProof(signatureCircuitId, signatureCircuitProof);
+        _afterProofsSubmit(credentialCircuitProof, signatureCircuitProof);
     }
 
     function _validatePublicInputs(
@@ -151,18 +275,18 @@ contract PassportCredentialIssuerV1 is IdentityBase, Ownable2StepUpgradeable {
         if (hashIndex == 0) revert InvalidHashIndex(hashIndex);
         if (hashValue == 0) revert InvalidHashValue(hashValue);
 
-        if (templateRoot != $.templateRoot)
-            revert InvalidTemplateRoot(templateRoot, $.templateRoot);
+        if (templateRoot != $._templateRoot)
+            revert InvalidTemplateRoot(templateRoot, $._templateRoot);
 
         if (linkIdSignatureProof != linkIdCredentialProof)
             revert InvalidLinkId(linkIdSignatureProof, linkIdCredentialProof);
 
-        if (currentDate + $.expirationTime < block.timestamp)
+        if (currentDate + $._expirationTime < block.timestamp)
             revert CurrentDateExpired(currentDate);
-        if (issuanceDate + $.expirationTime < block.timestamp)
+        if (issuanceDate + $._expirationTime < block.timestamp)
             revert IssuanceDateExpired(issuanceDate);
 
-        if ($.nullifiers[nullifier]) revert NullifierAlreadyExists(nullifier);
+        if ($._nullifiers[nullifier]) revert NullifierAlreadyExists(nullifier);
     }
 
     function _addHashAndTransit(uint256 hi, uint256 hv) private {
@@ -172,24 +296,7 @@ contract PassportCredentialIssuerV1 is IdentityBase, Ownable2StepUpgradeable {
 
     function _setNullifier(uint256 nullifier) private {
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
-        $.nullifiers[nullifier] = true;
-    }
-
-    function cleanNullifier(uint256 nullifier) public onlyOwner {
-        PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
-        require($.nullifiers[nullifier], "Nullifier does not exist");
-        $.nullifiers[nullifier] = false;
-    }
-
-    function verifyPassportCredential(
-        string memory credentialCircuitId,
-        ICredentialCircuitVerifier.CredentialCircuitProof memory credentialCircuitProof,
-        string memory signatureCircuitId,
-        ISignatureCircuitVerifier.SignatureCircuitProof memory signatureCircuitProof
-    ) external {
-        _verifyCredentialProof(credentialCircuitId, credentialCircuitProof);
-        _verifySignatureProof(signatureCircuitId, signatureCircuitProof);
-        _afterProofsSubmit(credentialCircuitProof, signatureCircuitProof);
+        $._nullifiers[nullifier] = true;
     }
 
     function _verifyCredentialProof(
@@ -225,11 +332,11 @@ contract PassportCredentialIssuerV1 is IdentityBase, Ownable2StepUpgradeable {
         }
 
         if (
-            !IIdentityRegistryV1($.registry).checkDscKeyCommitmentMerkleRoot(
+            !IIdentityRegistryV1($._registry).checkDscKeyCommitmentMerkleRoot(
                 signatureCircuitProof.pubSignals[CircuitConstants.SIGNATURE_MERKLE_ROOT_INDEX]
             )
         ) {
-            revert InvalidCommitmentRoot();
+            revert InvalidDscCommitmentRoot();
         }
 
         if (
