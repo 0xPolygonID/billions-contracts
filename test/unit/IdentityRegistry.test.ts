@@ -5,7 +5,7 @@ import { ethers } from "hardhat";
 import { ZeroAddress } from "ethers";
 import { generateRandomFieldElement } from "../utils/utils";
 import { LeanIMT } from "@openpassport/zk-kit-lean-imt";
-import { poseidon2 } from "poseidon-lite";
+import { Poseidon } from "@iden3/js-crypto";
 
 describe("Unit Tests for IdentityRegistry", () => {
   let deployedActors: DeployedActors;
@@ -195,7 +195,7 @@ describe("Unit Tests for IdentityRegistry", () => {
       await registry.devAddIdentityCommitment(attestationId, nullifier, commitment);
       const root = await registry.getIdentityCommitmentMerkleRoot();
 
-      const hashFunction = (a: bigint, b: bigint) => poseidon2([a, b]);
+      const hashFunction = (a: bigint, b: bigint) => Poseidon.spongeHashX([a, b], 2);
       const imt = new LeanIMT<bigint>(hashFunction);
       imt.insert(BigInt(commitment));
       expect(imt.root).to.equal(root);

@@ -8,6 +8,7 @@ import {ISignatureCircuitVerifier} from "../interfaces/ISignatureCircuitVerifier
 import {CircuitConstants} from "../constants/CircuitConstants.sol";
 import {IIdentityRegistryV1} from "../interfaces/IIdentityRegistryV1.sol";
 import {ImplRoot} from "../upgradeable/ImplRoot.sol";
+import "hardhat/console.sol";
 
 error InvalidResponsesLength(uint256 length, uint256 expectedLength);
 error InvalidLinkId(uint256 linkId1, uint256 linkId2);
@@ -278,9 +279,10 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
             revert InvalidTemplateRoot(templateRoot, $._templateRoot);
 
         // TODO: uncomment this when the linkId check is verified and ready
-        /* if (linkIdSignatureProof != linkIdCredentialProof)
+        console.log("linkIdCredentialProof: %s , %s", linkIdSignatureProof, linkIdCredentialProof);
+        if (linkIdSignatureProof != linkIdCredentialProof)
             revert InvalidLinkId(linkIdSignatureProof, linkIdCredentialProof);
-        */
+        
         // TODO: uncomment this when currentDate is comparable to block.timestamp
         /*if (currentDate + $._expirationTime < block.timestamp)
             revert CurrentDateExpired(currentDate);*/

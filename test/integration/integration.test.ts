@@ -10,8 +10,7 @@ import { generateCredentialProof, generateDscProof, generateSignatureProof } fro
 import { generateRandomFieldElement } from "../utils/utils";
 import { TransactionReceipt, ZeroAddress } from "ethers";
 import { LeanIMT } from "@openpassport/zk-kit-lean-imt";
-import { poseidon2 } from "poseidon-lite";
-import { signature } from "../../typechain-types/contracts/verifiers";
+import { Poseidon } from '@iden3/js-crypto';
 
 describe("Commitment Registration Tests", function () {
   this.timeout(0);
@@ -72,7 +71,7 @@ describe("Commitment Registration Tests", function () {
           dscProof
         );
 
-        const hashFunction = (a: bigint, b: bigint) => poseidon2([a, b]);
+        const hashFunction = (a: bigint, b: bigint) => Poseidon.spongeHashX([a, b], 2);
         const imt = new LeanIMT<bigint>(hashFunction);
         await imt.insert(
           BigInt(dscProof.pubSignals[CIRCUIT_CONSTANTS.DSC_TREE_LEAF_INDEX])
