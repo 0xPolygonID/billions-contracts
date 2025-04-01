@@ -342,13 +342,13 @@ async function deployCrossChainProofValidator(
 }
 
 async function deployIdentityLib(
-  smtpAddress: string,
+  smtLibAddress: string,
   poseidonUtil3lAddress: string,
   poseidonUtil4lAddress: string,
 ): Promise<Contract> {
   const Identity = await ethers.getContractFactory("IdentityLib", {
     libraries: {
-      SmtLib: smtpAddress,
+      SmtLib: smtLibAddress,
       PoseidonUnit3L: poseidonUtil3lAddress,
       PoseidonUnit4L: poseidonUtil4lAddress,
     },
