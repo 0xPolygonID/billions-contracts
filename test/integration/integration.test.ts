@@ -6,11 +6,16 @@ import {
   DscVerifierId,
   CIRCUIT_CONSTANTS,
 } from "../../../passport-circuits/utils/constants/constants";
-import { generateCredentialProof, generateDscProof, generateSignatureProof } from "../utils/generateProof";
+import {
+  generateCredentialProof,
+  generateDscProof,
+  generateSignatureProof,
+} from "../utils/generateProof";
 import { generateRandomFieldElement } from "../utils/utils";
 import { TransactionReceipt, ZeroAddress } from "ethers";
 import { LeanIMT } from "@openpassport/zk-kit-lean-imt";
-import { Poseidon } from '@iden3/js-crypto';
+import { Poseidon } from "@iden3/js-crypto";
+import { packCrossChainProofs, packZKProof, prepareProof } from "../utils/packData";
 
 describe("Commitment Registration Tests", function () {
   this.timeout(0);
@@ -28,9 +33,7 @@ describe("Commitment Registration Tests", function () {
   before(async () => {
     deployedActors = await deploySystemFixtures();
     signatureSecret = generateRandomFieldElement();
-    baseCredentialProof = await generateCredentialProof(
-      deployedActors.mockPassport
-    );
+    baseCredentialProof = await generateCredentialProof(deployedActors.mockPassport);
     baseSignatureProof = await generateSignatureProof(deployedActors.mockPassport);
     baseDscProof = await generateDscProof(deployedActors.mockPassport.dsc);
     snapshotId = await ethers.provider.send("evm_snapshot", []);
@@ -54,9 +57,7 @@ describe("Commitment Registration Tests", function () {
 
         expect(await registry.hub()).to.equal(hub.target);
         expect(await hub.registry()).to.equal(registry.target);
-        expect(await passportCredentialIssuer.getRegistry()).to.equal(
-          registry.target
-        );
+        expect(await passportCredentialIssuer.getRegistry()).to.equal(registry.target);
       });
     });
 
@@ -68,39 +69,34 @@ describe("Commitment Registration Tests", function () {
         const previousSize = await registry.getDscKeyCommitmentTreeSize();
         const tx = await hub.registerDscKeyCommitment(
           DscVerifierId.dsc_sha256_rsa_65537_4096,
-          dscProof
+          dscProof,
         );
 
         const hashFunction = (a: bigint, b: bigint) => Poseidon.spongeHashX([a, b], 2);
         const imt = new LeanIMT<bigint>(hashFunction);
-        await imt.insert(
-          BigInt(dscProof.pubSignals[CIRCUIT_CONSTANTS.DSC_TREE_LEAF_INDEX])
-        );
+        await imt.insert(BigInt(dscProof.pubSignals[CIRCUIT_CONSTANTS.DSC_TREE_LEAF_INDEX]));
 
         const receipt = (await tx.wait()) as TransactionReceipt;
         const event = receipt?.logs.find(
           (log) =>
-            log.topics[0] ===
-            registry.interface.getEvent("DscKeyCommitmentRegistered").topicHash
+            log.topics[0] === registry.interface.getEvent("DscKeyCommitmentRegistered").topicHash,
         );
         const eventArgs = event
           ? registry.interface.decodeEventLog(
               "DscKeyCommitmentRegistered",
               event.data,
-              event.topics
+              event.topics,
             )
           : null;
 
-        const blockTimestamp = (await ethers.provider.getBlock(
-          receipt.blockNumber
-        ))!.timestamp;
+        const blockTimestamp = (await ethers.provider.getBlock(receipt.blockNumber))!.timestamp;
         const currentRoot = await registry.getDscKeyCommitmentMerkleRoot();
         const index = await registry.getDscKeyCommitmentIndex(
-          dscProof.pubSignals[CIRCUIT_CONSTANTS.DSC_TREE_LEAF_INDEX]
+          dscProof.pubSignals[CIRCUIT_CONSTANTS.DSC_TREE_LEAF_INDEX],
         );
 
         expect(eventArgs?.commitment).to.equal(
-          dscProof.pubSignals[CIRCUIT_CONSTANTS.DSC_TREE_LEAF_INDEX]
+          dscProof.pubSignals[CIRCUIT_CONSTANTS.DSC_TREE_LEAF_INDEX],
         );
         expect(eventArgs?.timestamp).to.equal(blockTimestamp);
         expect(eventArgs?.imtRoot).to.equal(currentRoot);
@@ -109,50 +105,38 @@ describe("Commitment Registration Tests", function () {
         // Check state
         expect(currentRoot).to.not.equal(previousRoot);
         expect(currentRoot).to.be.equal(imt.root);
-        expect(await registry.getDscKeyCommitmentTreeSize()).to.equal(
-          previousSize + 1n
-        );
+        expect(await registry.getDscKeyCommitmentTreeSize()).to.equal(previousSize + 1n);
         expect(
           await registry.getDscKeyCommitmentIndex(
-            dscProof.pubSignals[CIRCUIT_CONSTANTS.DSC_TREE_LEAF_INDEX]
-          )
+            dscProof.pubSignals[CIRCUIT_CONSTANTS.DSC_TREE_LEAF_INDEX],
+          ),
         ).to.equal(index);
         expect(
           await registry.isRegisteredDscKeyCommitment(
-            dscProof.pubSignals[CIRCUIT_CONSTANTS.DSC_TREE_LEAF_INDEX]
-          )
+            dscProof.pubSignals[CIRCUIT_CONSTANTS.DSC_TREE_LEAF_INDEX],
+          ),
         ).to.equal(true);
       });
 
       it("Should fail when called by proxy address", async () => {
         const { hubImpl } = deployedActors;
         await expect(
-          hubImpl.registerDscKeyCommitment(
-            DscVerifierId.dsc_sha256_rsa_65537_4096,
-            dscProof
-          )
+          hubImpl.registerDscKeyCommitment(DscVerifierId.dsc_sha256_rsa_65537_4096, dscProof),
         ).to.be.revertedWithCustomError(hubImpl, "UUPSUnauthorizedCallContext");
       });
 
       it("Should fail when the verifier is not set", async () => {
         const { hub } = deployedActors;
         await expect(
-          hub.registerDscKeyCommitment(
-            DscVerifierId.dsc_sha1_rsa_65537_4096,
-            dscProof
-          )
+          hub.registerDscKeyCommitment(DscVerifierId.dsc_sha1_rsa_65537_4096, dscProof),
         ).to.be.revertedWithCustomError(hub, "NO_VERIFIER_SET");
       });
 
       it("Should fail when the csca root is invalid", async () => {
         const { hub } = deployedActors;
-        dscProof.pubSignals[CIRCUIT_CONSTANTS.DSC_CSCA_ROOT_INDEX] =
-          generateRandomFieldElement();
+        dscProof.pubSignals[CIRCUIT_CONSTANTS.DSC_CSCA_ROOT_INDEX] = generateRandomFieldElement();
         await expect(
-          hub.registerDscKeyCommitment(
-            DscVerifierId.dsc_sha256_rsa_65537_4096,
-            dscProof
-          )
+          hub.registerDscKeyCommitment(DscVerifierId.dsc_sha256_rsa_65537_4096, dscProof),
         ).to.be.revertedWithCustomError(hub, "INVALID_CSCA_ROOT");
       });
 
@@ -160,61 +144,39 @@ describe("Commitment Registration Tests", function () {
         const { hub } = deployedActors;
         dscProof.a[0] = generateRandomFieldElement();
         await expect(
-          hub.registerDscKeyCommitment(
-            DscVerifierId.dsc_sha256_rsa_65537_4096,
-            dscProof
-          )
+          hub.registerDscKeyCommitment(DscVerifierId.dsc_sha256_rsa_65537_4096, dscProof),
         ).to.be.revertedWithCustomError(hub, "INVALID_DSC_PROOF");
       });
 
       it("Should fail when registerDscKeyCommitment is called directly on implementation", async () => {
         const { registryImpl } = deployedActors;
         await expect(
-          registryImpl.registerDscKeyCommitment(generateRandomFieldElement())
-        ).to.be.revertedWithCustomError(
-          registryImpl,
-          "UUPSUnauthorizedCallContext"
-        );
+          registryImpl.registerDscKeyCommitment(generateRandomFieldElement()),
+        ).to.be.revertedWithCustomError(registryImpl, "UUPSUnauthorizedCallContext");
       });
 
       it("Should fail when the registerDscKeyCommitment is called by non-hub address", async () => {
         const { registry, dscVerifier, owner } = deployedActors;
-        const IdentityVerificationHubImplFactory =
-          await ethers.getContractFactory(
-            "IdentityVerificationHubImplV1",
-            owner
-          );
+        const IdentityVerificationHubImplFactory = await ethers.getContractFactory(
+          "IdentityVerificationHubImplV1",
+          owner,
+        );
         const hubImpl2 = await IdentityVerificationHubImplFactory.deploy();
         await hubImpl2.waitForDeployment();
 
-        const initializeData = hubImpl2.interface.encodeFunctionData(
-          "initialize",
-          [
-            registry.target,
-            [DscVerifierId.dsc_sha256_rsa_65537_4096],
-            [dscVerifier.target],
-          ]
-        );
-        const hubFactory = await ethers.getContractFactory(
-          "IdentityVerificationHub",
-          owner
-        );
-        const hub2Proxy = await hubFactory.deploy(
-          hubImpl2.target,
-          initializeData
-        );
+        const initializeData = hubImpl2.interface.encodeFunctionData("initialize", [
+          registry.target,
+          [DscVerifierId.dsc_sha256_rsa_65537_4096],
+          [dscVerifier.target],
+        ]);
+        const hubFactory = await ethers.getContractFactory("IdentityVerificationHub", owner);
+        const hub2Proxy = await hubFactory.deploy(hubImpl2.target, initializeData);
         await hub2Proxy.waitForDeployment();
 
-        const hub2 = await ethers.getContractAt(
-          "IdentityVerificationHubImplV1",
-          hub2Proxy.target
-        );
+        const hub2 = await ethers.getContractAt("IdentityVerificationHubImplV1", hub2Proxy.target);
 
         await expect(
-          hub2.registerDscKeyCommitment(
-            DscVerifierId.dsc_sha256_rsa_65537_4096,
-            dscProof
-          )
+          hub2.registerDscKeyCommitment(DscVerifierId.dsc_sha256_rsa_65537_4096, dscProof),
         ).to.be.revertedWithCustomError(registry, "ONLY_HUB_CAN_ACCESS");
       });
 
@@ -223,34 +185,23 @@ describe("Commitment Registration Tests", function () {
 
         await registry.updateHub(ZeroAddress);
         await expect(
-          hub.registerDscKeyCommitment(
-            DscVerifierId.dsc_sha256_rsa_65537_4096,
-            dscProof
-          )
+          hub.registerDscKeyCommitment(DscVerifierId.dsc_sha256_rsa_65537_4096, dscProof),
         ).to.be.revertedWithCustomError(registry, "HUB_NOT_SET");
       });
 
       it("should fail when the dsc key commitment is already registered", async () => {
         const { hub, registry } = deployedActors;
-        await hub.registerDscKeyCommitment(
-          DscVerifierId.dsc_sha256_rsa_65537_4096,
-          dscProof
-        );
+        await hub.registerDscKeyCommitment(DscVerifierId.dsc_sha256_rsa_65537_4096, dscProof);
         await expect(
-          hub.registerDscKeyCommitment(
-            DscVerifierId.dsc_sha256_rsa_65537_4096,
-            dscProof
-          )
+          hub.registerDscKeyCommitment(DscVerifierId.dsc_sha256_rsa_65537_4096, dscProof),
         ).to.be.revertedWithCustomError(registry, "REGISTERED_COMMITMENT");
       });
 
       it("should fail when getDscKeyCommitmentMerkleRoot is called by non-proxy", async () => {
         const { registryImpl } = deployedActors;
-        await expect(
-          registryImpl.getDscKeyCommitmentMerkleRoot()
-        ).to.be.revertedWithCustomError(
+        await expect(registryImpl.getDscKeyCommitmentMerkleRoot()).to.be.revertedWithCustomError(
           registryImpl,
-          "UUPSUnauthorizedCallContext"
+          "UUPSUnauthorizedCallContext",
         );
       });
 
@@ -258,20 +209,15 @@ describe("Commitment Registration Tests", function () {
         const { registryImpl } = deployedActors;
         const root = generateRandomFieldElement();
         await expect(
-          registryImpl.checkDscKeyCommitmentMerkleRoot(root)
-        ).to.be.revertedWithCustomError(
-          registryImpl,
-          "UUPSUnauthorizedCallContext"
-        );
+          registryImpl.checkDscKeyCommitmentMerkleRoot(root),
+        ).to.be.revertedWithCustomError(registryImpl, "UUPSUnauthorizedCallContext");
       });
 
       it("should fail when getDscKeyCommitmentTreeSize is called by non-proxy", async () => {
         const { registryImpl } = deployedActors;
-        await expect(
-          registryImpl.getDscKeyCommitmentTreeSize()
-        ).to.be.revertedWithCustomError(
+        await expect(registryImpl.getDscKeyCommitmentTreeSize()).to.be.revertedWithCustomError(
           registryImpl,
-          "UUPSUnauthorizedCallContext"
+          "UUPSUnauthorizedCallContext",
         );
       });
 
@@ -279,33 +225,50 @@ describe("Commitment Registration Tests", function () {
         const { registryImpl } = deployedActors;
         const commitment = generateRandomFieldElement();
         await expect(
-          registryImpl.getDscKeyCommitmentIndex(commitment)
-        ).to.be.revertedWithCustomError(
-          registryImpl,
-          "UUPSUnauthorizedCallContext"
-        );
+          registryImpl.getDscKeyCommitmentIndex(commitment),
+        ).to.be.revertedWithCustomError(registryImpl, "UUPSUnauthorizedCallContext");
       });
 
       it("should fail when registerDscKeyCommitment is called by non-proxy address", async () => {
         const { hubImpl } = deployedActors;
         await expect(
-          hubImpl.registerDscKeyCommitment(
-            DscVerifierId.dsc_sha256_rsa_65537_4096,
-            dscProof
-          )
+          hubImpl.registerDscKeyCommitment(DscVerifierId.dsc_sha256_rsa_65537_4096, dscProof),
         ).to.be.revertedWithCustomError(hubImpl, "UUPSUnauthorizedCallContext");
       });
     });
   });
 
   describe("Verify passport", async () => {
-    it("Should veify passport successfully", async () => {
+    it("Should verify passport successfully", async () => {
       const { passportCredentialIssuer } = deployedActors;
 
-      const credentialCircuitId = "credential_sha256";
-      const signatureCircuitId = "signature_sha256_sha256_sha256_rsa_65537_4096";  
+      const crossChainProofs = packCrossChainProofs([]);
+      const metadatas = "0x";
 
-      await passportCredentialIssuer.verifyPassportCredential(credentialCircuitId, credentialProof, signatureCircuitId, signatureProof);
+      const credentialPreparedProof = prepareProof(credentialProof.proof);
+      const signaturePreparedProof = prepareProof(signatureProof.proof);
+
+      const credentialZkProof = packZKProof(
+        credentialProof.publicSignals,
+        credentialPreparedProof.pi_a,
+        credentialPreparedProof.pi_b,
+        credentialPreparedProof.pi_c,
+      );
+
+      const signatureZkProof = packZKProof(
+        signatureProof.publicSignals,
+        signaturePreparedProof.pi_a,
+        signaturePreparedProof.pi_b,
+        signaturePreparedProof.pi_c,
+      );
+
+      await passportCredentialIssuer.submitZKPResponseV2(
+        [
+          { requestId: 1, zkProof: credentialZkProof, data: metadatas },
+          { requestId: 2, zkProof: signatureZkProof, data: metadatas },
+        ],
+        crossChainProofs,
+      );
     });
   });
 });

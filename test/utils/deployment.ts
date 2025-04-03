@@ -47,19 +47,19 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
   await ethers.provider.send("hardhat_setBalance", [await user1.getAddress(), newBalance]);
   await ethers.provider.send("hardhat_setBalance", [await user2.getAddress(), newBalance]);
 
-  const lastName = 'KUZNETSOV';
-  const firstName = 'VALERIY';
+  const lastName = "KUZNETSOV";
+  const firstName = "VALERIY";
 
   mockPassport = genMockPassportData(
     "sha256",
     "sha256",
     "rsa_sha256_65537_4096",
     "UKR",
-    '960309',
-    '350803',
-    'AC1234567',
+    "960309",
+    "350803",
+    "AC1234567",
     lastName,
-    firstName
+    firstName,
   );
 
   // Deploy dsc verifier
@@ -181,7 +181,9 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
   await passportCredentialIssuerImpl.waitForDeployment();
 
   const expirationTime = BigInt(60 * 60 * 24 * 7); // 1 week
-  const templateRoot = BigInt("11355012832755671330307538002239263753806804904003813746452342893352381210514");
+  const templateRoot = BigInt(
+    "11355012832755671330307538002239263753806804904003813746452342893352381210514",
+  );
   const passportCredentialIssuerInitData =
     passportCredentialIssuerImpl.interface.encodeFunctionData("initializeIssuer", [
       expirationTime,
@@ -208,6 +210,9 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
     "PassportCredentialIssuerImplV1",
     passportCredentialIssuerProxy.target,
   )) as PassportCredentialIssuerImplV1;
+
+  await passportCredentialIssuerContract.updateCredentialRequestIdToCircuitId([1], ["credential_sha256"]);
+  await passportCredentialIssuerContract.updateSignatureRequestIdToCircuitId([2], ["signature_sha256_sha256_sha256_rsa_65537_4096"]);
 
   return {
     hub: hubContract,

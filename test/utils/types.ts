@@ -13,8 +13,7 @@ import {
 } from "../../typechain-types";
 
 export type DscCircuitProof = any;
-export type SignatureCircuitProof = any;
-export type CredentialCircuitProof = any;
+export type CircuitProof = any;
 
 // Verifier type imports
 import type { Verifier_dsc_sha256_rsa_65537_4096 as ProdDscVerifier } from "../../typechain-types/contracts/verifiers/dsc/Verifier_dsc_sha256_rsa_65537_4096";

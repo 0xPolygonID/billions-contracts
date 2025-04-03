@@ -6,12 +6,7 @@ const RESET = "\x1b[0m";
 import type { CircuitSignals } from "snarkjs";
 import { groth16 } from "snarkjs";
 import fs from "fs";
-import {
-  DscCircuitProof,
-  CircuitArtifacts,
-  SignatureCircuitProof,
-  CredentialCircuitProof,
-} from "./types";
+import { DscCircuitProof, CircuitArtifacts, CircuitProof } from "./types";
 
 import { BigNumberish } from "ethers";
 import {
@@ -22,6 +17,7 @@ import {
 import serialized_csca_tree from "./pubkeys/serialized_csca_tree.json";
 import serialized_dsc_tree from "../../../passport-circuits/utils/pubkeys/serialized_dsc_tree.json";
 import { PassportData } from "../../../passport-circuits/utils/types";
+import { packZKProof } from "./packData";
 
 const dscCircuits: CircuitArtifacts = {
   dsc_sha256_rsa_65537_4096: {
@@ -84,7 +80,7 @@ export async function generateDscProof(dscCertificate: string): Promise<DscCircu
 
 export async function generateSignatureProof(
   passportData: PassportData,
-): Promise<SignatureCircuitProof> {
+): Promise<CircuitProof> {
   console.log(CYAN, "=== Start generateSignatureProof ===", RESET);
 
   const signatureCircuitInputs: CircuitSignals = await generateCircuitInputsSignature(
@@ -119,22 +115,22 @@ export async function generateSignatureProof(
   }
   console.log(GREEN, "Signature proof verified successfully", RESET);
 
-  const rawCallData = await groth16.exportSolidityCallData(
+  /*const rawCallData = await groth16.exportSolidityCallData(
     signatureProof.proof,
     signatureProof.publicSignals,
-  );
-  const fixedProof = parseSolidityCalldata(rawCallData, {} as SignatureCircuitProof);
+  );*/
+  //const fixedProof = parseSolidityCalldata(rawCallData, {} as CircuitProof);
   console.log(CYAN, "=== End generateSignatureProof ===", RESET);
-  return fixedProof;
+  //return fixedProof;
+  return signatureProof;
 }
 
 export async function generateCredentialProof(
   passportData: PassportData,
-): Promise<CredentialCircuitProof> {
+): Promise<CircuitProof> {
   console.log(CYAN, "=== Start generateCredentialProof ===", RESET);
-  const credenditalCircuitInputs: CircuitSignals = await generateCircuitInputsCredential(
-    passportData,
-  );
+  const credenditalCircuitInputs: CircuitSignals =
+    await generateCircuitInputsCredential(passportData);
   const startTime = performance.now();
   const credentialProof = await groth16.fullProve(
     credenditalCircuitInputs,
@@ -156,13 +152,16 @@ export async function generateCredentialProof(
   }
   console.log(GREEN, "Credential proof verified successfully", RESET);
 
-  const rawCallData = await groth16.exportSolidityCallData(
+  /*const rawCallData = await groth16.exportSolidityCallData(
     credentialProof.proof,
     credentialProof.publicSignals,
-  );
-  const fixedProof = parseSolidityCalldata(rawCallData, {} as CredentialCircuitProof);
+  );*/
+
+  //const fixedProof = parseSolidityCalldata(rawCallData, {} as CircuitProof);
+  //const fixedProof = packZKProof(credentialProof.publicSignals, credentialProof.proof.pi_a, credentialProof.proof.pi_b, credentialProof.proof.pi_c);
   console.log(CYAN, "=== End generateCredentialProof ===", RESET);
-  return fixedProof;
+  //return fixedProof;
+  return credentialProof;
 }
 
 export function parseSolidityCalldata<T>(rawCallData: string, _type: T): T {

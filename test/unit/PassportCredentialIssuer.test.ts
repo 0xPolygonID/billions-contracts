@@ -319,6 +319,52 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
           .updateSignatureVerifiers([signatureCircuitId], [newVerifierAddress]),
       ).to.be.revertedWithCustomError(passportCredentialIssuerImpl, "UUPSUnauthorizedCallContext");
     });
+    
+    it("should update credential requestId to circuitId", async () => {
+      const { passportCredentialIssuer, user1 } = deployedActors;
+      const requestIds = [1, 2];
+      const newCredentialCircuitIds = ["1", "2"];
+
+      await expect(
+        passportCredentialIssuer.updateCredentialRequestIdToCircuitId(
+          requestIds,
+          newCredentialCircuitIds,
+        ),
+      )
+        .to.emit(passportCredentialIssuer, "CredentialRequestIdToCircuitIdUpdated")
+        .withArgs(requestIds[0], newCredentialCircuitIds[0])
+        .to.emit(passportCredentialIssuer, "CredentialRequestIdToCircuitIdUpdated")
+        .withArgs(requestIds[1], newCredentialCircuitIds[1]);
+
+      for (let i = 0; i < requestIds.length; i++) {
+        expect(
+          await passportCredentialIssuer.credentialRequestIdToCircuitIds(requestIds[i]),
+        ).to.equal(newCredentialCircuitIds[i]);
+      }
+    });
+
+    it("should update signature requestId to circuitId", async () => {
+      const { passportCredentialIssuer, user1 } = deployedActors;
+      const requestIds = [1, 2];
+      const newSignaturelCircuitIds = ["1", "2"];
+
+      await expect(
+        passportCredentialIssuer.updateSignatureRequestIdToCircuitId(
+          requestIds,
+          newSignaturelCircuitIds,
+        ),
+      )
+        .to.emit(passportCredentialIssuer, "SignatureRequestIdToCircuitIdUpdated")
+        .withArgs(requestIds[0], newSignaturelCircuitIds[0])
+        .to.emit(passportCredentialIssuer, "SignatureRequestIdToCircuitIdUpdated")
+        .withArgs(requestIds[1], newSignaturelCircuitIds[1]);
+
+      for (let i = 0; i < requestIds.length; i++) {
+        expect(
+          await passportCredentialIssuer.signatureRequestIdToCircuitIds(requestIds[i]),
+        ).to.equal(newSignaturelCircuitIds[i]);
+      }
+    });
   });
 
   describe("View functions", () => {

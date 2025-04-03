@@ -3,19 +3,19 @@ pragma solidity 0.8.27;
 
 import {IdentityLib} from "@iden3/contracts/lib/IdentityLib.sol";
 import {IdentityBase} from "@iden3/contracts/lib/IdentityBase.sol";
+import {IZKPVerifier} from "@iden3/contracts/interfaces/IZKPVerifier.sol";
 import {ICredentialCircuitVerifier} from "../interfaces/ICredentialCircuitVerifier.sol";
 import {ISignatureCircuitVerifier} from "../interfaces/ISignatureCircuitVerifier.sol";
 import {CircuitConstants} from "../constants/CircuitConstants.sol";
 import {IIdentityRegistryV1} from "../interfaces/IIdentityRegistryV1.sol";
 import {ImplRoot} from "../upgradeable/ImplRoot.sol";
-import "hardhat/console.sol";
 
 error InvalidResponsesLength(uint256 length, uint256 expectedLength);
 error InvalidLinkId(uint256 linkId1, uint256 linkId2);
 error InvalidHashIndex(uint256 hashIndex);
 error InvalidHashValue(uint256 hashValue);
 error InvalidTemplateRoot(uint256 templateRoot, uint256 expectedTemplateRoot);
-error CurrentDateExpired(uint256 currentDate);
+// error CurrentDateExpired(uint256 currentDate);
 error IssuanceDateExpired(uint256 issuanceDate);
 error NullifierAlreadyExists(uint256 nullifier);
 error LengthMismatch(uint256 length1, uint256 length2);
@@ -23,6 +23,8 @@ error NoVerifierSet();
 error InvalidDscCommitmentRoot();
 error InvalidCredentialProof();
 error InvalidSignatureProof();
+error NoCredentialCircuitForRequestId(uint256 requestId);
+error NoSignatureCircuitForRequestId(uint256 requestId);
 
 /**
  * @dev Address ownership credential issuer.
@@ -39,6 +41,8 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         address _registry;
         mapping(string circuitId => address verifier) _credentialVerifiers;
         mapping(string circuitId => address verifier) _signatureVerifiers;
+        mapping(uint256 requestId => string circuitId) _credentialRequestIdToCircuitId;
+        mapping(uint256 requestId => string circuitId) _signatureRequestIdToCircuitId;
     }
 
     // check if the hash was calculated correctly
@@ -68,6 +72,18 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
      * @param verifier The new verifier address for the signature circuit.
      */
     event SignatureCircuitVerifierUpdated(string circuitId, address verifier);
+    /**
+     * @notice Emitted when a credential request id to circuit id updated.
+     * @param requestId The request id.
+     * @param circuitId The new circuit id.
+     */
+    event CredentialRequestIdToCircuitIdUpdated(uint256 requestId, string circuitId);
+    /**
+     * @notice Emitted when a signature request id to circuit id updated.
+     * @param requestId The request id.
+     * @param circuitId The new circuit id.
+     */
+    event SignatureRequestIdToCircuitIdUpdated(uint256 requestId, string circuitId);
     /**
      * @notice Emitted when the registry address is updated.
      * @param registry The new registry address.
@@ -184,6 +200,44 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
     }
 
     /**
+     * @dev Updates the credential requestId to circuitId list.
+     * @param requestIds The request id.
+     * @param circuitIds The new circuit id.
+     */
+    function updateCredentialRequestIdToCircuitId(
+        uint256[] memory requestIds,
+        string[] memory circuitIds
+    ) external virtual onlyProxy onlyOwner {
+        PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
+        if (circuitIds.length != requestIds.length) {
+            revert LengthMismatch(requestIds.length, circuitIds.length);
+        }
+        for (uint256 i = 0; i < requestIds.length; i++) {
+            $._credentialRequestIdToCircuitId[requestIds[i]] = circuitIds[i];
+            emit CredentialRequestIdToCircuitIdUpdated(requestIds[i], circuitIds[i]);
+        }
+    }
+
+    /**
+     * @dev Updates the signature requestId to circuitId list.
+     * @param requestIds The request id.
+     * @param circuitIds The new circuit id.
+     */
+    function updateSignatureRequestIdToCircuitId(
+        uint256[] memory requestIds,
+        string[] memory circuitIds
+    ) external virtual onlyProxy onlyOwner {
+        PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
+        if (circuitIds.length != requestIds.length) {
+            revert LengthMismatch(requestIds.length, circuitIds.length);
+        }
+        for (uint256 i = 0; i < requestIds.length; i++) {
+            $._signatureRequestIdToCircuitId[requestIds[i]] = circuitIds[i];
+            emit SignatureRequestIdToCircuitIdUpdated(requestIds[i], circuitIds[i]);
+        }
+    }
+
+    /**
      * @dev Updates the signature circuit verifiers for a specific circuit identifiers.
      * @param circuitIds The signature circuit identifiers.
      * @param verifierAddresses The new signature circuit verifier addresses.
@@ -243,18 +297,120 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         return _getPassportCredentialIssuerV1Storage()._signatureVerifiers[circuitId];
     }
 
-    function cleanNullifier(uint256 nullifier) public onlyOwner {
+    /**
+     * @notice Retrieves credential the circuit id for a given request id.
+     * @param requestId The request id identifier.
+     * @return The circuit id.
+     */
+    function credentialRequestIdToCircuitIds(
+        uint256 requestId
+    ) external view virtual onlyProxy returns (string memory) {
+        return _getPassportCredentialIssuerV1Storage()._credentialRequestIdToCircuitId[requestId];
+    }
+
+    /**
+     * @notice Retrieves signature the circuit id for a given request id.
+     * @param requestId The request id identifier.
+     * @return The circuit id.
+     */
+    function signatureRequestIdToCircuitIds(
+        uint256 requestId
+    ) external view virtual onlyProxy returns (string memory) {
+        return _getPassportCredentialIssuerV1Storage()._signatureRequestIdToCircuitId[requestId];
+    }
+
+    function cleanNullifier(uint256 nullifier) external onlyOwner {
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
         require($._nullifiers[nullifier], "Nullifier does not exist");
         $._nullifiers[nullifier] = false;
     }
 
-    function verifyPassportCredential(
+    /// @notice Submits a ZKP response V2
+    /// @param responses The list of responses including ZKP request ID, ZK proof and metadata
+    /// @param crossChainProofs The list of cross chain proofs from universal resolver (oracle)
+    function submitZKPResponseV2(
+        IZKPVerifier.ZKPResponse[] memory responses,
+        bytes memory crossChainProofs
+    ) external {
+        PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
+
+        if (responses.length != 2) {
+            revert InvalidResponsesLength(responses.length, 2);
+        }
+        // response[0] for credential proof
+        // response[1] for signature proof
+        string memory credentialCircuitId;
+        string memory signatureCircuitId;
+
+        credentialCircuitId = $._credentialRequestIdToCircuitId[responses[0].requestId];
+        signatureCircuitId = $._signatureRequestIdToCircuitId[responses[1].requestId];
+
+        if (bytes(credentialCircuitId).length == 0) {
+            revert NoCredentialCircuitForRequestId(responses[0].requestId);
+        }
+        if (bytes(signatureCircuitId).length == 0) {
+            revert NoSignatureCircuitForRequestId(responses[1].requestId);
+        }
+
+        (
+            uint256[] memory inputs1,
+            uint256[2] memory a1,
+            uint256[2][2] memory b1,
+            uint256[2] memory c1
+        ) = abi.decode(responses[0].zkProof, (uint256[], uint256[2], uint256[2][2], uint256[2]));
+
+        ICredentialCircuitVerifier.CredentialCircuitProof
+            memory credentialCircuitProof = ICredentialCircuitVerifier.CredentialCircuitProof(
+                a1,
+                b1,
+                c1,
+                [
+                    inputs1[0],
+                    inputs1[1],
+                    inputs1[2],
+                    inputs1[3],
+                    inputs1[4],
+                    inputs1[5],
+                    inputs1[6],
+                    inputs1[7],
+                    inputs1[8],
+                    inputs1[9],
+                    inputs1[10],
+                    inputs1[11],
+                    inputs1[12],
+                    inputs1[13],
+                    inputs1[14]
+                ]
+            );
+
+        (
+            uint256[] memory inputs2,
+            uint256[2] memory a2,
+            uint256[2][2] memory b2,
+            uint256[2] memory c2
+        ) = abi.decode(responses[1].zkProof, (uint256[], uint256[2], uint256[2][2], uint256[2]));
+        ISignatureCircuitVerifier.SignatureCircuitProof
+            memory signatureCircuitProof = ISignatureCircuitVerifier.SignatureCircuitProof(
+                a2,
+                b2,
+                c2,
+                [inputs2[0], inputs2[1], inputs2[2]]
+            );
+
+        _verifyPassportCredential(
+            credentialCircuitId,
+            credentialCircuitProof,
+            signatureCircuitId,
+            signatureCircuitProof
+        );
+    }
+
+    function _verifyPassportCredential(
         string memory credentialCircuitId,
         ICredentialCircuitVerifier.CredentialCircuitProof memory credentialCircuitProof,
         string memory signatureCircuitId,
         ISignatureCircuitVerifier.SignatureCircuitProof memory signatureCircuitProof
-    ) external {
+    ) internal {
         _verifyCredentialProof(credentialCircuitId, credentialCircuitProof);
         _verifySignatureProof(signatureCircuitId, signatureCircuitProof);
         _afterProofsSubmit(credentialCircuitProof, signatureCircuitProof);
@@ -270,7 +426,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         uint256 linkIdSignatureProof,
         uint256 nullifier,
         uint256 merkleRoot
-    ) private view {
+    ) internal view {
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
         if (hashIndex == 0) revert InvalidHashIndex(hashIndex);
         if (hashValue == 0) revert InvalidHashValue(hashValue);
@@ -278,11 +434,9 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         if (templateRoot != $._templateRoot)
             revert InvalidTemplateRoot(templateRoot, $._templateRoot);
 
-        // TODO: uncomment this when the linkId check is verified and ready
-        console.log("linkIdCredentialProof: %s , %s", linkIdSignatureProof, linkIdCredentialProof);
         if (linkIdSignatureProof != linkIdCredentialProof)
             revert InvalidLinkId(linkIdSignatureProof, linkIdCredentialProof);
-        
+
         // TODO: uncomment this when currentDate is comparable to block.timestamp
         /*if (currentDate + $._expirationTime < block.timestamp)
             revert CurrentDateExpired(currentDate);*/
@@ -292,12 +446,12 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         if ($._nullifiers[nullifier]) revert NullifierAlreadyExists(nullifier);
     }
 
-    function _addHashAndTransit(uint256 hi, uint256 hv) private {
+    function _addHashAndTransit(uint256 hi, uint256 hv) internal {
         _getIdentityBaseStorage().identity.addClaimHash(hi, hv);
         _getIdentityBaseStorage().identity.transitState();
     }
 
-    function _setNullifier(uint256 nullifier) private {
+    function _setNullifier(uint256 nullifier) internal {
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
         $._nullifiers[nullifier] = true;
     }
@@ -311,7 +465,6 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         if (verifier == address(0)) {
             revert NoVerifierSet();
         }
-
         if (
             !ICredentialCircuitVerifier(verifier).verifyProof(
                 credentialCircuitProof.a,

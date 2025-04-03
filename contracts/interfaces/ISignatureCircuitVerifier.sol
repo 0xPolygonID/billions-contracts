@@ -15,10 +15,10 @@ interface ISignatureCircuitVerifier {
      * @param pubSignals An array of three unsigned integers representing the public signals associated with the proof.
      */
     struct SignatureCircuitProof {
-        uint[2] a;
-        uint[2][2] b;
-        uint[2] c;
-        uint[3] pubSignals;
+        uint256[2] a;
+        uint256[2][2] b;
+        uint256[2] c;
+        uint256[3] pubSignals;
     }
 
     /**

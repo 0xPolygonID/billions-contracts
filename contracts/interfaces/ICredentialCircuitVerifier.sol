@@ -15,10 +15,10 @@ interface ICredentialCircuitVerifier {
      * @param pubSignals An array of three unsigned integers representing the public signals associated with the proof.
      */
     struct CredentialCircuitProof {
-        uint[2] a;
-        uint[2][2] b;
-        uint[2] c;
-        uint[15] pubSignals;
+        uint256[2] a;
+        uint256[2][2] b;
+        uint256[2] c;
+        uint256[15] pubSignals;
     }
 
     /**
@@ -31,9 +31,9 @@ interface ICredentialCircuitVerifier {
      * @return isValid A boolean value indicating whether the provided proof is valid (true) or not (false).
      */
     function verifyProof(
-        uint[2] calldata a,
-        uint[2][2] calldata b,
-        uint[2] calldata c,
-        uint[15] calldata pubSignals
+        uint256[2] calldata a,
+        uint256[2][2] calldata b,
+        uint256[2] calldata c,
+        uint256[15] calldata pubSignals
     ) external view returns (bool isValid);
 }

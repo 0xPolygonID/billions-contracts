@@ -33,7 +33,7 @@ export default buildModule("DeployPassportCredentialIssuer", (m) => {
       PoseidonUnit4L: poseidonUtil4lAddress,
     },
   });
-  const passportCredentialIssuerHubImpl = m.contract("PassportCredentialIssuerImplV1", [], {
+  const passportCredentialIssuerImpl = m.contract("PassportCredentialIssuerImplV1", [], {
     libraries: {
       IdentityLib: identityLib,
     },
@@ -60,12 +60,12 @@ export default buildModule("DeployPassportCredentialIssuer", (m) => {
   ]);
 
   const passportCredentialIssuer = m.contract("PassportCredentialIssuer", [
-    passportCredentialIssuerHubImpl,
+    passportCredentialIssuerImpl,
     initializeData,
   ]);
 
   return {
     passportCredentialIssuer,
-    passportCredentialIssuerHubImpl,
+    passportCredentialIssuerImpl,
   };
 });
