@@ -376,15 +376,6 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
                     inputs1[3],
                     inputs1[4],
                     inputs1[5],
-                    inputs1[6],
-                    inputs1[7],
-                    inputs1[8],
-                    inputs1[9],
-                    inputs1[10],
-                    inputs1[11],
-                    inputs1[12],
-                    inputs1[13],
-                    inputs1[14]
                 ]
             );
 
