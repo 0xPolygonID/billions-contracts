@@ -182,7 +182,7 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
 
   const expirationTime = BigInt(60 * 60 * 24 * 7); // 1 week
   const templateRoot = BigInt(
-    "11355012832755671330307538002239263753806804904003813746452342893352381210514",
+    "3532467563022391950170321692541635800576371972220969617740093781820662149190",
   );
   const passportCredentialIssuerInitData =
     passportCredentialIssuerImpl.interface.encodeFunctionData("initializeIssuer", [

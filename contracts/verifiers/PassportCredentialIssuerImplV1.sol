@@ -48,7 +48,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
     /**
      * @dev Version of the contract
      */
-    string public constant VERSION = "1.0.1";
+    string public constant VERSION = "1.0.2";
 
     // check if the hash was calculated correctly
     // keccak256(abi.encode(uint256(keccak256("polygonid.storage.PassportCredentialIssuerV1")) - 1)) & ~bytes32(uint256(0xff))
@@ -375,16 +375,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
                     inputs1[2],
                     inputs1[3],
                     inputs1[4],
-                    inputs1[5],
-                    inputs1[6],
-                    inputs1[7],
-                    inputs1[8],
-                    inputs1[9],
-                    inputs1[10],
-                    inputs1[11],
-                    inputs1[12],
-                    inputs1[13],
-                    inputs1[14]
+                    inputs1[5]
                 ]
             );
 

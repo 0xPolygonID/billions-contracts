@@ -53,5 +53,7 @@
   "UpdateRegistryCscaRoot#IdentityRegistryImplV1": "0x2c8408bb66483D7c0602109D4E09d35a57f13a97",
   "UpgradePassportCredentialIssuer#IdentityLib": "0x2960007477f5232703eF3CC6C675142a586ED125",
   "UpgradePassportCredentialIssuer#PassportCredentialIssuerImplV1": "0xadd74D74A1C527E3d6B03ADdd25783CC40e90FAb",
-  "UpgradePassportCredentialIssuer#PassportCredentialIssuerImplV1_v1_0_1": "0xAf53025f4ae8aa6ef881e30f0fB0833aA4391165"
+  "UpgradePassportCredentialIssuer#PassportCredentialIssuerImplV1_v1_0_1": "0xAf53025f4ae8aa6ef881e30f0fB0833aA4391165",
+  "UpgradePassportCredentialIssuer#PassportCredentialIssuer_v1_0_2": "0xadd74D74A1C527E3d6B03ADdd25783CC40e90FAb",
+  "UpgradePassportCredentialIssuer#PassportCredentialIssuerImplV1_v1_0_2": "0x50275e01a0b15cCC1cF63DC573F0A32795B33707"
 }
