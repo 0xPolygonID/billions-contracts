@@ -45,6 +45,11 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         mapping(uint256 requestId => string circuitId) _signatureRequestIdToCircuitId;
     }
 
+    /**
+     * @dev Version of the contract
+     */
+    string public constant VERSION = "1.0.1";
+
     // check if the hash was calculated correctly
     // keccak256(abi.encode(uint256(keccak256("polygonid.storage.PassportCredentialIssuerV1")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant PassportCredentialIssuerV1StorageLocation =

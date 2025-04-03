@@ -50,5 +50,8 @@
   "DeployPassportCredentialIssuer#IdentityLib": "0x2960007477f5232703eF3CC6C675142a586ED125",
   "DeployPassportCredentialIssuer#PassportCredentialIssuerImplV1": "0xF54968F6C7Aeff44Add41FE31344B379be4E7ea7",
   "DeployPassportCredentialIssuer#PassportCredentialIssuer": "0xadd74D74A1C527E3d6B03ADdd25783CC40e90FAb",
-  "UpdateRegistryCscaRoot#IdentityRegistryImplV1": "0x2c8408bb66483D7c0602109D4E09d35a57f13a97"
+  "UpdateRegistryCscaRoot#IdentityRegistryImplV1": "0x2c8408bb66483D7c0602109D4E09d35a57f13a97",
+  "UpgradePassportCredentialIssuer#IdentityLib": "0x2960007477f5232703eF3CC6C675142a586ED125",
+  "UpgradePassportCredentialIssuer#PassportCredentialIssuerImplV1": "0xadd74D74A1C527E3d6B03ADdd25783CC40e90FAb",
+  "UpgradePassportCredentialIssuer#PassportCredentialIssuerImplV1_v1_0_1": "0xAf53025f4ae8aa6ef881e30f0fB0833aA4391165"
 }
