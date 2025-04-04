@@ -48,25 +48,25 @@ library CircuitConstants {
     /**
      * @notice Index to access the hashIndex in the credential circuit public signals.
      */
-    uint256 constant CREDENTIAL_HASH_INDEX_INDEX = 9;
+    uint256 constant CREDENTIAL_HASH_INDEX_INDEX = 0;
     /**
      * @notice Index to access the hashValue in the credential circuit public signals.
      */
-    uint256 constant CREDENTIAL_HASH_VALUE_INDEX = 10;
+    uint256 constant CREDENTIAL_HASH_VALUE_INDEX = 1;
     /**
      * @notice Index to access the linkId in the credential circuit public signals.
      */
-    uint256 constant CREDENTIAL_LINK_ID_INDEX = 11;
+    uint256 constant CREDENTIAL_LINK_ID_INDEX = 2;
     /**
      * @notice Index to access the currentDate in the credential circuit public signals.
      */
-    uint256 constant CREDENTIAL_CURRENT_DATE_INDEX = 12;
+    uint256 constant CREDENTIAL_CURRENT_DATE_INDEX = 3;
     /**
      * @notice Index to access the issuanceDate in the credential circuit public signals.
      */
-    uint256 constant CREDENTIAL_ISSUANCE_DATE_INDEX = 13;
+    uint256 constant CREDENTIAL_ISSUANCE_DATE_INDEX = 4;
     /**
      * @notice Index to access the templateRoot in the credential circuit public signals.
      */
-    uint256 constant CREDENTIAL_TEMPLATE_ROOT_INDEX = 14;
+    uint256 constant CREDENTIAL_TEMPLATE_ROOT_INDEX = 5;
 }
