@@ -46,7 +46,8 @@ async function main() {
     latestCommitment = commitment;
   });
 
-  console.log(`Inclusion proof for latest commitment ${latestCommitment}:`, getDscTreeInclusionProof(latestCommitment, tree));
+  const [root, path2, siblings, leaf_depth] = getDscTreeInclusionProof(latestCommitment, tree);
+  console.log(`Inclusion proof for latest commitment ${latestCommitment}:`, root, path2, siblings, leaf_depth);
   console.log(`\nMerkle Root in regitry: ${await registry.getDscKeyCommitmentMerkleRoot()}`);
   console.log(`Merkle Root in local: ${tree.root}`);
 }
