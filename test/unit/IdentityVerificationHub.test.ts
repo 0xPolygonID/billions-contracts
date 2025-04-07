@@ -20,14 +20,14 @@ describe("Unit Tests for IdentityVerificationHub", () => {
 
   describe("Initialization", () => {
     it("should initialize hub with correct parameters", async () => {
-      const { hub, registry, dsc } = deployedActors;
+      const { hub, registry, dscVerifier } = deployedActors;
 
       // Check initial state
       expect(await hub.registry()).to.equal(registry.target);
 
       const dscId = DscVerifierId.dsc_sha256_rsa_65537_4096;
       expect(await hub.sigTypeToDscCircuitVerifiers(dscId)).to.equal(
-        dsc.target
+        dscVerifier.target
       );
 
       const filter = hub.filters.HubInitialized;
@@ -39,7 +39,7 @@ describe("Unit Tests for IdentityVerificationHub", () => {
         dscId,
       ]);
       expect(hubInitializedEvent.args.dscCircuitVerifiers).to.deep.equal([
-        dsc.target,
+        dscVerifier.target,
       ]);
 
       const initFilter = hub.filters.Initialized;
@@ -243,10 +243,10 @@ describe("Unit Tests for IdentityVerificationHub", () => {
     });
 
     it("should return correct dsc circuit verifier address", async () => {
-      const { hub, dsc } = deployedActors;
+      const { hub, dscVerifier } = deployedActors;
       const verifierId = DscVerifierId.dsc_sha256_rsa_65537_4096;
       expect(await hub.sigTypeToDscCircuitVerifiers(verifierId)).to.equal(
-        dsc.target
+        dscVerifier.target
       );
     });
 
