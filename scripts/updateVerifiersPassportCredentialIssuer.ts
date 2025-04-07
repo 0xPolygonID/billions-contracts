@@ -1,25 +1,22 @@
-import { ethers } from "hardhat";
+import hre, { ethers } from "hardhat";
 import fs from "fs";
 import path from "path";
 
 async function main() {
-  const passportCredentialIssuerAddress = "0xadd74D74A1C527E3d6B03ADdd25783CC40e90FAb";
+  const networkName = hre.network.config.chainId;
+
+  const deployedAddressesPath = path.join(
+    __dirname,
+    `../ignition/deployments/chain-${networkName}/deployed_addresses.json`,
+  );
+  const deployedAddresses = JSON.parse(fs.readFileSync(deployedAddressesPath, "utf8"));
+
+  const passportCredentialIssuerAddress = deployedAddresses["DeployPassportCredentialIssuer#PassportCredentialIssuer"];
+
   const passportCredentialIssuer = await ethers.getContractAt(
     "PassportCredentialIssuerImplV1",
     passportCredentialIssuerAddress,
   );
-  const deployment = "";
-
-  if (!deployment) {
-    console.error("Please specify the deployment name.");
-    return;
-  }
-
-  const deployedAddressesPath = path.join(
-    __dirname,
-    `../ignition/deployments/${deployment}/deployed_addresses.json`,
-  );
-  const deployedAddresses = JSON.parse(fs.readFileSync(deployedAddressesPath, "utf8"));
 
   const credentialCircuitIds: string[] = [];
   const credentialVerifierAddresses: string[] = [];
@@ -27,13 +24,20 @@ async function main() {
   const signatureCircuitIds: string[] = [];
   const signatureVerifierAddresses: string[] = [];
 
+  const deploymentKey = "";
+
+  if (!deploymentKey) {
+    console.error("Please specify the deployment key.");
+    return;
+  }
+
   for (const [key, value] of Object.entries(deployedAddresses)) {
-    if (key.includes("DeployAllVerifiers#Verifier_credential")) {
-      credentialCircuitIds.push(key.replace("DeployAllVerifiers#Verifier_", ""));
+    if (key.includes(`${deploymentKey}#Verifier_credential`)) {
+      credentialCircuitIds.push(key.replace(`${deploymentKey}#Verifier_`, ""));
       credentialVerifierAddresses.push(value as string);
     }
-    if (key.includes("DeployAllVerifiers#Verifier_signature")) {
-      signatureCircuitIds.push(key.replace("DeployAllVerifiers#Verifier_", ""));
+    if (key.includes(`${deploymentKey}#Verifier_signature`)) {
+      signatureCircuitIds.push(key.replace(`${deploymentKey}#Verifier_`, ""));
       signatureVerifierAddresses.push(value as string);
     }
   }
