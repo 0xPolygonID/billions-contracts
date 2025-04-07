@@ -80,12 +80,13 @@ export async function generateDscProof(dscCertificate: string): Promise<DscCircu
 
 export async function generateSignatureProof(
   passportData: PassportData,
+  serializedDscTree?: string,
 ): Promise<CircuitProof> {
   console.log(CYAN, "=== Start generateSignatureProof ===", RESET);
 
   const signatureCircuitInputs: CircuitSignals = await generateCircuitInputsSignature(
     passportData,
-    serialized_dsc_tree as string,
+    serializedDscTree || (serialized_dsc_tree as string),
     1,
   );
 
@@ -125,9 +126,7 @@ export async function generateSignatureProof(
   return signatureProof;
 }
 
-export async function generateCredentialProof(
-  passportData: PassportData,
-): Promise<CircuitProof> {
+export async function generateCredentialProof(passportData: PassportData): Promise<CircuitProof> {
   console.log(CYAN, "=== Start generateCredentialProof ===", RESET);
   const credenditalCircuitInputs: CircuitSignals =
     await generateCircuitInputsCredential(passportData);

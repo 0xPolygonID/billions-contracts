@@ -146,7 +146,7 @@ contract IdentityVerificationHubImplV1 is
 
     /**
      * @notice Initializes the hub implementation.
-     * @dev Sets the registry, VC and Disclose circuit verifier address, signature circuit verifiers, and DSC circuit verifiers.
+     * @dev Sets the registry and DSC circuit verifiers.
      * @param registryAddress The address of the Identity Registry.
      * @param dscCircuitVerifierIds Array of ids for DSC circuit verifiers.
      * @param dscCircuitVerifierAddresses Array of addresses for DSC circuit verifiers.

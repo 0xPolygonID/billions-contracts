@@ -211,9 +211,6 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
     passportCredentialIssuerProxy.target,
   )) as PassportCredentialIssuerImplV1;
 
-  await passportCredentialIssuerContract.updateCredentialRequestIdToCircuitId([1], ["credential_sha256"]);
-  await passportCredentialIssuerContract.updateSignatureRequestIdToCircuitId([2], ["signature_sha256_sha256_sha256_rsa_65537_4096"]);
-
   return {
     hub: hubContract,
     hubImpl: identityVerificationHubImpl,

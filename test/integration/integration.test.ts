@@ -28,14 +28,19 @@ describe("Commitment Registration Tests", function () {
   let dscProof: any;
   let signatureProof: any;
   let credentialProof: any;
-  let signatureSecret: any;
 
   before(async () => {
     deployedActors = await deploySystemFixtures();
-    signatureSecret = generateRandomFieldElement();
-    baseCredentialProof = await generateCredentialProof(deployedActors.mockPassport);
-    baseSignatureProof = await generateSignatureProof(deployedActors.mockPassport);
+
     baseDscProof = await generateDscProof(deployedActors.mockPassport.dsc);
+
+    // Generate the IMT with the base DSC proof to use it for the signature proof to check merkle root
+    const hashFunction = (a: bigint, b: bigint) => Poseidon.spongeHashX([a, b], 2);
+    const imt = new LeanIMT<bigint>(hashFunction);
+    await imt.insert(BigInt(baseDscProof.pubSignals[CIRCUIT_CONSTANTS.DSC_TREE_LEAF_INDEX]));
+
+    baseCredentialProof = await generateCredentialProof(deployedActors.mockPassport);
+    baseSignatureProof = await generateSignatureProof(deployedActors.mockPassport, imt.export());
     snapshotId = await ethers.provider.send("evm_snapshot", []);
   });
 
@@ -240,7 +245,14 @@ describe("Commitment Registration Tests", function () {
 
   describe("Verify passport", async () => {
     it("Should verify passport successfully", async () => {
-      const { passportCredentialIssuer } = deployedActors;
+      const { passportCredentialIssuer, hub } = deployedActors;
+
+      // Register DSC key commitment for the signature proof to check merkle root
+      const tx = await hub.registerDscKeyCommitment(
+        DscVerifierId.dsc_sha256_rsa_65537_4096,
+        dscProof,
+      );
+      await tx.wait();
 
       const crossChainProofs = packCrossChainProofs([]);
       const metadatas = "0x";
@@ -262,10 +274,16 @@ describe("Commitment Registration Tests", function () {
         signaturePreparedProof.pi_c,
       );
 
+      const credentialRequestId =
+        await passportCredentialIssuer.credentialCircuitIdToRequestIds("credential_sha256");
+      const signatureRequestId = await passportCredentialIssuer.signatureCircuitIdToRequestIds(
+        "signature_sha256_sha256_sha256_rsa_65537_4096",
+      );
+
       await passportCredentialIssuer.submitZKPResponseV2(
         [
-          { requestId: 1, zkProof: credentialZkProof, data: metadatas },
-          { requestId: 2, zkProof: signatureZkProof, data: metadatas },
+          { requestId: credentialRequestId, zkProof: credentialZkProof, data: metadatas },
+          { requestId: signatureRequestId, zkProof: signatureZkProof, data: metadatas },
         ],
         crossChainProofs,
       );

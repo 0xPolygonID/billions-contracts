@@ -41,6 +41,13 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       expect(await passportCredentialIssuer.signatureVerifiers(signatureCircuitId)).to.equal(
         signatureVerifier.target,
       );
+
+      expect(
+        await passportCredentialIssuer.credentialCircuitIdToRequestIds(credentialCircuitId),
+      ).to.equal(1);
+      expect(
+        await passportCredentialIssuer.signatureCircuitIdToRequestIds(signatureCircuitId),
+      ).to.equal(2);
     });
 
     it("should not allow direct initialization of hub implementation", async () => {
@@ -231,6 +238,8 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       const credentialCircuitIds = ["1", "2"];
       const newVerifierAddresses = [await user1.getAddress(), await user1.getAddress()];
 
+      const lastRequestId = 2;
+
       await expect(
         passportCredentialIssuer.updateCredentialVerifiers(
           credentialCircuitIds,
@@ -238,14 +247,17 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
         ),
       )
         .to.emit(passportCredentialIssuer, "CredentialCircuitVerifierUpdated")
-        .withArgs(credentialCircuitIds[0], newVerifierAddresses[0])
+        .withArgs(credentialCircuitIds[0], newVerifierAddresses[0], lastRequestId + 1)
         .to.emit(passportCredentialIssuer, "CredentialCircuitVerifierUpdated")
-        .withArgs(credentialCircuitIds[1], newVerifierAddresses[1]);
+        .withArgs(credentialCircuitIds[1], newVerifierAddresses[1], lastRequestId + 2);
 
       for (let i = 0; i < credentialCircuitIds.length; i++) {
         expect(
           await passportCredentialIssuer.credentialVerifiers(credentialCircuitIds[i]),
         ).to.equal(newVerifierAddresses[i]);
+        expect(
+          await passportCredentialIssuer.credentialCircuitIdToRequestIds(credentialCircuitIds[i]),
+        ).to.equal(lastRequestId + i + 1);
       }
     });
 
@@ -254,6 +266,8 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       const signatureCircuitIds = ["1", "2"];
       const newVerifierAddresses = [await user1.getAddress(), await user1.getAddress()];
 
+      const lastRequestId = 2;
+
       await expect(
         passportCredentialIssuer.updateSignatureVerifiers(
           signatureCircuitIds,
@@ -261,14 +275,17 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
         ),
       )
         .to.emit(passportCredentialIssuer, "SignatureCircuitVerifierUpdated")
-        .withArgs(signatureCircuitIds[0], newVerifierAddresses[0])
+        .withArgs(signatureCircuitIds[0], newVerifierAddresses[0], lastRequestId + 1)
         .to.emit(passportCredentialIssuer, "SignatureCircuitVerifierUpdated")
-        .withArgs(signatureCircuitIds[1], newVerifierAddresses[1]);
+        .withArgs(signatureCircuitIds[1], newVerifierAddresses[1], lastRequestId + 2);
 
       for (let i = 0; i < signatureCircuitIds.length; i++) {
         expect(await passportCredentialIssuer.signatureVerifiers(signatureCircuitIds[i])).to.equal(
           newVerifierAddresses[i],
         );
+        expect(
+          await passportCredentialIssuer.signatureCircuitIdToRequestIds(signatureCircuitIds[i]),
+        ).to.equal(lastRequestId + i + 1);
       }
     });
 
@@ -318,52 +335,6 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
           .connect(user1)
           .updateSignatureVerifiers([signatureCircuitId], [newVerifierAddress]),
       ).to.be.revertedWithCustomError(passportCredentialIssuerImpl, "UUPSUnauthorizedCallContext");
-    });
-    
-    it("should update credential requestId to circuitId", async () => {
-      const { passportCredentialIssuer, user1 } = deployedActors;
-      const requestIds = [1, 2];
-      const newCredentialCircuitIds = ["1", "2"];
-
-      await expect(
-        passportCredentialIssuer.updateCredentialRequestIdToCircuitId(
-          requestIds,
-          newCredentialCircuitIds,
-        ),
-      )
-        .to.emit(passportCredentialIssuer, "CredentialRequestIdToCircuitIdUpdated")
-        .withArgs(requestIds[0], newCredentialCircuitIds[0])
-        .to.emit(passportCredentialIssuer, "CredentialRequestIdToCircuitIdUpdated")
-        .withArgs(requestIds[1], newCredentialCircuitIds[1]);
-
-      for (let i = 0; i < requestIds.length; i++) {
-        expect(
-          await passportCredentialIssuer.credentialRequestIdToCircuitIds(requestIds[i]),
-        ).to.equal(newCredentialCircuitIds[i]);
-      }
-    });
-
-    it("should update signature requestId to circuitId", async () => {
-      const { passportCredentialIssuer, user1 } = deployedActors;
-      const requestIds = [1, 2];
-      const newSignaturelCircuitIds = ["1", "2"];
-
-      await expect(
-        passportCredentialIssuer.updateSignatureRequestIdToCircuitId(
-          requestIds,
-          newSignaturelCircuitIds,
-        ),
-      )
-        .to.emit(passportCredentialIssuer, "SignatureRequestIdToCircuitIdUpdated")
-        .withArgs(requestIds[0], newSignaturelCircuitIds[0])
-        .to.emit(passportCredentialIssuer, "SignatureRequestIdToCircuitIdUpdated")
-        .withArgs(requestIds[1], newSignaturelCircuitIds[1]);
-
-      for (let i = 0; i < requestIds.length; i++) {
-        expect(
-          await passportCredentialIssuer.signatureRequestIdToCircuitIds(requestIds[i]),
-        ).to.equal(newSignaturelCircuitIds[i]);
-      }
     });
   });
 
