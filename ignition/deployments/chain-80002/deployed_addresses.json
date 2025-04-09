@@ -74,5 +74,12 @@
   "DeploySignatureVerifiers#Verifier_signature_sha384_sha384_sha384_rsapss_65537_48_2048": "0xfc3ac86BA593fBe209a8219754e1FB39Df0e043e",
   "DeploySignatureVerifiers#Verifier_signature_sha512_sha512_sha512_ecdsa_brainpoolP512r1": "0xABC23516B6C804EBf6B6f2E7C3057360166C7C0c",
   "DeploySignatureVerifiers#Verifier_signature_sha512_sha512_sha512_rsa_65537_4096": "0x77C00E3e688D3892e1FFac53515eA8a80FaEa949",
-  "DeploySignatureVerifiers#Verifier_signature_sha512_sha512_sha512_rsapss_65537_64_2048": "0x1e58f6a0D1bB8406Aa2Ce7BE658F4Edf4f498777"
+  "DeploySignatureVerifiers#Verifier_signature_sha512_sha512_sha512_rsapss_65537_64_2048": "0x1e58f6a0D1bB8406Aa2Ce7BE658F4Edf4f498777",
+  "UpgradePassportCredentialIssuer#PassportCredentialIssuer_v1_0_3": "0xadd74D74A1C527E3d6B03ADdd25783CC40e90FAb",
+  "UpgradePassportCredentialIssuer#PassportCredentialIssuerImplV1_v1_0_3": "0xB57b79dd158fC5BC9f79554eC6517Dd84c59Fcd0",
+  "DeployCredentialVerifiers#Verifier_credential_sha1": "0xf1cd846D6d054550713e190EB572E466239fdBC0",
+  "DeployCredentialVerifiers#Verifier_credential_sha224": "0x32BD5639c909CfDE0F0B9422ecE59ecD4D25Ad85",
+  "DeployCredentialVerifiers#Verifier_credential_sha256": "0x9754590Fa1b5066f9E83eFEc285780e0979eAEdd",
+  "DeployCredentialVerifiers#Verifier_credential_sha384": "0xdA27Ae2f38683463d9A6C85343262B1b20551BA3",
+  "DeployCredentialVerifiers#Verifier_credential_sha512": "0x62b0dd05C37357090145f9344b44A6df8b5CEbB5"
 }
