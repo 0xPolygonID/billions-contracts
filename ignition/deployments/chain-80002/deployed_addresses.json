@@ -81,5 +81,7 @@
   "DeployCredentialVerifiers#Verifier_credential_sha224": "0x32BD5639c909CfDE0F0B9422ecE59ecD4D25Ad85",
   "DeployCredentialVerifiers#Verifier_credential_sha256": "0x9754590Fa1b5066f9E83eFEc285780e0979eAEdd",
   "DeployCredentialVerifiers#Verifier_credential_sha384": "0xdA27Ae2f38683463d9A6C85343262B1b20551BA3",
-  "DeployCredentialVerifiers#Verifier_credential_sha512": "0x62b0dd05C37357090145f9344b44A6df8b5CEbB5"
+  "DeployCredentialVerifiers#Verifier_credential_sha512": "0x62b0dd05C37357090145f9344b44A6df8b5CEbB5",
+  "UpgradePassportCredentialIssuer#PassportCredentialIssuer_v1_0_4": "0xadd74D74A1C527E3d6B03ADdd25783CC40e90FAb",
+  "UpgradePassportCredentialIssuer#PassportCredentialIssuerImplV1_v1_0_4": "0x6Af265a03705D6F93e045Dc25662B5890D245e80"
 }
