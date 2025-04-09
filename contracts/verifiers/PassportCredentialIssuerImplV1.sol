@@ -51,7 +51,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
     /**
      * @dev Version of the contract
      */
-    string public constant VERSION = "1.0.3";
+    string public constant VERSION = "1.0.4";
 
     // check if the hash was calculated correctly
     // keccak256(abi.encode(uint256(keccak256("polygonid.storage.PassportCredentialIssuerV1")) - 1)) & ~bytes32(uint256(0xff))
@@ -203,14 +203,19 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         }
         for (uint256 i = 0; i < circuitIds.length; i++) {
             $._signatureVerifiers[circuitIds[i]] = verifierAddresses[i];
-            $._signatureCircuitIdToRequestId[circuitIds[i]] = $._requestIds;
-            $._signatureRequestIdToCircuitId[$._requestIds] = circuitIds[i];
+            uint256 requestId = $._signatureCircuitIdToRequestId[circuitIds[i]];
+            if (requestId == 0) {
+                requestId = $._requestIds; 
+                $._signatureCircuitIdToRequestId[circuitIds[i]] = requestId;
+                $._signatureRequestIdToCircuitId[requestId] = circuitIds[i];
+                $._requestIds++;
+            }
+
             emit SignatureCircuitVerifierUpdated(
                 circuitIds[i],
                 verifierAddresses[i],
-                $._requestIds
+                requestId
             );
-            $._requestIds++;
         }
     }
 
@@ -230,14 +235,19 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         for (uint256 i = 0; i < circuitIds.length; i++) {
             $._credentialVerifiers[circuitIds[i]] = verifierAddresses[i];
 
-            $._credentialCircuitIdToRequestId[circuitIds[i]] = $._requestIds;
-            $._credentialRequestIdToCircuitId[$._requestIds] = circuitIds[i];
+            uint256 requestId = $._credentialCircuitIdToRequestId[circuitIds[i]];
+            if (requestId == 0) {
+                requestId = $._requestIds; 
+                $._credentialCircuitIdToRequestId[circuitIds[i]] = requestId;
+                $._credentialRequestIdToCircuitId[requestId] = circuitIds[i];
+                $._requestIds++;
+            }
+
             emit CredentialCircuitVerifierUpdated(
                 circuitIds[i],
                 verifierAddresses[i],
-                $._requestIds
+                requestId
             );
-            $._requestIds++;
         }
     }
 
