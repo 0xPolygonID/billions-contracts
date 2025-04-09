@@ -3,7 +3,7 @@ import {
     DEPLOYED_CIRCUITS_SIGNATURE,
 } from "../../../passport-circuits/utils/constants/constants";
 
-export default buildModule("DeploySignatureVerifiers", (m) => {
+export default buildModule("DeploySignatureVerifiersV2", (m) => {
     const deployedContracts: Record<string, any> = {};
     
     DEPLOYED_CIRCUITS_SIGNATURE.forEach(circuit => {
