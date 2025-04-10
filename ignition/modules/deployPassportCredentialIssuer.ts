@@ -28,7 +28,7 @@ export default buildModule("DeployPassportCredentialIssuer", (m) => {
 
   const passportCredentialIssuerInterface = getPassportCredentialIssuerInitializeData();
 
-  const signerAddress = m.getAccount(0);
+  const signerAddress = "0xDC3461f9f021dD904C71492EaBd86EaaF6dADbCb"; //m.getAccount(0);
 
   const stateContractAddress = "0x1a4cC30f2aA0377b0c3bc9848766D90cb4404124"; // "<StateContractAddress>"; // Replace with actual state contract address
   const idType = "0x0113";

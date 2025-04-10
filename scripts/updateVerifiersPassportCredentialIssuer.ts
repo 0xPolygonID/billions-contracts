@@ -21,9 +21,6 @@ async function main() {
   const credentialCircuitIds: string[] = [];
   const credentialVerifierAddresses: string[] = [];
 
-  const signatureCircuitIds: string[] = [];
-  const signatureVerifierAddresses: string[] = [];
-
   const deploymentKey = "";
 
   if (!deploymentKey) {
@@ -36,22 +33,12 @@ async function main() {
       credentialCircuitIds.push(key.replace(`${deploymentKey}#Verifier_`, ""));
       credentialVerifierAddresses.push(value as string);
     }
-    if (key.includes(`${deploymentKey}#Verifier_signature`)) {
-      signatureCircuitIds.push(key.replace(`${deploymentKey}#Verifier_`, ""));
-      signatureVerifierAddresses.push(value as string);
-    }
   }
 
   if (credentialCircuitIds.length > 0) {
     await passportCredentialIssuer.updateCredentialVerifiers(
       credentialCircuitIds,
       credentialVerifierAddresses,
-    );
-  }
-  if (signatureCircuitIds.length > 0) {
-    await passportCredentialIssuer.updateSignatureVerifiers(
-      signatureCircuitIds,
-      signatureVerifierAddresses,
     );
   }
 }
