@@ -4,10 +4,6 @@ import { DeployedActors } from "../utils/types";
 import { ethers } from "hardhat";
 import { generateCredentialProof } from "../utils/generateProof";
 import { packSignedPassportData, packZKProof, PassportDataSigned, prepareProof } from "../utils/packData";
-import {
-  byteToHexNibbles,
-  getPassportSignatureInfos,
-} from "../../../passport-circuits/utils/passports/passport";
 
 describe("Commitment Registration Tests", function () {
   this.timeout(0);
@@ -38,7 +34,7 @@ describe("Commitment Registration Tests", function () {
       const { passportCredentialIssuer, user1 } = deployedActors;
 
       const signedPassportData: PassportDataSigned = {
-        linkIdSignature: BigInt(credentialProof.publicSignals[2]),
+        linkId: BigInt(credentialProof.publicSignals[2]),
         nullifier: 1n,
       };
 
@@ -73,7 +69,7 @@ describe("Commitment Registration Tests", function () {
       const { passportCredentialIssuer, user2 } = deployedActors;
 
       const signedPassportData: PassportDataSigned = {
-        linkIdSignature: BigInt(credentialProof.publicSignals[2]),
+        linkId: BigInt(credentialProof.publicSignals[2]),
         nullifier: 1n,
       };
 
@@ -102,7 +98,7 @@ describe("Commitment Registration Tests", function () {
           crossChainProofs,
         ),
       )
-        .to.revertedWithCustomError(passportCredentialIssuer, "InvalidSigner")
+        .to.revertedWithCustomError(passportCredentialIssuer, "InvalidSignerPassportSignatureProof")
         .withArgs(await user2.getAddress());
     });
   });

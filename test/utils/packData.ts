@@ -1,4 +1,5 @@
 import { ethers } from "hardhat";
+import { getChainId } from "./deployment";
 
 const abiCoder = new ethers.AbiCoder();
 
@@ -8,7 +9,7 @@ export type CrossChainProof = {
 };
 
 export type PassportDataSigned = {
-  linkIdSignature: bigint;
+  linkId: bigint;
   nullifier: bigint;
 };
 
@@ -20,32 +21,60 @@ export function packZKProof(inputs: string[], a: string[], b: string[][], c: str
 }
 
 export async function packSignedPassportData(
-  passportData: PassportDataSigned,
+  passportDataSigned: PassportDataSigned,
   passportCredentialIssuer: any,
   signer: any,
 ): Promise<string> {
-  const message = ethers.solidityPackedKeccak256(
-    ["string", "address", "uint256", "uint256"],
-    [
-      await passportCredentialIssuer.REGISTRATION_PREFIX(),
-      await passportCredentialIssuer.getAddress(),
-      passportData.linkIdSignature,
-      passportData.nullifier,
-    ],
+  const signature = await generateEIP712Signature(
+    passportDataSigned.linkId,
+    passportDataSigned.nullifier,
+    passportCredentialIssuer,
+    signer,
   );
-
-  const signature = await signer.provider.send("eth_sign", [signer.address, message]);
 
   return abiCoder.encode(
     [
-      "tuple(" +
-      "uint256 linkIdSignature," +
-      "uint256 nullifier," +
-      "bytes signature," +
+      "tuple(tuple(" +
+        "uint256 linkId," +
+        "uint256 nullifier) passportCredentialMsg," +
+        "bytes signature," +
         ")[]",
     ],
-    [[{ ...passportData, signature }]],
+    [[{ passportCredentialMsg: passportDataSigned, signature }]],
   );
+}
+
+async function generateEIP712Signature(
+  linkId: bigint,
+  nullifier: bigint,
+  passportCredentialIssuer: any,
+  signer: any,
+): Promise<string> {
+  const data = {
+    linkId,
+    nullifier,
+  };
+  const domain = {
+    name: "PassportIssuerV1",
+    version: "1.0.0",
+    chainId: await getChainId(),
+    verifyingContract: await passportCredentialIssuer.getAddress(),
+  };
+
+  const types = {
+    PassportCredential: [
+      {
+        name: "linkId",
+        type: "uint256",
+      },
+      {
+        name: "nullifier",
+        type: "uint256",
+      },
+    ],
+  };
+  const signature = await signer.signTypedData(domain, types, data);
+  return signature;
 }
 
 export function packCrossChainProofs(proofs: CrossChainProof[]): string {

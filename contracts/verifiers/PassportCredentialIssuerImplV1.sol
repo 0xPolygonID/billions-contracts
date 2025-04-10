@@ -2,7 +2,7 @@
 pragma solidity 0.8.27;
 
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {IdentityLib} from "@iden3/contracts/lib/IdentityLib.sol";
 import {IdentityBase} from "@iden3/contracts/lib/IdentityBase.sol";
@@ -10,7 +10,6 @@ import {IZKPVerifier} from "@iden3/contracts/interfaces/IZKPVerifier.sol";
 import {ICredentialCircuitVerifier} from "../interfaces/ICredentialCircuitVerifier.sol";
 import {CircuitConstants} from "../constants/CircuitConstants.sol";
 import {ImplRoot} from "../upgradeable/ImplRoot.sol";
-import "hardhat/console.sol";
 
 error InvalidResponsesLength(uint256 length, uint256 expectedLength);
 error InvalidLinkId(uint256 linkId1, uint256 linkId2);
@@ -22,20 +21,33 @@ error NullifierAlreadyExists(uint256 nullifier);
 error LengthMismatch(uint256 length1, uint256 length2);
 error NoVerifierSet();
 error InvalidCredentialProof();
-error InvalidSigner(address signer);
+error InvalidPassportSignatureProof();
+error InvalidSignerPassportSignatureProof(address signer);
 error NoCredentialCircuitForRequestId(uint256 requestId);
 
 /**
  * @dev Address ownership credential issuer.
  * This issuer issue non-merklized credentials decentralized.
  */
-contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
+contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, ImplRoot {
     using IdentityLib for IdentityLib.Data;
     using ECDSA for bytes32;
     using EnumerableSet for EnumerableSet.AddressSet;
-    
-    string public constant REGISTRATION_PREFIX = "Registration prefix";
 
+    /**
+     * @dev Version of EIP 712 domain
+     */
+    string public constant DOMAIN_VERSION = "1.0.0";
+
+    /**
+     * @dev PassportCredential message data type hash
+     */
+    bytes32 public constant PASSPORT_CREDENTIAL_MESSAGE_TYPEHASH =
+        keccak256(
+            "PassportCredential(uint256 linkId,uint256 nullifier)"
+        );
+
+    
     /// @custom:storage-location erc7201:polygonid.storage.PassportCredentialIssuerV1
     struct PassportCredentialIssuerV1Storage {
         uint256 _expirationTime;
@@ -48,9 +60,13 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         EnumerableSet.AddressSet _signers;
     }
 
-    struct PassportDataSigned {
-        uint256 linkIdSignature;
+    struct PassportCredentialMessage {
+        uint256 linkId;
         uint256 nullifier;
+    }
+
+    struct PassportSignatureProof {
+        PassportCredentialMessage passportCredentialMsg;
         bytes signature;        
     }
 
@@ -105,7 +121,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
      * @notice Constructor that disables initializers.
      * @dev Prevents direct initialization of the implementation contract.
      */
-    constructor() {
+    constructor()  {      
         _disableInitializers();
     }
 
@@ -129,6 +145,8 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         $._expirationTime = expirationTime;
         $._templateRoot = templateRoot;
         $._requestIds = 1;
+
+        __EIP712_init("PassportIssuerV1", DOMAIN_VERSION);
         addSigners(signers);
         updateCredentialVerifiers(credentialCircuitIds, credentialVerifierAddresses);
     }
@@ -290,29 +308,28 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
                 [inputs1[0], inputs1[1], inputs1[2], inputs1[3], inputs1[4], inputs1[5]]
             );
 
-        PassportDataSigned[] memory passportDataSigned = abi.decode(crossChainProofs, (PassportDataSigned[]));
+        PassportSignatureProof[] memory passportSignatureProof = abi.decode(crossChainProofs, (PassportSignatureProof[]));
 
         _verifyPassportCredential(
             credentialCircuitId,
             credentialCircuitProof,
-            passportDataSigned[0]
+            passportSignatureProof[0]
         );
     }
 
     function _verifyPassportCredential(
         string memory credentialCircuitId,
         ICredentialCircuitVerifier.CredentialCircuitProof memory credentialCircuitProof,
-        PassportDataSigned memory passportDataSigned
+        PassportSignatureProof memory passportSignatureProof
     ) internal {
         _verifyCredentialProof(credentialCircuitId, credentialCircuitProof);
-        _verifySignature(passportDataSigned);
-        _afterProofsSubmit(credentialCircuitProof, passportDataSigned);
+        _verifySignature(passportSignatureProof);
+        _afterProofsSubmit(credentialCircuitProof, passportSignatureProof);
     }
 
     function _validatePublicInputs(
         uint256 hashIndex,
         uint256 hashValue,
-        uint256 currentDate,
         uint256 issuanceDate,
         uint256 templateRoot,
         uint256 linkIdCredentialProof,
@@ -367,37 +384,42 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
     }
 
     function _verifySignature(
-        PassportDataSigned memory passportDataSigned
+        PassportSignatureProof memory passportSignatureProof
     ) internal view {
-        bytes32 signedData = _buildSignedData(passportDataSigned);
-        address dataSigner = ECDSA.recover(
-            MessageHashUtils.toEthSignedMessageHash(signedData),
-            passportDataSigned.signature
+        (bool isValid, address recovered) = _recoverPassportSignatureProofSigner(
+            passportSignatureProof.passportCredentialMsg,
+            passportSignatureProof.signature
         );
-        _requireSigner(dataSigner);
+        if (!isValid) {
+            revert InvalidPassportSignatureProof();
+        }
+        if (!_getPassportCredentialIssuerV1Storage()._signers.contains(recovered)) {
+            revert InvalidSignerPassportSignatureProof(recovered);
+        }
     }
 
-    function _requireSigner(address account) private view {
-        PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
-        if (!$._signers.contains(account)) revert InvalidSigner(account);
-    }
-
-    function _buildSignedData(PassportDataSigned memory passportDataSigned) internal view returns (bytes32) {
-        return
+    function _recoverPassportSignatureProofSigner(
+        PassportCredentialMessage memory message,
+        bytes memory signature
+    ) internal view virtual returns (bool, address) {
+        bytes32 hashTypedData = _hashTypedDataV4(
             keccak256(
-                abi.encodePacked(
-                    REGISTRATION_PREFIX,
-                    address(this),
-                    passportDataSigned.linkIdSignature,
-                    passportDataSigned.nullifier
+                abi.encode(
+                    PASSPORT_CREDENTIAL_MESSAGE_TYPEHASH,
+                    message.linkId,
+                    message.nullifier
                 )
-            );
-    } 
+            )
+        );
 
+        (address recovered, ECDSA.RecoverError err, ) = hashTypedData.tryRecover(signature);
+
+        return (err == ECDSA.RecoverError.NoError, recovered);
+    }
 
     function _afterProofsSubmit(
         ICredentialCircuitVerifier.CredentialCircuitProof memory credentialCircuitProof,
-        PassportDataSigned memory passportDataSigned
+        PassportSignatureProof memory passportSignatureProof
     ) internal {
         // credential proof
 
@@ -406,9 +428,6 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         ];
         uint256 hashValue = credentialCircuitProof.pubSignals[
             CircuitConstants.CREDENTIAL_HASH_VALUE_INDEX
-        ];
-        uint256 currentDate = credentialCircuitProof.pubSignals[
-            CircuitConstants.CREDENTIAL_CURRENT_DATE_INDEX
         ];
         uint256 issuanceDate = credentialCircuitProof.pubSignals[
             CircuitConstants.CREDENTIAL_ISSUANCE_DATE_INDEX
@@ -420,16 +439,15 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
             CircuitConstants.CREDENTIAL_LINK_ID_INDEX
         ];
 
-        uint256 nullifier = passportDataSigned.nullifier;
+        uint256 nullifier = passportSignatureProof.passportCredentialMsg.nullifier;
 
         _validatePublicInputs(
             hashIndex,
             hashValue,
-            currentDate,
             issuanceDate,
             templateRoot,
             linkIdCredentialProof,
-            passportDataSigned.linkIdSignature,
+            passportSignatureProof.passportCredentialMsg.linkId,
             nullifier
         );
         _setNullifier(nullifier);

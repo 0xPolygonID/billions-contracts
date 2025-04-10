@@ -1,5 +1,5 @@
 import hre, { ethers, upgrades } from "hardhat";
-import { Contract, Signer } from "ethers";
+import { Contract, Signer, ZeroAddress } from "ethers";
 import { PassportData } from "../../../passport-circuits/utils/types";
 import { genMockPassportData } from "../../../passport-circuits/utils/passports/genMockPassportData";
 import { DeployedActors, CredentialVerifier } from "./types";
