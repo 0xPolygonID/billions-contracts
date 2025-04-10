@@ -48,10 +48,9 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         EnumerableSet.AddressSet _signers;
     }
 
-    struct PassportData {
-        bytes32 publicKey;
-        bytes32 passportHash;
+    struct PassportDataSigned {
         uint256 linkIdSignature;
+        uint256 nullifier;
         bytes signature;        
     }
 
@@ -291,23 +290,23 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
                 [inputs1[0], inputs1[1], inputs1[2], inputs1[3], inputs1[4], inputs1[5]]
             );
 
-        PassportData[] memory passportData = abi.decode(crossChainProofs, (PassportData[]));
+        PassportDataSigned[] memory passportDataSigned = abi.decode(crossChainProofs, (PassportDataSigned[]));
 
         _verifyPassportCredential(
             credentialCircuitId,
             credentialCircuitProof,
-            passportData[0]
+            passportDataSigned[0]
         );
     }
 
     function _verifyPassportCredential(
         string memory credentialCircuitId,
         ICredentialCircuitVerifier.CredentialCircuitProof memory credentialCircuitProof,
-        PassportData memory passportData
+        PassportDataSigned memory passportDataSigned
     ) internal {
         _verifyCredentialProof(credentialCircuitId, credentialCircuitProof);
-        _verifySignature(passportData);
-        _afterProofsSubmit(credentialCircuitProof, passportData);
+        _verifySignature(passportDataSigned);
+        _afterProofsSubmit(credentialCircuitProof, passportDataSigned);
     }
 
     function _validatePublicInputs(
@@ -368,12 +367,12 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
     }
 
     function _verifySignature(
-        PassportData memory passportData
+        PassportDataSigned memory passportDataSigned
     ) internal view {
-        bytes32 signedData = _buildSignedData(passportData);
+        bytes32 signedData = _buildSignedData(passportDataSigned);
         address dataSigner = ECDSA.recover(
             MessageHashUtils.toEthSignedMessageHash(signedData),
-            passportData.signature
+            passportDataSigned.signature
         );
         _requireSigner(dataSigner);
     }
@@ -383,15 +382,14 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         if (!$._signers.contains(account)) revert InvalidSigner(account);
     }
 
-    function _buildSignedData(PassportData memory passportData) internal view returns (bytes32) {
+    function _buildSignedData(PassportDataSigned memory passportDataSigned) internal view returns (bytes32) {
         return
             keccak256(
                 abi.encodePacked(
                     REGISTRATION_PREFIX,
                     address(this),
-                    passportData.passportHash,
-                    passportData.publicKey,
-                    passportData.linkIdSignature
+                    passportDataSigned.linkIdSignature,
+                    passportDataSigned.nullifier
                 )
             );
     } 
@@ -399,7 +397,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
 
     function _afterProofsSubmit(
         ICredentialCircuitVerifier.CredentialCircuitProof memory credentialCircuitProof,
-        PassportData memory passportData
+        PassportDataSigned memory passportDataSigned
     ) internal {
         // credential proof
 
@@ -422,7 +420,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
             CircuitConstants.CREDENTIAL_LINK_ID_INDEX
         ];
 
-        uint256 nullifier = uint256(passportData.passportHash);
+        uint256 nullifier = passportDataSigned.nullifier;
 
         _validatePublicInputs(
             hashIndex,
@@ -431,7 +429,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, ImplRoot {
             issuanceDate,
             templateRoot,
             linkIdCredentialProof,
-            passportData.linkIdSignature,
+            passportDataSigned.linkIdSignature,
             nullifier
         );
         _setNullifier(nullifier);

@@ -7,10 +7,9 @@ export type CrossChainProof = {
   proof: string;
 };
 
-export type PassportDataStruct = {
-  publicKey: string;
-  passportHash: string;
+export type PassportDataSigned = {
   linkIdSignature: bigint;
+  nullifier: bigint;
 };
 
 export function packZKProof(inputs: string[], a: string[], b: string[][], c: string[]): string {
@@ -21,18 +20,17 @@ export function packZKProof(inputs: string[], a: string[], b: string[][], c: str
 }
 
 export async function packSignedPassportData(
-  passportData: PassportDataStruct,
+  passportData: PassportDataSigned,
   passportCredentialIssuer: any,
   signer: any,
 ): Promise<string> {
   const message = ethers.solidityPackedKeccak256(
-    ["string", "address", "bytes32", "bytes32", "uint256"],
+    ["string", "address", "uint256", "uint256"],
     [
       await passportCredentialIssuer.REGISTRATION_PREFIX(),
       await passportCredentialIssuer.getAddress(),
-      passportData.passportHash,
-      passportData.publicKey,
       passportData.linkIdSignature,
+      passportData.nullifier,
     ],
   );
 
@@ -41,10 +39,9 @@ export async function packSignedPassportData(
   return abiCoder.encode(
     [
       "tuple(" +
-        "bytes32 publicKey," +
-        "bytes32 passportHash," +
-        "uint256 linkIdSignature," +
-        "bytes signature," +
+      "uint256 linkIdSignature," +
+      "uint256 nullifier," +
+      "bytes signature," +
         ")[]",
     ],
     [[{ ...passportData, signature }]],

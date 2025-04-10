@@ -3,12 +3,7 @@ import { deploySystemFixtures } from "../utils/deployment";
 import { DeployedActors } from "../utils/types";
 import { ethers } from "hardhat";
 import { generateCredentialProof } from "../utils/generateProof";
-import {
-  packSignedPassportData,
-  packZKProof,
-  PassportDataStruct,
-  prepareProof,
-} from "../utils/packData";
+import { packSignedPassportData, packZKProof, PassportDataSigned, prepareProof } from "../utils/packData";
 import {
   byteToHexNibbles,
   getPassportSignatureInfos,
@@ -40,17 +35,11 @@ describe("Commitment Registration Tests", function () {
 
   describe("Verify passport", async () => {
     it("Should verify passport successfully", async () => {
-      const { passportCredentialIssuer, mockPassport, user1 } = deployedActors;
+      const { passportCredentialIssuer, user1 } = deployedActors;
 
-      const { pubKey } = getPassportSignatureInfos(mockPassport);
-
-      const signedPassportData: PassportDataStruct = {
-        publicKey: ethers.solidityPackedKeccak256(["string[]"], [pubKey]),
-        passportHash: ethers.solidityPackedKeccak256(
-          ["uint256[]"],
-          [byteToHexNibbles(mockPassport.dg1Hash)],
-        ),
+      const signedPassportData: PassportDataSigned = {
         linkIdSignature: BigInt(credentialProof.publicSignals[2]),
+        nullifier: 1n,
       };
 
       const crossChainProofs = await packSignedPassportData(
@@ -81,17 +70,11 @@ describe("Commitment Registration Tests", function () {
     });
 
     it("Should not verify passport with invalid signer", async () => {
-      const { passportCredentialIssuer, mockPassport, user2 } = deployedActors;
+      const { passportCredentialIssuer, user2 } = deployedActors;
 
-      const { pubKey } = getPassportSignatureInfos(mockPassport);
-
-      const signedPassportData: PassportDataStruct = {
-        publicKey: ethers.solidityPackedKeccak256(["string[]"], [pubKey]),
-        passportHash: ethers.solidityPackedKeccak256(
-          ["uint256[]"],
-          [byteToHexNibbles(mockPassport.dg1Hash)],
-        ),
+      const signedPassportData: PassportDataSigned = {
         linkIdSignature: BigInt(credentialProof.publicSignals[2]),
+        nullifier: 1n,
       };
 
       const crossChainProofs = await packSignedPassportData(
