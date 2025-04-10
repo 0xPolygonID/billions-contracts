@@ -26,11 +26,6 @@ export type SignatureVerifier = ProdSignatureVerifier;
 export type CredentialVerifier = ProdCredentialVerifier;
 
 export interface DeployedActors {
-  hub: IdentityVerificationHubImplV1;
-  hubImpl: IdentityVerificationHubImplV1;
-  registry: IdentityRegistryImplV1;
-  registryImpl: IdentityRegistryImplV1;
-  dscVerifier: DscVerifier;
   owner: Signer;
   user1: Signer;
   user2: Signer;
