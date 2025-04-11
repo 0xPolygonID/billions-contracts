@@ -1,7 +1,6 @@
 import hre, { ethers, upgrades } from "hardhat";
-import { Contract, Signer, ZeroAddress } from "ethers";
-import { PassportData } from "../../../passport-circuits/utils/types";
-import { genMockPassportData } from "../../../passport-circuits/utils/passports/genMockPassportData";
+import { Contract, Signer } from "ethers";
+import { PassportData, genMockPassportData } from "passport-utils";
 import { DeployedActors, CredentialVerifier } from "./types";
 import { poseidonContract } from "circomlibjs";
 // Verifier artifacts

@@ -1,7 +1,7 @@
 import { ethers } from "hardhat";
 import fs from "fs";
 import path from "path";
-import { DscVerifierId } from "../../passport-circuits/utils/constants/constants";
+import { DscVerifierId } from "passport-utils";
 
 async function main() {
   const identityVerificationHubAddress = "0x4D2Fd6b401ee809342CDbc8730d220ea44eC7a2C";
