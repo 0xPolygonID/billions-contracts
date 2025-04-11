@@ -19,17 +19,10 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
 
   describe("Initialization", () => {
     it("should initialize Passport Credential Issuer with correct parameters", async () => {
-      const {
-        passportCredentialIssuer,
-        registry,
-        signatureVerifier,
-        credentialVerifier,
-        expirationTime,
-        templateRoot,
-      } = deployedActors;
+      const { passportCredentialIssuer, credentialVerifier, expirationTime, templateRoot, user1 } =
+        deployedActors;
 
       // Check initial state
-      expect(await passportCredentialIssuer.getRegistry()).to.equal(registry.target);
       expect(await passportCredentialIssuer.getExpirationTime()).to.equal(expirationTime);
       expect(await passportCredentialIssuer.getTemplateRoot()).to.equal(templateRoot);
 
@@ -37,21 +30,16 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       expect(await passportCredentialIssuer.credentialVerifiers(credentialCircuitId)).to.equal(
         credentialVerifier.target,
       );
-      const signatureCircuitId = "signature_sha256_sha256_sha256_rsa_65537_4096";
-      expect(await passportCredentialIssuer.signatureVerifiers(signatureCircuitId)).to.equal(
-        signatureVerifier.target,
-      );
+
+      expect(await passportCredentialIssuer.getSigners()).to.deep.equal([await user1.getAddress()]);
 
       expect(
         await passportCredentialIssuer.credentialCircuitIdToRequestIds(credentialCircuitId),
       ).to.equal(1);
-      expect(
-        await passportCredentialIssuer.signatureCircuitIdToRequestIds(signatureCircuitId),
-      ).to.equal(2);
     });
 
     it("should not allow direct initialization of hub implementation", async () => {
-      const { owner, registry, state, idType, identityLib } = deployedActors;
+      const { owner, state, idType, identityLib } = deployedActors;
 
       const PassportCredentialIssuerImplFactory = await ethers.getContractFactory(
         "PassportCredentialIssuerImplV1",
@@ -65,22 +53,12 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       const passportCredentialIssuerImpl = await PassportCredentialIssuerImplFactory.deploy();
 
       await expect(
-        passportCredentialIssuerImpl.initializeIssuer(
-          0,
-          0,
-          registry.target,
-          [],
-          [],
-          [],
-          [],
-          state.target,
-          idType,
-        ),
+        passportCredentialIssuerImpl.initializeIssuer(0, 0, [], [], [], state.target, idType),
       ).to.be.revertedWithCustomError(passportCredentialIssuerImpl, "InvalidInitialization");
     });
 
     it("should revert when Credential circuit verifier arrays length mismatch", async () => {
-      const { owner, registry, state, idType, identityLib } = deployedActors;
+      const { owner, state, idType, identityLib } = deployedActors;
 
       const PassportCredentialIssuerImplFactory = await ethers.getContractFactory(
         "PassportCredentialIssuerImplV1",
@@ -96,7 +74,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
 
       let initializeData = passportCredentialIssuerImpl.interface.encodeFunctionData(
         "initializeIssuer",
-        [0, 0, registry.target, ["1"], [], [], [], state.target, idType],
+        [0, 0, ["1"], [], [], state.target, idType],
       );
       const passportCredentialIssuerProxyFactory = await ethers.getContractFactory(
         "PassportCredentialIssuer",
@@ -111,67 +89,44 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       )
         .to.be.revertedWithCustomError(passportCredentialIssuerImpl, "LengthMismatch")
         .withArgs(1, 0);
-
-      initializeData = passportCredentialIssuerImpl.interface.encodeFunctionData(
-        "initializeIssuer",
-        [0, 0, registry.target, [], [], ["1", "2"], [], state.target, idType],
-      );
-      await expect(
-        passportCredentialIssuerProxyFactory.deploy(
-          passportCredentialIssuerImpl.target,
-          initializeData,
-        ),
-      )
-        .to.be.revertedWithCustomError(passportCredentialIssuerImpl, "LengthMismatch")
-        .withArgs(2, 0);
     });
 
     it("should not allow initialization after initialized", async () => {
-      const { passportCredentialIssuer, registry, state, idType } = deployedActors;
+      const { passportCredentialIssuer, state, idType } = deployedActors;
 
       await expect(
-        passportCredentialIssuer.initializeIssuer(
-          0,
-          0,
-          registry.target,
-          [],
-          [],
-          [],
-          [],
-          state.target,
-          idType,
-        ),
+        passportCredentialIssuer.initializeIssuer(0, 0, [], [], [], state.target, idType),
       ).to.be.revertedWithCustomError(passportCredentialIssuer, "InvalidInitialization");
     });
   });
 
   describe("Update functions", () => {
-    it("should update registry address", async () => {
-      const { passportCredentialIssuer, user1 } = deployedActors;
-      const newRegistryAddress = await user1.getAddress();
+    it("should add signers", async () => {
+      const { passportCredentialIssuer, user1, user2 } = deployedActors;
 
-      await expect(passportCredentialIssuer.setRegistry(newRegistryAddress))
-        .to.emit(passportCredentialIssuer, "RegistryUpdated")
-        .withArgs(newRegistryAddress);
+      await expect(passportCredentialIssuer.addSigners([await user2.getAddress()]))
+        .to.emit(passportCredentialIssuer, "SignerAdded")
+        .withArgs(await user2.getAddress());
 
-      expect(await passportCredentialIssuer.getRegistry()).to.equal(newRegistryAddress);
+      expect(await passportCredentialIssuer.getSigners()).to.deep.equal([
+        await user1.getAddress(),
+        await user2.getAddress(),
+      ]);
     });
 
-    it("should not update registry address if caller is not owner", async () => {
-      const { passportCredentialIssuer, user1 } = deployedActors;
-      const newRegistryAddress = await user1.getAddress();
+    it("should not add signer if caller is not owner", async () => {
+      const { passportCredentialIssuer, user1, user2 } = deployedActors;
 
       await expect(
-        passportCredentialIssuer.connect(user1).setRegistry(newRegistryAddress),
+        passportCredentialIssuer.connect(user1).addSigners([await user2.getAddress()]),
       ).to.be.revertedWithCustomError(passportCredentialIssuer, "OwnableUnauthorizedAccount");
     });
 
-    it("should not update registry address if caller is not proxy", async () => {
-      const { passportCredentialIssuerImpl, user1 } = deployedActors;
-      const newRegistryAddress = await user1.getAddress();
+    it("should not add signer if caller is not proxy", async () => {
+      const { passportCredentialIssuerImpl, user2 } = deployedActors;
 
       await expect(
-        passportCredentialIssuerImpl.setRegistry(newRegistryAddress),
+        passportCredentialIssuerImpl.addSigners([await user2.getAddress()]),
       ).to.be.revertedWithCustomError(passportCredentialIssuerImpl, "UUPSUnauthorizedCallContext");
     });
 
@@ -238,7 +193,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       const credentialCircuitIds = ["1", "2"];
       const newVerifierAddresses = [await user1.getAddress(), await user1.getAddress()];
 
-      const lastRequestId = 2;
+      const lastRequestId = 1;
 
       await expect(
         passportCredentialIssuer.updateCredentialVerifiers(
@@ -261,34 +216,6 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       }
     });
 
-    it("should update signature verifier", async () => {
-      const { passportCredentialIssuer, user1 } = deployedActors;
-      const signatureCircuitIds = ["1", "2"];
-      const newVerifierAddresses = [await user1.getAddress(), await user1.getAddress()];
-
-      const lastRequestId = 2;
-
-      await expect(
-        passportCredentialIssuer.updateSignatureVerifiers(
-          signatureCircuitIds,
-          newVerifierAddresses,
-        ),
-      )
-        .to.emit(passportCredentialIssuer, "SignatureCircuitVerifierUpdated")
-        .withArgs(signatureCircuitIds[0], newVerifierAddresses[0], lastRequestId + 1)
-        .to.emit(passportCredentialIssuer, "SignatureCircuitVerifierUpdated")
-        .withArgs(signatureCircuitIds[1], newVerifierAddresses[1], lastRequestId + 2);
-
-      for (let i = 0; i < signatureCircuitIds.length; i++) {
-        expect(await passportCredentialIssuer.signatureVerifiers(signatureCircuitIds[i])).to.equal(
-          newVerifierAddresses[i],
-        );
-        expect(
-          await passportCredentialIssuer.signatureCircuitIdToRequestIds(signatureCircuitIds[i]),
-        ).to.equal(lastRequestId + i + 1);
-      }
-    });
-
     it("should not update credential verifier if caller is not owner", async () => {
       const { passportCredentialIssuer, user1 } = deployedActors;
       const credentialCircuitId = "1";
@@ -298,18 +225,6 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
         passportCredentialIssuer
           .connect(user1)
           .updateCredentialVerifiers([credentialCircuitId], [newVerifierAddress]),
-      ).to.be.revertedWithCustomError(passportCredentialIssuer, "OwnableUnauthorizedAccount");
-    });
-
-    it("should not update signature verifier if caller is not owner", async () => {
-      const { passportCredentialIssuer, user1 } = deployedActors;
-      const signatureCircuitId = "1";
-      const newVerifierAddress = await user1.getAddress();
-
-      await expect(
-        passportCredentialIssuer
-          .connect(user1)
-          .updateSignatureVerifiers([signatureCircuitId], [newVerifierAddress]),
       ).to.be.revertedWithCustomError(passportCredentialIssuer, "OwnableUnauthorizedAccount");
     });
 
@@ -324,29 +239,17 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
           .updateCredentialVerifiers([credentialCircuitId], [newVerifierAddress]),
       ).to.be.revertedWithCustomError(passportCredentialIssuerImpl, "UUPSUnauthorizedCallContext");
     });
-
-    it("should not update signature verifier if caller is not proxy", async () => {
-      const { passportCredentialIssuerImpl, user1 } = deployedActors;
-      const signatureCircuitId = "1";
-      const newVerifierAddress = await user1.getAddress();
-
-      await expect(
-        passportCredentialIssuerImpl
-          .connect(user1)
-          .updateSignatureVerifiers([signatureCircuitId], [newVerifierAddress]),
-      ).to.be.revertedWithCustomError(passportCredentialIssuerImpl, "UUPSUnauthorizedCallContext");
-    });
   });
 
   describe("View functions", () => {
-    it("should return correct registry address", async () => {
-      const { passportCredentialIssuer, registry } = deployedActors;
-      expect(await passportCredentialIssuer.getRegistry()).to.equal(registry.target);
+    it("should return correct signer addresses", async () => {
+      const { passportCredentialIssuer, user1 } = deployedActors;
+      expect(await passportCredentialIssuer.getSigners()).to.deep.equal([await user1.getAddress()]);
     });
 
     it("should not return when view function is called by non-proxy", async () => {
       const { passportCredentialIssuerImpl } = deployedActors;
-      await expect(passportCredentialIssuerImpl.getRegistry()).to.be.revertedWithCustomError(
+      await expect(passportCredentialIssuerImpl.getSigners()).to.be.revertedWithCustomError(
         passportCredentialIssuerImpl,
         "UUPSUnauthorizedCallContext",
       );
@@ -367,22 +270,6 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
         passportCredentialIssuerImpl.credentialVerifiers(credentialCircuitId),
       ).to.be.revertedWithCustomError(passportCredentialIssuerImpl, "UUPSUnauthorizedCallContext");
     });
-
-    it("should return correct signature circuit verifier address", async () => {
-      const { passportCredentialIssuer, signatureVerifier } = deployedActors;
-      const signatureCircuitId = "signature_sha256_sha256_sha256_rsa_65537_4096";
-      expect(await passportCredentialIssuer.signatureVerifiers(signatureCircuitId)).to.equal(
-        signatureVerifier.target,
-      );
-    });
-
-    it("should not return when view function is called by non-proxy", async () => {
-      const { passportCredentialIssuerImpl } = deployedActors;
-      const signatureCircuitId = "signature_sha256_sha256_sha256_rsa_65537_4096";
-      await expect(
-        passportCredentialIssuerImpl.signatureVerifiers(signatureCircuitId),
-      ).to.be.revertedWithCustomError(passportCredentialIssuerImpl, "UUPSUnauthorizedCallContext");
-    });
   });
 
   describe("Upgradeabilitiy", () => {
@@ -390,7 +277,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       const { passportCredentialIssuer, owner, identityLib } = deployedActors;
 
       const credentialCircuitId = "credential_sha256";
-      const registryAddressBefore = await passportCredentialIssuer.getRegistry();
+      const signersBefore = await passportCredentialIssuer.getSigners();
       const credentialVerifierAddressBefore =
         await passportCredentialIssuer.credentialVerifiers(credentialCircuitId);
 
@@ -428,7 +315,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
 
       expect(await passportCredentialIssuerV2.isTest()).to.equal(true);
 
-      expect(await passportCredentialIssuerV2.getRegistry()).to.equal(registryAddressBefore);
+      expect(await passportCredentialIssuerV2.getSigners()).to.deep.equal(signersBefore);
       expect(await passportCredentialIssuerV2.credentialVerifiers(credentialCircuitId)).to.equal(
         credentialVerifierAddressBefore,
       );

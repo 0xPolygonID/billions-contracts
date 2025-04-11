@@ -1,38 +1,18 @@
 import hre, { ethers, upgrades } from "hardhat";
-import { Contract, Signer } from "ethers";
+import { Contract, Signer, ZeroAddress } from "ethers";
 import { PassportData } from "../../../passport-circuits/utils/types";
 import { genMockPassportData } from "../../../passport-circuits/utils/passports/genMockPassportData";
-import { DscVerifierId } from "../../../passport-circuits/utils/constants/constants";
-import { getCscaTreeRoot } from "../../../passport-circuits/utils/trees";
-import serialized_csca_tree from "./pubkeys/serialized_csca_tree.json";
-import {
-  DeployedActors,
-  DscVerifier,
-  IdentityVerificationHub,
-  IdentityVerificationHubImplV1,
-  IdentityRegistry,
-  IdentityRegistryImplV1,
-  SignatureVerifier,
-  CredentialVerifier,
-} from "./types";
+import { DeployedActors, CredentialVerifier } from "./types";
 import { poseidonContract } from "circomlibjs";
 // Verifier artifacts
-import DscVerifierArtifact from "../../artifacts/contracts/verifiers/dsc/Verifier_dsc_sha256_rsa_65537_4096.sol/Verifier_dsc_sha256_rsa_65537_4096.json";
-import SignatureVerifierArtifact from "../../artifacts/contracts/verifiers/signature/Verifier_signature_sha256_sha256_sha256_rsa_65537_4096.sol/Verifier_signature_sha256_sha256_sha256_rsa_65537_4096.json";
 import CredentialVerifierArtifact from "../../artifacts/contracts/verifiers/credential/Verifier_credential_sha256.sol/Verifier_credential_sha256.json";
 
 import { PassportCredentialIssuer, PassportCredentialIssuerImplV1 } from "../../typechain-types";
 import { chainIdInfoMap } from "./constants";
 
 export async function deploySystemFixtures(): Promise<DeployedActors> {
-  let identityVerificationHubProxy: IdentityVerificationHub;
-  let identityVerificationHubImpl: IdentityVerificationHubImplV1;
-  let identityRegistryProxy: IdentityRegistry;
-  let identityRegistryImpl: IdentityRegistryImplV1;
   let passportCredentialIssuerProxy: PassportCredentialIssuer;
   let passportCredentialIssuerImpl: PassportCredentialIssuerImplV1;
-  let dscVerifier: DscVerifier;
-  let signatureVerifier: SignatureVerifier;
   let credentialVerifier: CredentialVerifier;
   let owner: Signer;
   let user1: Signer;
@@ -62,26 +42,6 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
     firstName,
   );
 
-  // Deploy dsc verifier
-  const dscVerifierArtifact = DscVerifierArtifact;
-  const dscVerifierFactory = await ethers.getContractFactory(
-    dscVerifierArtifact.abi,
-    dscVerifierArtifact.bytecode,
-    owner,
-  );
-  dscVerifier = await dscVerifierFactory.deploy();
-  await dscVerifier.waitForDeployment();
-
-  // Deploy signature verifier
-  const signatureVerifierArtifact = SignatureVerifierArtifact;
-  const signatureVerifierFactory = await ethers.getContractFactory(
-    signatureVerifierArtifact.abi,
-    signatureVerifierArtifact.bytecode,
-    owner,
-  );
-  signatureVerifier = await signatureVerifierFactory.deploy();
-  await signatureVerifier.waitForDeployment();
-
   // Deploy credential verifier
   const credentialVerifierArtifact = CredentialVerifierArtifact;
   const credentialVerifierFactory = await ethers.getContractFactory(
@@ -95,69 +55,6 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
   // Deploy PoseidonT3
   const poseidonT3 = await deployPoseidon(3);
   await poseidonT3.waitForDeployment();
-
-  // Deploy IdentityRegistryImplV1
-  const IdentityRegistryImplFactory = await ethers.getContractFactory(
-    "IdentityRegistryImplV1",
-    {
-      libraries: {
-        PoseidonT3: poseidonT3.target,
-      },
-    },
-    owner,
-  );
-  identityRegistryImpl = await IdentityRegistryImplFactory.deploy();
-  await identityRegistryImpl.waitForDeployment();
-
-  // Deploy IdentityVerificationHubImplV1
-  const IdentityVerificationHubImplFactory = await ethers.getContractFactory(
-    "IdentityVerificationHubImplV1",
-    owner,
-  );
-  identityVerificationHubImpl = await IdentityVerificationHubImplFactory.deploy();
-  await identityVerificationHubImpl.waitForDeployment();
-
-  // Deploy registry with temporary hub address
-  const temporaryHubAddress = "0x0000000000000000000000000000000000000000";
-  const registryInitData = identityRegistryImpl.interface.encodeFunctionData("initialize", [
-    temporaryHubAddress,
-  ]);
-  const registryProxyFactory = await ethers.getContractFactory("IdentityRegistry", owner);
-  identityRegistryProxy = await registryProxyFactory.deploy(
-    identityRegistryImpl.target,
-    registryInitData,
-  );
-  await identityRegistryProxy.waitForDeployment();
-
-  // Deploy hub with deployed registry and verifiers
-  const initializeData = identityVerificationHubImpl.interface.encodeFunctionData("initialize", [
-    identityRegistryProxy.target,
-    [DscVerifierId.dsc_sha256_rsa_65537_4096],
-    [dscVerifier.target],
-  ]);
-  const hubFactory = await ethers.getContractFactory("IdentityVerificationHub", owner);
-  identityVerificationHubProxy = await hubFactory.deploy(
-    identityVerificationHubImpl.target,
-    initializeData,
-  );
-  await identityVerificationHubProxy.waitForDeployment();
-
-  // Get contracts with implementation ABI and update hub address
-  const registryContract = (await ethers.getContractAt(
-    "IdentityRegistryImplV1",
-    identityRegistryProxy.target,
-  )) as IdentityRegistryImplV1;
-  const updateHubTx = await registryContract.updateHub(identityVerificationHubProxy.target);
-  await updateHubTx.wait();
-
-  const hubContract = (await ethers.getContractAt(
-    "IdentityVerificationHubImplV1",
-    identityVerificationHubProxy.target,
-  )) as IdentityVerificationHubImplV1;
-
-  // Initialize roots
-  const csca_root = getCscaTreeRoot(serialized_csca_tree);
-  await registryContract.updateCscaRoot(csca_root, { from: owner });
 
   const [poseidon3Elements, poseidon4Elements] = await deployPoseidons([3, 4]);
   const stContracts = await deployStateWithLibraries();
@@ -188,11 +85,9 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
     passportCredentialIssuerImpl.interface.encodeFunctionData("initializeIssuer", [
       expirationTime,
       templateRoot,
-      registryContract.target,
       ["credential_sha256"],
       [credentialVerifier.target],
-      ["signature_sha256_sha256_sha256_rsa_65537_4096"],
-      [signatureVerifier.target],
+      [await user1.getAddress()],
       stContracts.state.target,
       stContracts.defaultIdType,
     ]);
@@ -212,12 +107,6 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
   )) as PassportCredentialIssuerImplV1;
 
   return {
-    hub: hubContract,
-    hubImpl: identityVerificationHubImpl,
-    registry: registryContract,
-    registryImpl: identityRegistryImpl,
-    dscVerifier,
-    signatureVerifier,
     credentialVerifier,
     owner,
     user1,
