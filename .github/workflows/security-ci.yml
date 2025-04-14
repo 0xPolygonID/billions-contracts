@@ -31,6 +31,11 @@ jobs:
       - name: Print package.json
         run: cat package.json
       
+      - name: Test install of private dependency directly
+        run: |
+          npm install git+https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/0xPolygonID/passport-utils.git
+      
+
       - name: Set github url and credentials
         run: |
           TOKEN="${{ secrets.GH_PAT_MARTIN }}"
