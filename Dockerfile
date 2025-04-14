@@ -21,7 +21,7 @@ RUN npm install
 # Bundle app source
 COPY . .
 
-RUN ./dl_circuit.sh
+RUN ./dl_circuits.sh
 
 # Build the application
 RUN npm run test
