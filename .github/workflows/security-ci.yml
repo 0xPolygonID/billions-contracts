@@ -37,5 +37,9 @@ jobs:
           git config --global url."https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/".insteadOf "git@github.com:"
           git config --global url."https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/".insteadOf "ssh://git@github.com/"
 
+      - name: test
+        run: |
+          git ls-remote https://x-access-token:${{ secrets.GH_PAT }}@github.com/0xPolygonID/passport-utils.git
+        
       - run: npm install
       - run: npx solhint "contracts/**/*.sol"
