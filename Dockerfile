@@ -1,10 +1,15 @@
-# Base image
 FROM ubuntu:24.04 AS test
+ARG GITHUB_TOKEN_ARG
 
 # # Create app directory
 # WORKDIR /usr/src/app
 
-ARG GITHUB_TOKEN_ARG
+
+RUN apt-get update && apt-get install -y \
+    curl \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
 
 # A wildcard is used to ensure both package.json AND package-lock.json are copied
 COPY package*.json ./
