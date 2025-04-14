@@ -19,9 +19,8 @@ jobs:
           node-version: "20.x"
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Override .npmrc to avoid GITHUB_TOKEN
-        run: |
-          echo "git+https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/" > /home/runner/work/_temp/.npmrc     
+      - name: Remove .npmrc injected by Actions
+        run: rm -f "$NPM_CONFIG_USERCONFIG"
       
       - name: Replace GitHub URL with token
         run: |
