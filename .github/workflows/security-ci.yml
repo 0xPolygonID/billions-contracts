@@ -21,11 +21,12 @@ jobs:
           node-version: "20.x"
           registry-url: 'https://registry.npmjs.org'
 
+
+      
       - name: Replace GitHub URL with token
         run: |
-          sed -i "s|https://github.com/|https://${{ secrets.GH_PAT }}:x-oauth-basic@github.com/|g" package.json
-          sed -i "s|https://github.com/|https://${{ secrets.GH_PAT }}:x-oauth-basic@github.com/|g" package-lock.json
-      
+          sed -i "s|https://github.com/|https://x-access-token:${{ secrets.GH_PAT }}@github.com/|g" package.json
+
       - name: Confirm replacement
         run: |
           grep passport-utils package.json
@@ -38,7 +39,7 @@ jobs:
           git config --global url."https://x-access-token:${{ secrets.GH_PAT }}@github.com/".insteadOf "git@github.com:"
           git config --global url."https://x-access-token:${{ secrets.GH_PAT }}@github.com/".insteadOf "ssh://git@github.com/"
 
-      - run: npm ci
+      - run: npm install
       - run: npx solhint "contracts/**/*.sol"
 
   coverage:
