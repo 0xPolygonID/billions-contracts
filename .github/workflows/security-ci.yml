@@ -21,10 +21,14 @@ jobs:
 
 
 
-      - name: Override .npmrc to avoid GITHUB_TOKEN
-        run: |
-          echo "git+https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/" > ~/.npmrc          
+      # - name: Override .npmrc to avoid GITHUB_TOKEN
+      #   run: |
+      #     echo "git+https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/" > ~/.npmrc          
       
+
+      - name: Remove Actions-injected .npmrc
+        run: rm -f /home/runner/work/_temp/.npmrc
+
       - name: Replace GitHub URL with token
         run: |
           sed -i "s|https://github.com/|https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/|g" package.json
