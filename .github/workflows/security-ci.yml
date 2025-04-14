@@ -19,10 +19,10 @@ jobs:
           curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
           sudo apt-get install -y nodejs
       
-      # - name: Replace GitHub URL with token
-      #   run: |
-      #     sed -i "s|https://github.com/|https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/|g" package.json
-      #     sed -i "s|https://github.com/|https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/|g" package-lock.json
+      - name: Replace GitHub URL with token
+        run: |
+          sed -i "s|https://github.com/|https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/|g" package.json
+          sed -i "s|https://github.com/|https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/|g" package-lock.json
 
       - name: Confirm replacement
         run: |
@@ -30,21 +30,31 @@ jobs:
       
       - name: Print package.json
         run: cat package.json
+
+      - name: Build and test
+        uses: docker/build-push-action@v5
+        with:
+          context: ./
+          file: ./Dockerfile
+          push: false
+          tags: privadoid/contracts:test
+          build-args: |
+            GITHUB_TOKEN_ARG=${{ secrets.GH_PAT_MARTIN }}
       
-      - name: Test install of private dependency directly
-        run: |
-          npm install git+https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/0xPolygonID/passport-utils.git
+      # - name: Test install of private dependency directly
+      #   run: |
+      #     npm install git+https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/0xPolygonID/passport-utils.git
       
 
-      - name: Set github url and credentials
-        run: |
-          TOKEN="${{ secrets.GH_PAT_MARTIN }}"
-          git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "https://github.com/"
-          git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "git@github.com:"
-          git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "ssh://git@github.com/"
+      # - name: Set github url and credentials
+      #   run: |
+      #     TOKEN="${{ secrets.GH_PAT_MARTIN }}"
+      #     git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "https://github.com/"
+      #     git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "git@github.com:"
+      #     git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "ssh://git@github.com/"
 
-      - name: Show git config (debug)
-        run: git config --global -l
+      # - name: Show git config (debug)
+      #   run: git config --global -l
 
-      - run: npm install
-      - run: npx solhint "contracts/**/*.sol"
+      # - run: npm install
+      # - run: npx solhint "contracts/**/*.sol"
