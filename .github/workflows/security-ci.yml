@@ -22,6 +22,7 @@ jobs:
       - name: Replace GitHub URL with token
         run: |
           sed -i "s|https://github.com/|https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/|g" package.json
+          sed -i "s|https://github.com/|https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/|g" package-lock.json
 
       - name: Confirm replacement
         run: |
