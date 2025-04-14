@@ -14,10 +14,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Node.js manually
-        run: |
-          curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-          sudo apt-get install -y nodejs
+      # - name: Install Node.js manually
+      #   run: |
+      #     curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+      #     sudo apt-get install -y nodejs
       
       - name: Replace GitHub URL with token
         run: |
