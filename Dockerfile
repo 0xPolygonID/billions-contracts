@@ -1,8 +1,8 @@
 # Base image
 FROM ubuntu:24.04 AS test
 
-# Create app directory
-WORKDIR /usr/src/app
+# # Create app directory
+# WORKDIR /usr/src/app
 
 ARG GITHUB_TOKEN_ARG
 
