@@ -33,12 +33,13 @@ jobs:
       
       - name: Set github url and credentials
         run: |
-          git config --global url."https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/".insteadOf "https://github.com/"
-          git config --global url."https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/".insteadOf "git@github.com:"
-          git config --global url."https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/".insteadOf "ssh://git@github.com/"
+          TOKEN="${{ secrets.GH_PAT_MARTIN }}"
+          git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "git@github.com:"
+          git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "ssh://git@github.com/"
 
       - name: Show git config (debug)
         run: git config --global -l
-        
+
       - run: npm install
       - run: npx solhint "contracts/**/*.sol"
