@@ -22,17 +22,20 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - name: Replace GitHub URL with token
         run: |
-          sed -i "s|https://github.com/|https://${GH_TOKEN}:x-oauth-basic@github.com/|g" package.json
+          sed -i "s|https://github.com/|https://${{ secrets.GH_PAT }}:x-oauth-basic@github.com/|g" package.json
+          sed -i "s|https://github.com/|https://${{ secrets.GH_PAT }}:x-oauth-basic@github.com/|g" package-lock.json
+      
       - name: Confirm replacement
         run: |
           grep passport-utils package.json
+      
       - name: Print package.json
         run: cat package.json
+      
       - name: Set github url and credentials
         run: |
-          git config --global --replace-all url."https://${GH_TOKEN}:x-oauth-basic@github.com/".insteadOf "git@github.com:"          
-          git config --global --add url."https://${GH_TOKEN}:x-oauth-basic@github.com/".insteadOf "ssh://git@github.com/"
-          git config --global --add url."https://${GH_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://x-access-token:${{ secrets.GH_PAT }}@github.com/".insteadOf "https://github.com/"
+
       - run: npm ci
       - run: npx solhint "contracts/**/*.sol"
 
