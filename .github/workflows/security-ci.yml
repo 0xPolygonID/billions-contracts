@@ -31,10 +31,15 @@ jobs:
       - name: Print package.json
         run: cat package.json
       
+      # - name: Set github url and credentials
+      #   run: |
+      #     git config --global url."https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/".insteadOf "git@github.com:"
+      #     git config --global url."https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/".insteadOf "ssh://git@github.com/"
+      #     git config --global url."https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/".insteadOf "https://github.com/"
       - name: Set github url and credentials
         run: |
-          git config --global url."https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/".insteadOf "git@github.com:"
-          git config --global url."https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/".insteadOf "ssh://git@github.com/"
+          git config --global url."https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/".insteadOf "https://github.com/"
+
 
       - name: test
         run: |
