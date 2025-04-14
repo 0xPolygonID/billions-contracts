@@ -31,19 +31,11 @@ jobs:
       - name: Print package.json
         run: cat package.json
       
-      # - name: Set github url and credentials
-      #   run: |
-      #     git config --global url."https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/".insteadOf "git@github.com:"
-      #     git config --global url."https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/".insteadOf "ssh://git@github.com/"
-      #     git config --global url."https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/".insteadOf "https://github.com/"
       - name: Set github url and credentials
         run: |
+          git config --global url."https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/".insteadOf "git@github.com:"
+          git config --global url."https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/".insteadOf "ssh://git@github.com/"
           git config --global url."https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/".insteadOf "https://github.com/"
-
-
-      - name: test
-        run: |
-          git ls-remote https://x-access-token:${{ secrets.GH_PAT_MARTIN }}@github.com/0xPolygonID/passport-utils.git
         
       - run: npm install
       - run: npx solhint "contracts/**/*.sol"
