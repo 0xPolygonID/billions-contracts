@@ -7,8 +7,8 @@ import {
   PassportDataSigned,
   prepareProof,
 } from "../test/utils/packData";
-import { genMockPassportData } from "../../passport-circuits/utils/passports/genMockPassportData";
 import { generateCredentialProof } from "../test/utils/generateProof";
+import { genMockPassportData } from "passport-utils";
 
 async function main() {
   const networkName = hre.network.config.chainId;

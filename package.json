@@ -31,6 +31,7 @@
     "circomlibjs": "^0.1.7",
     "dotenv": "^16.4.7",
     "hardhat": "^2.22.19",
+    "passport-utils": "git+https://github.com/0xPolygonID/passport-utils.git",
     "prettier": "^3.5.3",
     "prettier-plugin-solidity": "^1.4.2",
     "snarkjs": "^0.7.5",

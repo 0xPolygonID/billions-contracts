@@ -16,6 +16,11 @@ npm run compile
 ```
 
 ## Testing
+1. Download test circuits
+```shell
+./dl_circuits.sh
+```
+
 Run the different tests: 
 ```shell
 npm test

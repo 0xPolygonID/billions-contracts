@@ -9,17 +9,13 @@ import fs from "fs";
 import { CircuitArtifacts, CircuitProof } from "./types";
 
 import { BigNumberish } from "ethers";
-import {
-  generateCircuitInputsCredential,
-} from "../../../passport-circuits/utils/circuits/generateInputs";
-import { PassportData } from "../../../passport-circuits/utils/types";
-
+import { PassportData, generateCircuitInputsCredential } from "passport-utils";
 
 const credentialCircuits: CircuitArtifacts = {
   credential_sha256: {
-    wasm: "../passport-circuits/build/credential/credential_sha256/credential_sha256_js/credential_sha256.wasm",
-    zkey: "../passport-circuits/build/credential/credential_sha256/credential_sha256_final.zkey",
-    vkey: "../passport-circuits/build/credential/credential_sha256/credential_sha256_vkey.json",
+    wasm: "./circuits/credential_sha256/credential_sha256.wasm",
+    zkey: "./circuits/credential_sha256/credential_sha256_final.zkey",
+    vkey: "./circuits/credential_sha256/credential_sha256_vkey.json",
   },
 };
 
