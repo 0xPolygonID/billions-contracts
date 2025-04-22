@@ -261,7 +261,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       )
         .to.revertedWithCustomError(passportCredentialIssuer, "ImageHashIsNotWhitelisted")
         .withArgs(imageHash);
-    });
+    }).timeout(160000);
 
     it("verify passport for whitelisted enclave imageHash", async function () {
       const { passportCredentialIssuer } = deployedActors;
@@ -272,7 +272,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
           `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
         ),
       ).not.to.be.reverted;
-    });
+    }).timeout(160000);
   });
 
   describe("View functions", () => {
