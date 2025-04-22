@@ -28,6 +28,18 @@ const config: HardhatUserConfig = {
     ],
   },
   networks: {
+    "billions-main": {
+      chainId: 45056,
+      url: `${process.env.BILLIONS_MAIN_RPC_URL}`,
+      accounts: process.env.PRIVATE_KEY ? [`0x${process.env.PRIVATE_KEY}`] : DEFAULT_ACCOUNTS,
+      // ledgerAccounts: [`${process.env.LEDGER_ACCOUNT}`],
+    },
+    "billions-test": {
+      chainId: 6913,
+      url: `${process.env.BILLIONS_TEST_RPC_URL}`,
+      accounts: process.env.PRIVATE_KEY ? [`0x${process.env.PRIVATE_KEY}`] : DEFAULT_ACCOUNTS,
+      // ledgerAccounts: [`${process.env.LEDGER_ACCOUNT}`],
+    },
     "privado-main": {
       chainId: 21000,
       url: `${process.env.PRIVADO_MAIN_RPC_URL}`,
@@ -124,8 +136,25 @@ const config: HardhatUserConfig = {
       "linea-sepolia": process.env.LINEA_EXPLORER_API_KEY || "",
       "zkevm-cardona": process.env.ZKEVM_EXPLORER_API_KEY || "",
       "zkevm-mainnet": process.env.ZKEVM_EXPLORER_API_KEY || "",
+      "billions-test": "abc",
     },
     customChains: [
+      {
+        network: "billions-test",
+        chainId: 6913,
+        urls: {
+          apiURL: "https://billions-testnet-blockscout.eu-north-2.gateway.fm/api/",
+          browserURL: "https://docs.blockscout.com",
+        },
+      },
+      {
+        network: "billions-main",
+        chainId: 45056,
+        urls: {
+          apiURL: "https://billions-mainnet-blockscout.eu-north-2.gateway.fm/api/",
+          browserURL: "https://docs.blockscout.com",
+        },
+      },
       {
         network: "polygon-amoy",
         chainId: 80002,
@@ -167,6 +196,9 @@ const config: HardhatUserConfig = {
         },
       },
     ],
+  },
+  sourcify: {
+    enabled: false
   },
 };
 
