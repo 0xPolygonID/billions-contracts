@@ -310,7 +310,10 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         // TODO: decode user data and verify the passport credential and signature proofs
         // 1. decode user data
         // 2. verify the passport credential and signature proofs
-
+    }
+    
+    function nullifierExists(uint256 nullifier) external view returns (bool) {
+        return _getPassportCredentialIssuerV1Storage()._nullifiers[nullifier];
     }
 
     /// @notice Submits a ZKP response V2

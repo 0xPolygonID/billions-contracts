@@ -57,12 +57,14 @@ describe("Commitment Registration Tests", function () {
       const credentialRequestId =
         await passportCredentialIssuer.credentialCircuitIdToRequestIds("credential_sha256");
 
+      expect(await passportCredentialIssuer.nullifierExists(signedPassportData.nullifier)).to.be.false;
       expect(
         await passportCredentialIssuer.submitZKPResponseV2(
           [{ requestId: credentialRequestId, zkProof: credentialZkProof, data: metadatas }],
           crossChainProofs,
         ),
       ).not.to.be.reverted;
+      expect(await passportCredentialIssuer.nullifierExists(signedPassportData.nullifier)).to.be.true;
     });
 
     it("Should not verify passport with invalid signer", async () => {
