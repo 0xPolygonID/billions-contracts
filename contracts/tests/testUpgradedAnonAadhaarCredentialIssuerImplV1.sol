@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.27;
 
-import  {AnonAadhaarCredentialIssuerImplV1 } from "../verifiers/AnonAadhaarCredentialIssuerImplV1.sol";
+import {AnonAadhaarCredentialIssuerImplV1} from "../verifiers/AnonAadhaarCredentialIssuerImplV1.sol";
 
 abstract contract UpgradedAnonAadhaarCredentialIssuerImplV1 {
     bool internal _isTest;
@@ -16,7 +16,6 @@ contract testUpgradedAnonAadhaarCredentialIssuerImplV1 is
     AnonAadhaarCredentialIssuerImplV1,
     UpgradedAnonAadhaarCredentialIssuerImplV1
 {
-
     // ====================================================
     // Events
     // ====================================================

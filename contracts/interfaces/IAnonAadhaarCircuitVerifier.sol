@@ -3,7 +3,7 @@ pragma solidity 0.8.27;
 /**
  * @title IAnonAadhaarCircuitVerifier
  * @notice Interface for verifying AnonAadhaar circuit proofs.
- * @dev This interface defines the structure of an AnonAadhaar 
+ * @dev This interface defines the structure of an AnonAadhaar
  * circuit proof and exposes a function to verify such proofs.
  */
 interface IAnonAadhaarCircuitVerifier {
