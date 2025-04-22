@@ -1,0 +1,18 @@
+sequenceDiagram
+  autonumber
+  actor C as TEE 
+  participant CV as CertificatesValidator
+  participant CL as CertificatesLib
+  C->>CV: addCertificateVerification(subjectCertificate, issuerCertificate)
+  CV->>CL: parseCertificate(subjectCertificate)  
+  CL-->>CV: sc: subjectCertificate
+  CV->>CL: parseCertificate(issuerCertificate)
+  CL-->>CV: ic: issuerCertificate
+  CV->>CL: verifyP384Signature(sc.tbsCertificate, sc.signature, ic.publicKey)  
+  CL-->>CV: verified
+  alt verified = true
+    CV-->>CV: store certificate verification
+  else verified = false
+    CV-->>CV: revert CertificateVerificationFailed()
+  end
+

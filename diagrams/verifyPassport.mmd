@@ -1,0 +1,33 @@
+sequenceDiagram
+  participant C as TEE
+  participant PCI as PassportCredentialIssuer
+  participant NAV as NitroAttestationValidator
+  participant CV as CertificatesValidator
+  participant CL as CertificatesLib
+  C ->> PCI: verifyPassport(attestation)
+  PCI ->> NAV: validateAttestation(attestation)
+  NAV->>NAV: parseAttestation(attestation)
+  NAV->>CV: validateChainOfCertificates(certificates[])
+  loop Every certificate
+    CV->>CL: parseCertificate(certificate)
+    CL->>CV: certificate
+    CV->>CV: isAlreadyVerified(certificate)
+    CV->>CV: isExpired(certificate)
+    CV->>CV: isNotValidYet(certificate)
+  end
+  CV-->>NAV: validated
+  NAV->>CL: parseCertificate(attestation.certificate)
+  CL-->>NAV: c: certificate
+  NAV->>CL: verifyP384Signature(attestation.toBeSigned, attestation.signature, c.publicKey)
+  CL-->>NAV: verified
+  NAV-->>PCI: (UserData, verified)
+  alt validated = true
+    alt UserData is OK
+      PCI-->>PCI: buildZKPResponseV2Data(UserData)
+      PCI-->>PCI: submitZKPResponseV2(ZKPResponse[], crossChainProofs)
+    else UserData is wrong
+      PCI-->>C: revert InvalidUserData()
+    end
+  else
+    PCI-->>C: revert InvalidAttestation()
+  end

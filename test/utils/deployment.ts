@@ -105,6 +105,10 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
     passportCredentialIssuerProxy.target,
   )) as PassportCredentialIssuerImplV1;
 
+  const certificatesLib = await deployCertificatesLib();
+  const nitroAttestationValidator = await deployNitroAttestationValidator(await certificatesLib.getAddress());
+  await passportCredentialIssuerContract.setAttestationValidator(nitroAttestationValidator);
+
   return {
     credentialVerifier,
     owner,
@@ -162,6 +166,88 @@ async function deploySmtLib(poseidon2Address: string, poseidon3Address: string):
   console.log(`SmtLib deployed to:  ${await smtLib.getAddress()}`);
 
   return smtLib;
+}
+
+export async function deployNitroAttestationValidator(certificatesLibAddress: string): Promise<Contract> {
+  const [owner] = await ethers.getSigners();
+  const NitroAttestationValidatorFactory = await ethers.getContractFactory(
+    "NitroAttestationValidator",
+    {
+      libraries: {
+        CertificatesLib: certificatesLibAddress,
+      },
+    },
+  );
+
+  const NitroAttestationValidator = await upgrades.deployProxy(
+    NitroAttestationValidatorFactory,
+    [await owner.getAddress()],
+    {
+      unsafeAllow: ["external-library-linking"],
+    },
+  );
+  await NitroAttestationValidator.waitForDeployment();
+  console.log(
+    `NitroAttestationValidator deployed to: ${await NitroAttestationValidator.getAddress()}`,
+  );
+
+  return NitroAttestationValidator;
+}
+
+export async function deployContractWrapper(contractName: string): Promise<Contract> {
+  const ContractWrapper = await ethers.getContractFactory(contractName);
+  const contractWrapper = await ContractWrapper.deploy();
+  console.log(`${contractName} deployed to:`, await contractWrapper.getAddress());
+  return contractWrapper;
+}
+
+export async function deployCertificatesValidator(certificatesLib: any): Promise<Contract> {
+  const [owner] = await ethers.getSigners();
+  const CertificatesValidatorFactory = await ethers.getContractFactory("CertificatesValidator", {
+    libraries: {
+      CertificatesLib: await certificatesLib.getAddress(),
+    },
+  });
+
+  const CertificatesValidator = await upgrades.deployProxy(
+    CertificatesValidatorFactory,
+    [await owner.getAddress()],
+    {
+      unsafeAllow: ["external-library-linking"],
+    },
+  );
+  await CertificatesValidator.waitForDeployment();
+  console.log(`CertificatesValidator deployed to: ${await CertificatesValidator.getAddress()}`);
+
+  return CertificatesValidator;
+}
+
+export async function deployCertificatesLib(): Promise<Contract> {
+  const certificatesLib = await ethers.deployContract("CertificatesLib");
+  await certificatesLib.waitForDeployment();
+  console.log(`CertificatesLib deployed to:  ${await certificatesLib.getAddress()}`);
+
+  return certificatesLib;
+}
+
+export async function deployCertificatesLibWrapper(): Promise<Contract> {
+  const certificatesLib = await deployCertificatesLib();
+  const CertificatesLibWrapperFactory = await ethers.getContractFactory(
+    "CertificatesLibWrapper",
+    {
+      libraries: {
+        CertificatesLib: await certificatesLib.getAddress(),
+      },
+    },
+  );
+
+  const CertificatesLibWrapper = await CertificatesLibWrapperFactory.deploy();
+  await CertificatesLibWrapper.waitForDeployment();
+  console.log(
+    `CertificatesLibWrapper deployed to: ${await CertificatesLibWrapper.getAddress()}`,
+  );
+
+  return CertificatesLibWrapper;
 }
 
 export async function getChainId() {

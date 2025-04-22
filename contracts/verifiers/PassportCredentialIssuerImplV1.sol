@@ -10,6 +10,7 @@ import {IZKPVerifier} from "@iden3/contracts/interfaces/IZKPVerifier.sol";
 import {ICredentialCircuitVerifier} from "../interfaces/ICredentialCircuitVerifier.sol";
 import {CircuitConstants} from "../constants/CircuitConstants.sol";
 import {ImplRoot} from "../upgradeable/ImplRoot.sol";
+import {IAttestationValidator} from "../interfaces/IAttestationValidator.sol";
 
 error InvalidResponsesLength(uint256 length, uint256 expectedLength);
 error InvalidLinkId(uint256 linkId1, uint256 linkId2);
@@ -24,6 +25,8 @@ error InvalidCredentialProof();
 error InvalidPassportSignatureProof();
 error InvalidSignerPassportSignatureProof(address signer);
 error NoCredentialCircuitForRequestId(uint256 requestId);
+error ImageHashIsNotWhitelisted(bytes32 imageHash);
+error InvalidAttestation();
 
 /**
  * @dev Address ownership credential issuer.
@@ -58,6 +61,8 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         mapping(string circuitId => uint256 requestId) _credentialCircuitIdToRequestId;
         uint256 _requestIds;
         EnumerableSet.AddressSet _signers;
+        IAttestationValidator _attestationValidator;
+        mapping(bytes32 imageHash => bool isApproved) _imageHashesWhitelist;
     }
 
     struct PassportCredentialMessage {
@@ -73,7 +78,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
     /**
      * @dev Version of the contract
      */
-    string public constant VERSION = "1.0.0";
+    string public constant VERSION = "1.0.2";
 
     // check if the hash was calculated correctly
     // keccak256(abi.encode(uint256(keccak256("polygonid.storage.PassportCredentialIssuerV1")) - 1)) & ~bytes32(uint256(0xff))
@@ -201,6 +206,14 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
     }
 
     /**
+     * @dev Set attestation validator
+     * @param validator - attestation validator
+     */
+    function setAttestationValidator(IAttestationValidator validator) external onlyProxy onlyOwner {
+        _getPassportCredentialIssuerV1Storage()._attestationValidator = validator;
+    }
+
+    /**
      * @dev Updates the credential circuit verifiers for a specific circuit identifiers.
      * @param circuitIds The credential circuit identifiers.
      * @param verifierAddresses The new credential circuit verifier addresses.
@@ -272,6 +285,34 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         $._nullifiers[nullifier] = false;
     }
 
+    /**
+     * @dev Verifies the passport credential and signature proofs after verifying the attestation.
+     * @param attestation - attestation in bytes that includes user data for the passport credential and signature proofs
+     */
+    function verifyPassport(bytes memory attestation) external {
+        (
+            bytes memory userData,
+            bytes32 imageHash,
+            bool validated
+        ) = _getPassportCredentialIssuerV1Storage()._attestationValidator.validateAttestation(
+                attestation,
+                false
+            );
+
+        if (!isWhitelistedImageHash(imageHash)) {
+            revert ImageHashIsNotWhitelisted(imageHash);
+        }
+
+        if (!validated) {
+            revert InvalidAttestation();
+        }
+
+        // TODO: decode user data and verify the passport credential and signature proofs
+        // 1. decode user data
+        // 2. verify the passport credential and signature proofs
+
+    }
+
     /// @notice Submits a ZKP response V2
     /// @param responses The list of responses including ZKP request ID, ZK proof and metadata
     /// @param crossChainProofs The list of cross chain proofs from universal resolver (oracle)
@@ -315,6 +356,32 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
             credentialCircuitProof,
             passportSignatureProof[0]
         );
+    }
+
+
+    /**
+     * @dev Checks if imageHash of the enclave is whitelisted
+     * @param imageHash The imageHash of the enclave
+     * @return True if imageHash is whitelisted, otherwise returns false
+     */
+    function isWhitelistedImageHash(bytes32 imageHash) public view virtual returns (bool) {
+        return _getPassportCredentialIssuerV1Storage()._imageHashesWhitelist[imageHash];
+    }
+
+    /**
+     * @dev Adds an imageHash of the enclave to the whitelist
+     * @param imageHash The imageHash of the enclave to add
+     */
+    function addImageHashToWhitelist(bytes32 imageHash) public onlyOwner {
+        _getPassportCredentialIssuerV1Storage()._imageHashesWhitelist[imageHash] = true;
+    }
+
+    /**
+     * @dev Removes an imageHash of the enclave from the whitelist
+     * @param imageHash The imageHash of the enclave to remove
+     */
+    function removeImageHashFromWhitelist(bytes32 imageHash) public onlyOwner {
+        _getPassportCredentialIssuerV1Storage()._imageHashesWhitelist[imageHash] = false;
     }
 
     function _verifyPassportCredential(

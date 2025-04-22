@@ -2,6 +2,11 @@ import { expect } from "chai";
 import { deploySystemFixtures } from "../utils/deployment";
 import { DeployedActors } from "../utils/types";
 import { ethers } from "hardhat";
+import jsonAttestationWithUserData from "../data/TEEAttestationWithUserData.json";
+import { base64ToBytes, bytesToHex } from "@0xpolygonid/js-sdk";
+
+const imageHash = "0xb46a627218ca4511d9d55c64181dcdd465c3c44822ee1610c4fab0e7a5ba9997";
+const imageHash2 = "0xc980e59163ce244bb4bb6211f48c7b46f88a4f40943e84eb99bdc41e129bd293";
 
 describe("Unit Tests for PassportCredentialIssuer", () => {
   let deployedActors: DeployedActors;
@@ -238,6 +243,35 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
           .connect(user1)
           .updateCredentialVerifiers([credentialCircuitId], [newVerifierAddress]),
       ).to.be.revertedWithCustomError(passportCredentialIssuerImpl, "UUPSUnauthorizedCallContext");
+    });
+
+    it("adding imageHash to whitelisted enclave image hashes", async function () {
+      const { passportCredentialIssuer } = deployedActors;
+      await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
+      await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash2)).not.to.be.reverted;
+    });
+
+    it("verify passport for non whitelisted enclave imageHash", async function () {
+      const { passportCredentialIssuer } = deployedActors;
+
+      await expect(
+        passportCredentialIssuer.verifyPassport(
+          `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
+        ),
+      )
+        .to.revertedWithCustomError(passportCredentialIssuer, "ImageHashIsNotWhitelisted")
+        .withArgs(imageHash);
+    });
+
+    it("verify passport for whitelisted enclave imageHash", async function () {
+      const { passportCredentialIssuer } = deployedActors;
+
+      await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
+      await expect(
+        passportCredentialIssuer.verifyPassport(
+          `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
+        ),
+      ).not.to.be.reverted;
     });
   });
 
