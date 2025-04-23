@@ -118,7 +118,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         uint256 expirationDate,
         uint256 templateRoot,
         uint256 issuerDidHash
-    ) private view {
+    ) internal view {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
         if (hashIndex == 0) revert InvalidHashIndex();
         if (hashValue == 0) revert InvalidHashValue();
@@ -228,7 +228,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         }
         
         (
-            uint256[] memory inputs1,
+            uint256[] memory inputs,
             uint256[2] memory a1,
             uint256[2][2] memory b1,
             uint256[2] memory c1
@@ -241,16 +241,16 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
                 b1,
                 c1,
                 [
-                    inputs1[0], 
-                    inputs1[1], 
-                    inputs1[2], 
-                    inputs1[3], 
-                    inputs1[4], 
-                    inputs1[5], 
-                    inputs1[6], 
-                    inputs1[7], 
-                    inputs1[8], 
-                    inputs1[9]
+                    inputs[0], 
+                    inputs[1], 
+                    inputs[2], 
+                    inputs[3], 
+                    inputs[4], 
+                    inputs[5], 
+                    inputs[6], 
+                    inputs[7], 
+                    inputs[8], 
+                    inputs[9]
                 ]
             );
 
