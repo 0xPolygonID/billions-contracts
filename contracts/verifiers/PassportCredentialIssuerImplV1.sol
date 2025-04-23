@@ -46,11 +46,8 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
      * @dev PassportCredential message data type hash
      */
     bytes32 public constant PASSPORT_CREDENTIAL_MESSAGE_TYPEHASH =
-        keccak256(
-            "PassportCredential(uint256 linkId,uint256 nullifier)"
-        );
+        keccak256("PassportCredential(uint256 linkId,uint256 nullifier)");
 
-    
     /// @custom:storage-location erc7201:polygonid.storage.PassportCredentialIssuerV1
     struct PassportCredentialIssuerV1Storage {
         uint256 _expirationTime;
@@ -65,6 +62,11 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         mapping(bytes32 imageHash => bool isApproved) _imageHashesWhitelist;
     }
 
+    struct UserData {
+        IZKPVerifier.ZKPResponse[] responses;
+        bytes crossChainProofs;
+    }
+
     struct PassportCredentialMessage {
         uint256 linkId;
         uint256 nullifier;
@@ -72,7 +74,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
 
     struct PassportSignatureProof {
         PassportCredentialMessage passportCredentialMsg;
-        bytes signature;        
+        bytes signature;
     }
 
     /**
@@ -126,7 +128,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
      * @notice Constructor that disables initializers.
      * @dev Prevents direct initialization of the implementation contract.
      */
-    constructor()  {      
+    constructor() {
         _disableInitializers();
     }
 
@@ -155,7 +157,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         addSigners(signers);
         updateCredentialVerifiers(credentialCircuitIds, credentialVerifierAddresses);
     }
-    
+
     function addSigners(address[] calldata signers) public onlyProxy onlyOwner {
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
         for (uint256 i = 0; i < signers.length; i++) {
@@ -231,17 +233,13 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
 
             uint256 requestId = $._credentialCircuitIdToRequestId[circuitIds[i]];
             if (requestId == 0) {
-                requestId = $._requestIds; 
+                requestId = $._requestIds;
                 $._credentialCircuitIdToRequestId[circuitIds[i]] = requestId;
                 $._credentialRequestIdToCircuitId[requestId] = circuitIds[i];
                 $._requestIds++;
             }
 
-            emit CredentialCircuitVerifierUpdated(
-                circuitIds[i],
-                verifierAddresses[i],
-                requestId
-            );
+            emit CredentialCircuitVerifierUpdated(circuitIds[i], verifierAddresses[i], requestId);
         }
     }
 
@@ -255,7 +253,6 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
     ) external view virtual onlyProxy returns (address) {
         return _getPassportCredentialIssuerV1Storage()._credentialVerifiers[circuitId];
     }
-
 
     /**
      * @notice Retrieves credential the request id for a given circuit id.
@@ -307,11 +304,16 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
             revert InvalidAttestation();
         }
 
-        // TODO: decode user data and verify the passport credential and signature proofs
+        // TODO: remove this code after testing
+        userData = hex"000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000320000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000002800000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000012005a0984bdc209b7a1ff5d3c3bc36b3268c5dc22a2128f4f312c60a980ccacf811c98c8c178e385c7ccf62733b1cfcfc1869cd610b2efc8f18d5bb6f13e9a65b20b57692a6fc9fc08391b41611037f1c52cb2bb0cea5aa57779e73da9c0be8ab02aa1b7c77988a81c750f99c624f72ffa46b4e44d37176596445d4f94916875121bf6fca56d157baa94f68f6e3e52cf7baa0c9238bb0a86efdac9749949a9b16813718c7223e5c62a68ab2bcf96a5d716771a158b22ea01b45a1601f42b22ae202c045ee58e216e9e1f588d2339c79ae6af0482dbc92d00455a6dcd94399f60622a583fa35dd13eb60b297db5fa1fafe0f3891e9f86d4dc44dbd31e43c1aa296800000000000000000000000000000000000000000000000000000000000000060642fa4461450eb2eca343566c054c85160b60792d43e414b69341475fc718652ec529b37e1107487de89f0ac42e52799f43f279c07e1f97bcddda9703175eb5271b7028ff034e5582be8da0ce445ce7627e620b2732d41d953a6ac1f5bc4cf5000000000000000000000000000000000000000000000000000000000003d237000000000000000000000000000000000000000000000000000000006808ee0b07cf4e481e60ce0dfe7c39f588c687ad293247702335214539a827fde0a4f04600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000140000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000020271b7028ff034e5582be8da0ce445ce7627e620b2732d41d953a6ac1f5bc4cf5000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000041c78a609f7b1edc77a5b028fe8d2fe7a3d023955e93c496a3e4a72a39223b752d38b39835a00ab61c6eab1cf6bab42599bccff95c605c4dcf81db3b34a046e3361b00000000000000000000000000000000000000000000000000000000000000";
+
         // 1. decode user data
+        UserData memory userDataDecoded = abi.decode(userData, (UserData));
+
         // 2. verify the passport credential and signature proofs
+        submitZKPResponseV2(userDataDecoded.responses, userDataDecoded.crossChainProofs);
     }
-    
+
     function nullifierExists(uint256 nullifier) external view returns (bool) {
         return _getPassportCredentialIssuerV1Storage()._nullifiers[nullifier];
     }
@@ -322,7 +324,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
     function submitZKPResponseV2(
         IZKPVerifier.ZKPResponse[] memory responses,
         bytes memory crossChainProofs
-    ) external {
+    ) public {
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
 
         if (responses.length != 1) {
@@ -352,7 +354,10 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
                 [inputs1[0], inputs1[1], inputs1[2], inputs1[3], inputs1[4], inputs1[5]]
             );
 
-        PassportSignatureProof[] memory passportSignatureProof = abi.decode(crossChainProofs, (PassportSignatureProof[]));
+        PassportSignatureProof[] memory passportSignatureProof = abi.decode(
+            crossChainProofs,
+            (PassportSignatureProof[])
+        );
 
         _verifyPassportCredential(
             credentialCircuitId,
@@ -360,7 +365,6 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
             passportSignatureProof[0]
         );
     }
-
 
     /**
      * @dev Checks if imageHash of the enclave is whitelisted
@@ -453,9 +457,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         }
     }
 
-    function _verifySignature(
-        PassportSignatureProof memory passportSignatureProof
-    ) internal view {
+    function _verifySignature(PassportSignatureProof memory passportSignatureProof) internal view {
         (bool isValid, address recovered) = _recoverPassportSignatureProofSigner(
             passportSignatureProof.passportCredentialMsg,
             passportSignatureProof.signature
@@ -474,11 +476,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
     ) internal view virtual returns (bool, address) {
         bytes32 hashTypedData = _hashTypedDataV4(
             keccak256(
-                abi.encode(
-                    PASSPORT_CREDENTIAL_MESSAGE_TYPEHASH,
-                    message.linkId,
-                    message.nullifier
-                )
+                abi.encode(PASSPORT_CREDENTIAL_MESSAGE_TYPEHASH, message.linkId, message.nullifier)
             )
         );
 
