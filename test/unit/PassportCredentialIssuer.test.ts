@@ -266,6 +266,9 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
     it("verify passport for whitelisted enclave imageHash", async function () {
       const { passportCredentialIssuer } = deployedActors;
 
+      // TODO: remove once we have specific attestation with valid user data
+      await passportCredentialIssuer.addSigners(["0xde25817dd7b034399a941da87dba46c4abfeed4a"]);
+      
       await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
       await expect(
         passportCredentialIssuer.verifyPassport(
