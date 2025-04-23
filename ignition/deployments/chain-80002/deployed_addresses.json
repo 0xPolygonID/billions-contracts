@@ -16,5 +16,8 @@
   "DeployAnonAadhaarVerifier#Verifier_anon_aadhaar_v1": "0x6Fb1CBf8872eAaB2682d3a0B685215CD56e85ae3",
   "DeployAnonAadhaarCredentialIssuer#IdentityLib": "0x12EF11479c57F3609CBd1e7D673CdE5B329252Cc",
   "DeployAnonAadhaarCredentialIssuer#AnonAadhaarCredentialIssuerImplV1": "0xd4E668BaC4C98524DdDaf02Aa508A818114985E7",
-  "DeployAnonAadhaarCredentialIssuer#AnonAadhaarCredentialIssuer": "0x3eF0a5C16Cbf8c4905e7919A3dEFBCA3bA66ee16"
+  "DeployAnonAadhaarCredentialIssuer#AnonAadhaarCredentialIssuer": "0x3eF0a5C16Cbf8c4905e7919A3dEFBCA3bA66ee16",
+  "UpgradePassportCredentialIssuer#IdentityLib": "0xa4F840a368548e3092E6dC63E84b9a268c5882fa",
+  "UpgradePassportCredentialIssuer#PassportCredentialIssuer_v1_0_1": "0x03466F742d46F89a5125734e09e7934D3E11fbE5",
+  "UpgradePassportCredentialIssuer#PassportCredentialIssuerImplV1_v1_0_1": "0xEc7bCFd4B6FE20b961D4e8254d4b5a31346EA8BC"
 }

@@ -73,7 +73,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
     /**
      * @dev Version of the contract
      */
-    string public constant VERSION = "1.0.0";
+    string public constant VERSION = "1.0.1";
 
     // check if the hash was calculated correctly
     // keccak256(abi.encode(uint256(keccak256("polygonid.storage.PassportCredentialIssuerV1")) - 1)) & ~bytes32(uint256(0xff))
@@ -270,6 +270,10 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
         require($._nullifiers[nullifier], "Nullifier does not exist");
         $._nullifiers[nullifier] = false;
+    }
+
+    function nullifierExists(uint256 nullifier) external view returns (bool) {
+        return _getPassportCredentialIssuerV1Storage()._nullifiers[nullifier];
     }
 
     /// @notice Submits a ZKP response V2
