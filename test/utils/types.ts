@@ -4,27 +4,45 @@ import { PassportData } from "passport-utils";
 import type { PublicSignals, Groth16Proof } from "snarkjs";
 
 // Contract imports
-import { PassportCredentialIssuerImplV1 } from "../../typechain-types";
+import {
+  PassportCredentialIssuerImplV1,
+  AnonAadhaarCredentialIssuerImplV1,
+} from "../../typechain-types";
 
 export type CircuitProof = any;
 
 // Verifier type imports
-import type { Verifier_credential_sha256 as ProdCredentialVerifier } from "../../typechain-types/contracts/verifiers/credential/Verifier_credential_sha256";
+import type {
+  Verifier_credential_sha256 as ProdCredentialVerifier,
+  Verifier_anon_aadhaar_v1 as ProdAnonAadhaarV1Verifier,
+} from "../../typechain-types";
 
 // Type definitions
 export type CredentialVerifier = ProdCredentialVerifier;
+export type AnonAadhaarVerifier = ProdAnonAadhaarV1Verifier;
 
-export interface DeployedActors {
+export interface BaseActors {
   owner: Signer;
   user1: Signer;
   user2: Signer;
+  state: Contract;
+  identityLib: Contract;
+  idType: string;
+}
+
+export interface DeployedActors extends BaseActors {
   mockPassport: PassportData;
   passportCredentialIssuer: PassportCredentialIssuerImplV1;
   passportCredentialIssuerImpl: PassportCredentialIssuerImplV1;
   credentialVerifier: CredentialVerifier;
-  state: Contract;
-  identityLib: Contract;
-  idType: string;
+  expirationTime: bigint;
+  templateRoot: bigint;
+}
+
+export interface DeployedActorsAnonAadhaar extends BaseActors {
+  anonAadhaarIssuer: AnonAadhaarCredentialIssuerImplV1;
+  anonAadhaarIssuerImpl: AnonAadhaarCredentialIssuerImplV1;
+  anonAadhaarVerifier: ProdAnonAadhaarV1Verifier;
   expirationTime: bigint;
   templateRoot: bigint;
 }
