@@ -274,10 +274,35 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
     }
 
     /**
-     * @notice Returns the version of the contract.
-     * @dev This function can be overridden by derived contracts.
+     * @notice Returns the nullifier seed.
+     * @return The nullifier seed.
      */
-    function version() public view virtual returns (string memory) {
-        return VERSION;
+    function getNullifierSeed() public view returns (uint256) {
+        return _getAnonAadhaarIssuerV1Storage().nullifierSeed;
+    }
+
+    /**
+     * @notice Returns the public key hashes.
+     * @param publicKeyHash The public key hash to check.
+     * @return True if the public key hash exists, false otherwise.
+     */
+    function getPublicKeyHashes(uint256 publicKeyHash) public view returns (bool) {
+        return _getAnonAadhaarIssuerV1Storage().publicKeysHashes[publicKeyHash];
+    }
+
+    /**
+     * @notice Returns the template root.
+     * @return The template root.
+     */
+    function getTemplateRoot() public view returns (uint256) {
+        return _getAnonAadhaarIssuerV1Storage().templateRoot;
+    }
+
+    /**
+     * @notice Returns the expiration time.
+     * @return The expiration time.
+     */
+    function getExpirationTime() public view returns (uint256) {
+        return _getAnonAadhaarIssuerV1Storage().expirationTime;
     }
 }

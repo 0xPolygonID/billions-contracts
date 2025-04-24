@@ -64,7 +64,7 @@ contract testUpgradedAnonAadhaarCredentialIssuerImplV1 is
      * @notice Returns the version of the contract.
      * @dev Overrides the base contract's version function.
      */
-    function version() public view override returns (string memory) {
+    function version() public pure returns (string memory) {
         return "1.0.1";
     }
 }

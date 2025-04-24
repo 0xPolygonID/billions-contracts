@@ -20,15 +20,13 @@ describe("Unit Tests for AnonAadhaarCredentialIssuerImplV1", () => {
   describe("Initialization", () => {
     it("should initialize AnonAadhaarCredentialIssuerImplV1 with correct parameters", async () => {
       const { anonAadhaarIssuer } = deployedActors;
-      expect(await anonAadhaarIssuer.version()).to.equal("1.0.0");
+      expect(await anonAadhaarIssuer.VERSION()).to.equal("1.0.0");
     });
   });
 
-  describe.only("Upgradeabilitiy", () => {
+  describe("Upgradeabilitiy", () => {
     it("should preserve state after upgrade and update VERSION", async () => {
       const { anonAadhaarIssuer, owner, identityLib } = deployedActors;
-
-      const domainVersionBefore = await anonAadhaarIssuer.version();
 
       const AnonAadhaarIssuerV2Factory = await ethers.getContractFactory(
         "testUpgradedAnonAadhaarCredentialIssuerImplV1",
@@ -59,7 +57,8 @@ describe("Unit Tests for AnonAadhaarCredentialIssuerImplV1", () => {
         anonAadhaarIssuer.target,
       );
 
-      expect(await anonAadhaarIssuerV2.version()).to.not.equal(domainVersionBefore);
+      // Check if upgrade was successful and version function was added
+      expect(await anonAadhaarIssuerV2.version()).to.equal("1.0.1");
 
       const implementationSlot =
         "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
