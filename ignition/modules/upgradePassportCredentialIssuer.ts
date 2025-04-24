@@ -14,12 +14,12 @@ export default buildModule("UpgradePassportCredentialIssuer", (m) => {
 
   // Update the key as needed with latest proxy futureId reference in deployed_addresses.json for PassportCredentialIssuerImplV1
   const passportCredentialIssuerProxyAddress =
-    deployedAddresses["UpgradePassportCredentialIssuer#PassportCredentialIssuerImplV1"];
+    deployedAddresses["DeployPassportCredentialIssuer#PassportCredentialIssuer"];
   if (!passportCredentialIssuerProxyAddress) {
     throw new Error("PassportCredentialIssuer proxy address not found in deployed_addresses.json");
   }
 
-  const identityLibAddress = deployedAddresses["UpgradePassportCredentialIssuer#IdentityLib"];
+  const identityLibAddress = deployedAddresses["DeployPassportCredentialIssuer#IdentityLib"];
   const identityLib = m.contractAt("IdentityLib", identityLibAddress);
 
   const newPassportCredentialIssuerImpl = m.contract("PassportCredentialIssuerImplV1", [], {
