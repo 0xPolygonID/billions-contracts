@@ -14,14 +14,14 @@ export default buildModule("UpgradeAnonAadhaarCredentialIssuer", (m) => {
 
   // Update the key as needed with latest proxy futureId reference in deployed_addresses.json for AnonAadhaarCredentialIssuerImplV1
   const passportCredentialIssuerProxyAddress =
-    deployedAddresses["UpgradeAnonAadhaarCredentialIssuer#AnonAadhaarCredentialIssuerImplV1"];
+    deployedAddresses["UpgradeAnonAadhaarCredentialIssuer#AnonAadhaarCredentialIssuer"];
   if (!passportCredentialIssuerProxyAddress) {
     throw new Error(
       "AnonAadhaarCredentialIssuer proxy address not found in deployed_addresses.json",
     );
   }
 
-  const identityLibAddress = deployedAddresses["UpgradeAnonAadhaarCredentialIssuer#IdentityLib"];
+  const identityLibAddress = deployedAddresses["DeployPassportCredentialIssuer#IdentityLib"];
   const identityLib = m.contractAt("IdentityLib", identityLibAddress);
 
   const newAnonAadhaarCredentialIssuerImpl = m.contract("AnonAadhaarCredentialIssuerImplV1", [], {
