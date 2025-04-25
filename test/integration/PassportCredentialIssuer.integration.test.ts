@@ -17,16 +17,44 @@ describe("Commitment Registration Tests", function () {
   let snapshotId: string;
   let baseCredentialProof: any;
   let credentialProof: any;
+  let baseCredentialProofCurrentDateExpired: any;
+  let credentialProofCurrentDateExpired: any;
+  let baseCredentialProofIssuanceDateExpired: any;
+  let credentialProofIssuanceDateExpired: any;
+  let currentDateExpiredFormatted: number;
+  let issuanceDateExpired: Date;
 
   before(async () => {
     deployedActors = await deploySystemFixtures();
 
     baseCredentialProof = await generateCredentialProof(deployedActors.mockPassport);
+    const currentDateExpired = new Date();
+    currentDateExpired.setDate(currentDateExpired.getDate() - 10);
+    baseCredentialProofCurrentDateExpired = await generateCredentialProof(
+      deployedActors.mockPassport,
+      currentDateExpired,
+    );
+    currentDateExpiredFormatted = Math.floor(
+      (currentDateExpired.getFullYear() - 2000) * 10000 +
+        (currentDateExpired.getMonth() + 1) * 100 +
+        currentDateExpired.getDate(),
+    );
+
+    issuanceDateExpired = new Date();
+    issuanceDateExpired.setDate(issuanceDateExpired.getDate() - 370);
+    baseCredentialProofIssuanceDateExpired = await generateCredentialProof(
+      deployedActors.mockPassport,
+      new Date(),
+      issuanceDateExpired,
+    );
+
     snapshotId = await ethers.provider.send("evm_snapshot", []);
   });
 
   beforeEach(async () => {
     credentialProof = structuredClone(baseCredentialProof);
+    credentialProofCurrentDateExpired = structuredClone(baseCredentialProofCurrentDateExpired);
+    credentialProofIssuanceDateExpired = structuredClone(baseCredentialProofIssuanceDateExpired);
   });
 
   afterEach(async () => {
@@ -62,14 +90,114 @@ describe("Commitment Registration Tests", function () {
       const credentialRequestId =
         await passportCredentialIssuer.credentialCircuitIdToRequestIds("credential_sha256");
 
-      expect(await passportCredentialIssuer.nullifierExists(signedPassportData.nullifier)).to.be.false;
-      expect(
-        await passportCredentialIssuer.submitZKPResponseV2(
+      expect(await passportCredentialIssuer.nullifierExists(signedPassportData.nullifier)).to.be
+        .false;
+      await expect(
+        passportCredentialIssuer.submitZKPResponseV2(
           [{ requestId: credentialRequestId, zkProof: credentialZkProof, data: metadatas }],
           crossChainProofs,
         ),
       ).not.to.be.reverted;
-      expect(await passportCredentialIssuer.nullifierExists(signedPassportData.nullifier)).to.be.true;
+      expect(await passportCredentialIssuer.nullifierExists(signedPassportData.nullifier)).to.be
+        .true;
+
+      // Check nullifier
+      await expect(
+        passportCredentialIssuer.submitZKPResponseV2(
+          [{ requestId: credentialRequestId, zkProof: credentialZkProof, data: metadatas }],
+          crossChainProofs,
+        ),
+      ).to.be.revertedWithCustomError(passportCredentialIssuer, "NullifierAlreadyExists");
+
+      await passportCredentialIssuer.cleanNullifier(signedPassportData.nullifier);
+
+      expect(await passportCredentialIssuer.nullifierExists(signedPassportData.nullifier)).to.be
+      .false;
+
+      await expect(
+        passportCredentialIssuer.submitZKPResponseV2(
+          [{ requestId: credentialRequestId, zkProof: credentialZkProof, data: metadatas }],
+          crossChainProofs,
+        ),
+      ).to.be.revertedWith("Identity trees haven't changed");
+    });
+
+    it("Should not verify with passport current date expired", async () => {
+      const { passportCredentialIssuer, user1 } = deployedActors;
+
+      const signedPassportData: PassportDataSigned = {
+        linkId: BigInt(credentialProofCurrentDateExpired.publicSignals[2]),
+        nullifier: 1n,
+      };
+
+      const crossChainProofs = await packSignedPassportData(
+        signedPassportData,
+        passportCredentialIssuer,
+        user1,
+      );
+      const metadatas = "0x";
+
+      const credentialPreparedProof = prepareProof(credentialProofCurrentDateExpired.proof);
+
+      const credentialZkProof = packZKProof(
+        credentialProofCurrentDateExpired.publicSignals,
+        credentialPreparedProof.pi_a,
+        credentialPreparedProof.pi_b,
+        credentialPreparedProof.pi_c,
+      );
+
+      const credentialRequestId =
+        await passportCredentialIssuer.credentialCircuitIdToRequestIds("credential_sha256");
+
+      expect(await passportCredentialIssuer.nullifierExists(signedPassportData.nullifier)).to.be
+        .false;
+      await expect(
+        passportCredentialIssuer.submitZKPResponseV2(
+          [{ requestId: credentialRequestId, zkProof: credentialZkProof, data: metadatas }],
+          crossChainProofs,
+        ),
+      )
+        .to.be.revertedWithCustomError(passportCredentialIssuer, "CurrentDateExpired")
+        .withArgs(currentDateExpiredFormatted);
+    });
+
+    it("Should not verify with passport issuance date expired", async () => {
+      const { passportCredentialIssuer, user1 } = deployedActors;
+
+      const signedPassportData: PassportDataSigned = {
+        linkId: BigInt(credentialProofIssuanceDateExpired.publicSignals[2]),
+        nullifier: 1n,
+      };
+
+      const crossChainProofs = await packSignedPassportData(
+        signedPassportData,
+        passportCredentialIssuer,
+        user1,
+      );
+      const metadatas = "0x";
+
+      const credentialPreparedProof = prepareProof(credentialProofIssuanceDateExpired.proof);
+
+      const credentialZkProof = packZKProof(
+        credentialProofIssuanceDateExpired.publicSignals,
+        credentialPreparedProof.pi_a,
+        credentialPreparedProof.pi_b,
+        credentialPreparedProof.pi_c,
+      );
+
+      const credentialRequestId =
+        await passportCredentialIssuer.credentialCircuitIdToRequestIds("credential_sha256");
+
+      expect(await passportCredentialIssuer.nullifierExists(signedPassportData.nullifier)).to.be
+        .false;
+      await expect(
+        passportCredentialIssuer.submitZKPResponseV2(
+          [{ requestId: credentialRequestId, zkProof: credentialZkProof, data: metadatas }],
+          crossChainProofs,
+        ),
+      )
+        .to.be.revertedWithCustomError(passportCredentialIssuer, "IssuanceDateExpired")
+        .withArgs(Math.round(issuanceDateExpired.getTime() / 1000));
     });
 
     it("Should not verify passport with invalid signer", async () => {
