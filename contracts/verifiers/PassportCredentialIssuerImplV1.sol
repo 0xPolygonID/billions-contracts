@@ -10,6 +10,7 @@ import {IZKPVerifier} from "@iden3/contracts/interfaces/IZKPVerifier.sol";
 import {ICredentialCircuitVerifier} from "../interfaces/ICredentialCircuitVerifier.sol";
 import {CircuitConstants} from "../constants/CircuitConstants.sol";
 import {ImplRoot} from "../upgradeable/ImplRoot.sol";
+import {DateTime} from "@quant-finance/solidity-datetime/contracts/DateTime.sol";
 
 error InvalidResponsesLength(uint256 length, uint256 expectedLength);
 error InvalidLinkId(uint256 linkId1, uint256 linkId2);
@@ -17,6 +18,7 @@ error InvalidHashIndex(uint256 hashIndex);
 error InvalidHashValue(uint256 hashValue);
 error InvalidTemplateRoot(uint256 templateRoot, uint256 expectedTemplateRoot);
 error IssuanceDateExpired(uint256 issuanceDate);
+error CurrentDateExpired(uint256 currentDate);
 error NullifierAlreadyExists(uint256 nullifier);
 error LengthMismatch(uint256 length1, uint256 length2);
 error NoVerifierSet();
@@ -33,11 +35,14 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
     using IdentityLib for IdentityLib.Data;
     using ECDSA for bytes32;
     using EnumerableSet for EnumerableSet.AddressSet;
+    using DateTime for uint256;
 
     /**
      * @dev Version of EIP 712 domain
      */
     string public constant DOMAIN_VERSION = "1.0.0";
+
+    uint256 private constant DATE_20TH_CENTURY = 500000;
 
     /**
      * @dev PassportCredential message data type hash
@@ -335,6 +340,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         uint256 hashIndex,
         uint256 hashValue,
         uint256 issuanceDate,
+        uint256 currentDate,
         uint256 templateRoot,
         uint256 linkIdCredentialProof,
         uint256 linkIdSignature,
@@ -349,7 +355,22 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
 
         if (linkIdSignature != linkIdCredentialProof)
             revert InvalidLinkId(linkIdSignature, linkIdCredentialProof);
+        
+        uint256 currentDateWithYear;
+        // currentDate is YYMMDD format
+        if (currentDate > DATE_20TH_CENTURY) { // 19xx
+            currentDateWithYear = currentDate + 19000000;
+        } else { // 20xx
+            currentDateWithYear = currentDate + 20000000;
+        }
 
+        (uint256 year, uint256 month, uint256 day) = DateTime.timestampToDate(block.timestamp - 7 days);
+        uint256 minimumExpectedCurrentDate = year * 10000 + month * 100 + day;
+
+        if (minimumExpectedCurrentDate > currentDateWithYear) {
+            revert CurrentDateExpired(currentDate);
+        }
+        
         if (issuanceDate + $._expirationTime < block.timestamp)
             revert IssuanceDateExpired(issuanceDate);
 
@@ -436,6 +457,9 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         uint256 issuanceDate = credentialCircuitProof.pubSignals[
             CircuitConstants.CREDENTIAL_ISSUANCE_DATE_INDEX
         ];
+        uint256 currentDate = credentialCircuitProof.pubSignals[
+            CircuitConstants.CREDENTIAL_CURRENT_DATE_INDEX
+        ];
         uint256 templateRoot = credentialCircuitProof.pubSignals[
             CircuitConstants.CREDENTIAL_TEMPLATE_ROOT_INDEX
         ];
@@ -449,6 +473,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
             hashIndex,
             hashValue,
             issuanceDate,
+            currentDate,
             templateRoot,
             linkIdCredentialProof,
             passportSignatureProof.passportCredentialMsg.linkId,
