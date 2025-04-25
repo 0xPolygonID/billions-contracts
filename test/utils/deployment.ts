@@ -486,5 +486,6 @@ export async function deployAnonAadhaarIssuerFixtures(
     idType: stContracts.defaultIdType,
     expirationTime,
     templateRoot,
+    nullifierSeed,
   };
 }

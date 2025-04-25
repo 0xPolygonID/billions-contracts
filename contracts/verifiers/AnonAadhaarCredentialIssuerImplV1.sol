@@ -282,11 +282,11 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
     }
 
     /**
-     * @notice Returns the public key hashes.
+     * @notice Returns if the public key hash exists.
      * @param publicKeyHash The public key hash to check.
      * @return True if the public key hash exists, false otherwise.
      */
-    function getPublicKeyHashes(uint256 publicKeyHash) public view returns (bool) {
+    function publicKeyHashExists(uint256 publicKeyHash) public view returns (bool) {
         return _getAnonAadhaarIssuerV1Storage().publicKeysHashes[publicKeyHash];
     }
 
