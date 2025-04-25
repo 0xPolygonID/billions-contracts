@@ -108,6 +108,18 @@ describe("Commitment Registration Tests", function () {
           crossChainProofs,
         ),
       ).to.be.revertedWithCustomError(passportCredentialIssuer, "NullifierAlreadyExists");
+
+      await passportCredentialIssuer.cleanNullifier(signedPassportData.nullifier);
+
+      expect(await passportCredentialIssuer.nullifierExists(signedPassportData.nullifier)).to.be
+      .false;
+
+      await expect(
+        passportCredentialIssuer.submitZKPResponseV2(
+          [{ requestId: credentialRequestId, zkProof: credentialZkProof, data: metadatas }],
+          crossChainProofs,
+        ),
+      ).to.be.revertedWith("Identity trees haven't changed");
     });
 
     it("Should not verify with passport current date expired", async () => {
