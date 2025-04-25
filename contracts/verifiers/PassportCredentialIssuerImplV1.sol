@@ -157,7 +157,8 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
     }
 
     function addSigner(bytes memory attestation) public onlyProxy onlyOwner {
-                (
+        // TODO: in production we should pass "true" instead of "false"
+        (
             bytes memory userData,
             bytes32 imageHash,
             bool validated
@@ -174,11 +175,13 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
             revert InvalidAttestation();
         }
 
-        // TODO: remove this code after testing
-        userData = hex"00000000000000000000000070997970C51812dc3A010C7d01b50e0d17dc79C8";
-
+        // TODO: remove this line after testing
+        userData = hex"70997970C51812dc3A010C7d01b50e0d17dc79C8";
         // 1. decode user data
-        address userDataDecoded = abi.decode(userData, (address));
+        address userDataDecoded;
+        assembly {
+            userDataDecoded := mload(add(userData, 20))
+        }
 
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
         $._signers.add(userDataDecoded);
@@ -363,7 +366,9 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
      * @param imageHash The imageHash of the enclave
      * @return True if imageHash is whitelisted, otherwise returns false
      */
-    function isWhitelistedImageHash(bytes32 imageHash) public view virtual onlyProxy returns (bool) {
+    function isWhitelistedImageHash(
+        bytes32 imageHash
+    ) public view virtual onlyProxy returns (bool) {
         return _getPassportCredentialIssuerV1Storage()._imageHashesWhitelist[imageHash];
     }
 
