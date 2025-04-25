@@ -36,8 +36,6 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
         credentialVerifier.target,
       );
 
-      expect(await passportCredentialIssuer.getSigners()).to.deep.equal([await user1.getAddress()]);
-
       expect(
         await passportCredentialIssuer.credentialCircuitIdToRequestIds(credentialCircuitId),
       ).to.equal(1);
@@ -58,7 +56,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       const passportCredentialIssuerImpl = await PassportCredentialIssuerImplFactory.deploy();
 
       await expect(
-        passportCredentialIssuerImpl.initializeIssuer(0, 0, [], [], [], state.target, idType),
+        passportCredentialIssuerImpl.initializeIssuer(0, 0, [], [], state.target, idType),
       ).to.be.revertedWithCustomError(passportCredentialIssuerImpl, "InvalidInitialization");
     });
 
@@ -79,7 +77,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
 
       let initializeData = passportCredentialIssuerImpl.interface.encodeFunctionData(
         "initializeIssuer",
-        [0, 0, ["1"], [], [], state.target, idType],
+        [0, 0, ["1"], [], state.target, idType],
       );
       const passportCredentialIssuerProxyFactory = await ethers.getContractFactory(
         "PassportCredentialIssuer",
@@ -100,38 +98,53 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       const { passportCredentialIssuer, state, idType } = deployedActors;
 
       await expect(
-        passportCredentialIssuer.initializeIssuer(0, 0, [], [], [], state.target, idType),
+        passportCredentialIssuer.initializeIssuer(0, 0, [], [], state.target, idType),
       ).to.be.revertedWithCustomError(passportCredentialIssuer, "InvalidInitialization");
     });
   });
 
   describe("Update functions", () => {
-    it("should add signers", async () => {
-      const { passportCredentialIssuer, user1, user2 } = deployedActors;
-
-      await expect(passportCredentialIssuer.addSigners([await user2.getAddress()]))
-        .to.emit(passportCredentialIssuer, "SignerAdded")
-        .withArgs(await user2.getAddress());
-
-      expect(await passportCredentialIssuer.getSigners()).to.deep.equal([
-        await user1.getAddress(),
-        await user2.getAddress(),
-      ]);
-    });
-
-    it("should not add signer if caller is not owner", async () => {
-      const { passportCredentialIssuer, user1, user2 } = deployedActors;
+    it("add signer for non whitelisted enclave imageHash", async function () {
+      const { passportCredentialIssuer } = deployedActors;
 
       await expect(
-        passportCredentialIssuer.connect(user1).addSigners([await user2.getAddress()]),
+        passportCredentialIssuer.addSigner(
+          `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
+        ),
+      )
+        .to.revertedWithCustomError(passportCredentialIssuer, "ImageHashIsNotWhitelisted")
+        .withArgs(imageHash);
+    }).timeout(160000);
+
+    it("add signer for whitelisted enclave imageHash", async function () {
+      const { passportCredentialIssuer } = deployedActors;
+
+      await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
+
+      await expect(
+        passportCredentialIssuer.addSigner(
+          `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
+        ),
+      ).not.to.be.reverted;
+    }).timeout(160000);
+
+    it("should not add signer if caller is not owner", async () => {
+      const { passportCredentialIssuer, user1 } = deployedActors;
+
+      await expect(
+        passportCredentialIssuer
+          .connect(user1)
+          .addSigner(`0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`),
       ).to.be.revertedWithCustomError(passportCredentialIssuer, "OwnableUnauthorizedAccount");
     });
 
     it("should not add signer if caller is not proxy", async () => {
-      const { passportCredentialIssuerImpl, user2 } = deployedActors;
+      const { passportCredentialIssuerImpl } = deployedActors;
 
       await expect(
-        passportCredentialIssuerImpl.addSigners([await user2.getAddress()]),
+        passportCredentialIssuerImpl.addSigner(
+          `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
+        ),
       ).to.be.revertedWithCustomError(passportCredentialIssuerImpl, "UUPSUnauthorizedCallContext");
     });
 
@@ -250,38 +263,12 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
       await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash2)).not.to.be.reverted;
     });
-
-    it("verify passport for non whitelisted enclave imageHash", async function () {
-      const { passportCredentialIssuer } = deployedActors;
-
-      await expect(
-        passportCredentialIssuer.verifyPassport(
-          `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
-        ),
-      )
-        .to.revertedWithCustomError(passportCredentialIssuer, "ImageHashIsNotWhitelisted")
-        .withArgs(imageHash);
-    }).timeout(160000);
-
-    it("verify passport for whitelisted enclave imageHash", async function () {
-      const { passportCredentialIssuer } = deployedActors;
-
-      // TODO: remove once we have specific attestation with valid user data
-      await passportCredentialIssuer.addSigners(["0xde25817dd7b034399a941da87dba46c4abfeed4a"]);
-      
-      await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
-      await expect(
-        passportCredentialIssuer.verifyPassport(
-          `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
-        ),
-      ).not.to.be.reverted;
-    }).timeout(160000);
   });
 
   describe("View functions", () => {
     it("should return correct signer addresses", async () => {
       const { passportCredentialIssuer, user1 } = deployedActors;
-      expect(await passportCredentialIssuer.getSigners()).to.deep.equal([await user1.getAddress()]);
+      expect(await passportCredentialIssuer.getSigners()).to.deep.equal([]);
     });
 
     it("should not return when view function is called by non-proxy", async () => {

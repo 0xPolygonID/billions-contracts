@@ -4,7 +4,7 @@ sequenceDiagram
   participant NAV as NitroAttestationValidator
   participant CV as CertificatesValidator
   participant CL as CertificatesLib
-  C ->> PCI: verifyPassport(attestation)
+  C ->> PCI: addSigner(attestation)
   PCI ->> NAV: validateAttestation(attestation)
   NAV->>NAV: parseAttestation(attestation)
   NAV->>CV: validateChainOfCertificates(certificates[])
@@ -23,8 +23,7 @@ sequenceDiagram
   NAV-->>PCI: (UserData, verified)
   alt validated = true
     alt UserData is OK
-      PCI-->>PCI: buildZKPResponseV2Data(UserData)
-      PCI-->>PCI: submitZKPResponseV2(ZKPResponse[], crossChainProofs)
+      PCI-->>PCI: _signers.add(address(UserData))
     else UserData is wrong
       PCI-->>C: revert InvalidUserData()
     end

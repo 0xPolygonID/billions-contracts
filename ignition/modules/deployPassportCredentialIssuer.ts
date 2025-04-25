@@ -41,7 +41,6 @@ export default buildModule("DeployPassportCredentialIssuer", (m) => {
     templateRoot,
     [],
     [],
-    [signerAddress],
     stateContractAddress,
     idType,
   ]);

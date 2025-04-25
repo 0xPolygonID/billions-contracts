@@ -86,7 +86,6 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
       templateRoot,
       ["credential_sha256"],
       [credentialVerifier.target],
-      [await user1.getAddress()],
       stContracts.state.target,
       stContracts.defaultIdType,
     ]);
