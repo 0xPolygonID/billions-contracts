@@ -45,6 +45,7 @@ export interface DeployedActorsAnonAadhaar extends BaseActors {
   anonAadhaarVerifier: ProdAnonAadhaarV1Verifier;
   expirationTime: bigint;
   templateRoot: bigint;
+  nullifierSeed: bigint;
 }
 
 // Contract type exports

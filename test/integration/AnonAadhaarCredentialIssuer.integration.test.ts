@@ -29,7 +29,7 @@ describe("Anon aadhaar credential issuer", function () {
 
   describe("Verify anon aadhaar", async () => {
     it("Should verify passport successfully", async () => {
-      const { anonAadhaarIssuer, user1 } = deployedActors;
+      const { anonAadhaarIssuer } = deployedActors;
 
       const metadatas = "0x";
 
@@ -60,6 +60,16 @@ describe("Anon aadhaar credential issuer", function () {
           "0x",
         ),
       ).to.be.revertedWithCustomError(anonAadhaarIssuer, "NullifierAlreadyExists");
+
+      await anonAadhaarIssuer.cleanNullifier(anonAadhaarProof.pub_signals[1]);
+
+      await expect(
+        anonAadhaarIssuer.submitZKPResponseV2(
+          [{ requestId: 0, zkProof: credentialZkProof, data: metadatas }],
+          "0x",
+        ),
+      ).to.be.revertedWith("Identity trees haven't changed");
     });
+    
   });
 });

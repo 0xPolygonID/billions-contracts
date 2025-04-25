@@ -19,8 +19,51 @@ describe("Unit Tests for AnonAadhaarCredentialIssuerImplV1", () => {
 
   describe("Initialization", () => {
     it("should initialize AnonAadhaarCredentialIssuerImplV1 with correct parameters", async () => {
-      const { anonAadhaarIssuer } = deployedActors;
+      const { anonAadhaarIssuer, templateRoot, expirationTime, nullifierSeed } = deployedActors;
       expect(await anonAadhaarIssuer.VERSION()).to.equal("1.0.0");
+      // Check initial state
+      expect(await anonAadhaarIssuer.getExpirationTime()).to.equal(expirationTime);
+      expect(await anonAadhaarIssuer.getTemplateRoot()).to.equal(templateRoot);
+      expect(await anonAadhaarIssuer.getNullifierSeed()).to.equal(nullifierSeed);
+    });
+  });
+
+  describe("Update functions", () => {
+    it("should update template root time", async () => {
+      const { anonAadhaarIssuer } = deployedActors;
+      const newTemplateRoot = 10;
+
+      await expect(anonAadhaarIssuer.setTemplateRoot(newTemplateRoot))
+        .to.emit(anonAadhaarIssuer, "TemplateRootUpdated")
+        .withArgs(newTemplateRoot);
+
+      expect(await anonAadhaarIssuer.getTemplateRoot()).to.equal(newTemplateRoot);
+    });
+
+    it("should add public key hash", async () => {
+      const { anonAadhaarIssuer } = deployedActors;
+      const publicKeyHash = 5;
+
+      await expect(anonAadhaarIssuer.addPublicKeyHash(publicKeyHash))
+        .to.emit(anonAadhaarIssuer, "PublicKeyHashAdded")
+        .withArgs(publicKeyHash);
+
+      expect(await anonAadhaarIssuer.publicKeyHashExists(publicKeyHash)).to.equal(true);
+    });
+
+    it("should add public key hashes batch", async () => {
+      const { anonAadhaarIssuer } = deployedActors;
+      const publicKeyHash1 = 5;
+      const publicKeyHash2 = 10;
+
+      await expect(anonAadhaarIssuer.addPublicKeyHashesBatch([publicKeyHash1, publicKeyHash2]))
+        .to.emit(anonAadhaarIssuer, "PublicKeyHashAdded")
+        .withArgs(publicKeyHash1)
+        .to.emit(anonAadhaarIssuer, "PublicKeyHashAdded")
+        .withArgs(publicKeyHash2);
+
+      expect(await anonAadhaarIssuer.publicKeyHashExists(publicKeyHash1)).to.equal(true);
+      expect(await anonAadhaarIssuer.publicKeyHashExists(publicKeyHash2)).to.equal(true);
     });
   });
 
