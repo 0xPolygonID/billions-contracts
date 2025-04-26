@@ -8,7 +8,7 @@ export default buildModule("UpgradeAnonAadhaarCredentialIssuer", (m) => {
 
   const deployedAddressesPath = path.join(
     __dirname,
-    `../deployments/chain-${networkName}/deployed_addresses.json`,
+    `../../deployments/chain-${networkName}/deployed_addresses.json`,
   );
   const deployedAddresses = JSON.parse(fs.readFileSync(deployedAddressesPath, "utf8"));
 

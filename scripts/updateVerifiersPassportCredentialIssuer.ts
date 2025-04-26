@@ -11,17 +11,19 @@ async function main() {
   );
   const deployedAddresses = JSON.parse(fs.readFileSync(deployedAddressesPath, "utf8"));
 
-  const passportCredentialIssuerAddress = deployedAddresses["DeployPassportCredentialIssuer#PassportCredentialIssuer"];
+  const passportCredentialIssuerAddress = deployedAddresses["PassportCredentialIssuerProxyModule#TransparentUpgradeableProxy"];
 
   const passportCredentialIssuer = await ethers.getContractAt(
-    "PassportCredentialIssuerImplV1",
+    "PassportCredentialIssuer",
     passportCredentialIssuerAddress,
   );
 
+  console.log("PassportCredentialIssuer address:", passportCredentialIssuerAddress);
+  console.log("Version:", await passportCredentialIssuer.VERSION());
   const credentialCircuitIds: string[] = [];
   const credentialVerifierAddresses: string[] = [];
 
-  const deploymentKey = "";
+  const deploymentKey = "DeployCredentialVerifiers";
 
   if (!deploymentKey) {
     console.error("Please specify the deployment key.");

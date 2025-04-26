@@ -76,7 +76,7 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
     /**
      * @dev Version of the contract
      */
-    string public constant VERSION = "1.0.1";
+    string public constant VERSION = "1.0.0";
 
     // check if the hash was calculated correctly
     // keccak256(abi.encode(uint256(keccak256("polygonid.storage.PassportCredentialIssuerV1")) - 1)) & ~bytes32(uint256(0xff))
@@ -139,10 +139,11 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         address[] calldata credentialVerifierAddresses,
         address[] calldata signers,
         address stateAddress,
-        bytes2 idType
+        bytes2 idType,
+        address owner
     ) public initializer {
         super.initialize(stateAddress, idType);
-        __Ownable_init(msg.sender);
+        __Ownable_init(owner);
 
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
         $._expirationTime = expirationTime;

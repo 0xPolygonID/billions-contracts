@@ -1,47 +1,66 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 import { artifacts, ethers } from "hardhat";
-import { contractsInfo, TRANSPARENT_UPGRADEABLE_PROXY_ABI, TRANSPARENT_UPGRADEABLE_PROXY_BYTECODE } from "../../../helpers/constants";
+import {
+  contractsInfo,
+  TRANSPARENT_UPGRADEABLE_PROXY_ABI,
+  TRANSPARENT_UPGRADEABLE_PROXY_BYTECODE,
+} from "../../../helpers/constants";
 
-function getPassportCredentialIssuerInitializeData() {
-  const passportCredentialIssuerArtifact = artifacts.readArtifactSync(
-    "PassportCredentialIssuerImplV1",
-  );
-  return new ethers.Interface(passportCredentialIssuerArtifact.abi);
-}
+/**
+ * This is the first module that will be run. It deploys the proxy and the
+ * proxy admin, and returns them so that they can be used by other modules.
+ */
+const PassportCredentialIssuerProxyModule = buildModule(
+  "PassportCredentialIssuerProxyModule",
+  (m) => {
+    // This address is the owner of the ProxyAdmin contract,
+    // so it will be the only account that can upgrade the proxy when needed.
+    const proxyAdminOwner = m.getAccount(0);
 
-const PassportCredentialIssuerProxyModule = buildModule("PassportCredentialIssuerProxyModule", (m) => {
-  const proxyAdminOwner = m.getAccount(0);
+    // This contract is supposed to be deployed to the same address across many networks,
+    // so the first implementation address is a dummy contract that does nothing but accepts any calldata.
+    // Therefore, it is a mechanism to deploy TransparentUpgradeableProxy contract
+    // with constant constructor arguments, so predictable init bytecode and predictable CREATE2 address.
+    // Subsequent upgrades are supposed to switch this proxy to the real implementation.
 
-  // This contract is supposed to be deployed to the same address across many networks,
-  // so the first implementation address is a dummy contract that does nothing but accepts any calldata.
-  // Therefore, it is a mechanism to deploy TransparentUpgradeableProxy contract
-  // with constant constructor arguments, so predictable init bytecode and predictable CREATE2 address.
-  // Subsequent upgrades are supposed to switch this proxy to the real implementation.
+    const proxy = m.contract(
+      "TransparentUpgradeableProxy",
+      {
+        abi: TRANSPARENT_UPGRADEABLE_PROXY_ABI,
+        contractName: "TransparentUpgradeableProxy",
+        bytecode: TRANSPARENT_UPGRADEABLE_PROXY_BYTECODE,
+        sourceName: "",
+        linkReferences: {},
+      },
+      [
+        contractsInfo.CREATE2_ADDRESS_ANCHOR.unifiedAddress,
+        proxyAdminOwner,
+        contractsInfo.PASSPORT_CREDENTIAL_ISSUER.create2Calldata,
+      ],
+    );
 
-  const proxy = m.contract(
-    "TransparentUpgradeableProxy",
-    {
-      abi: TRANSPARENT_UPGRADEABLE_PROXY_ABI,
-      contractName: "TransparentUpgradeableProxy",
-      bytecode: TRANSPARENT_UPGRADEABLE_PROXY_BYTECODE,
-      sourceName: "",
-      linkReferences: {},
-    },
-    [
-      contractsInfo.CREATE2_ADDRESS_ANCHOR.unifiedAddress,
-      proxyAdminOwner,
-      contractsInfo.PASSPORT_CREDENTIAL_ISSUER.create2Calldata,
-    ],
-  );
+    const proxyAdminAddress = m.readEventArgument(proxy, "AdminChanged", "newAdmin");
+    const proxyAdmin = m.contractAt("ProxyAdmin", proxyAdminAddress);
+    return { proxyAdmin, proxy };
+  },
+);
 
-  const proxyAdminAddress = m.readEventArgument(proxy, "AdminChanged", "newAdmin");
-  const proxyAdmin = m.contractAt("ProxyAdmin", proxyAdminAddress);
-  return { proxyAdmin, proxy };
-});
-
-export const PassportCredentialIssuerModule = buildModule("PassportCredentialIssuerModule", (m) => {
+/**
+ * This is the second module that will be run, and it is also the only module exported from this file.
+ * It creates a contract instance for the Demo contract using the proxy from the previous module.
+ */
+export default buildModule("PassportCredentialIssuerModule", (m) => {
   // Get the proxy and proxy admin from the previous module.
   const { proxy, proxyAdmin } = m.useModule(PassportCredentialIssuerProxyModule);
+
+  // Here we're using m.contractAt(...) a bit differently than we did above.
+  // While we're still using it to create a contract instance, we're now telling Hardhat Ignition
+  // to treat the contract at the proxy address as an instance of the Demo contract.
+  // This allows us to interact with the underlying Demo contract via the proxy from within tests and scripts.
+  const passportCredentialIssuer = m.contractAt(
+    contractsInfo.PASSPORT_CREDENTIAL_ISSUER.name,
+    proxy,
+  );
 
   const smtLibAddress = m.contractAt("SmtLib", "0x682364078e26C1626abD2B95109D2019E241F0F6");
   const poseidonUtil3lAddress = m.contractAt(
@@ -53,43 +72,15 @@ export const PassportCredentialIssuerModule = buildModule("PassportCredentialIss
     "0x0695cF2c6dfc438a4E40508741888198A6ccacC2",
   );
 
-  const identityLib = m.contract("IdentityLib", [], {
+  m.contract("IdentityLib", [], {
     libraries: {
       SmtLib: smtLibAddress,
       PoseidonUnit3L: poseidonUtil3lAddress,
       PoseidonUnit4L: poseidonUtil4lAddress,
     },
   });
-  const passportCredentialIssuerImpl = m.contract("PassportCredentialIssuerImplV1", [], {
-    libraries: {
-      IdentityLib: identityLib,
-    },
-  });
 
-  const passportCredentialIssuerInterface = getPassportCredentialIssuerInitializeData();
-
-  const signerAddress = "0xDC3461f9f021dD904C71492EaBd86EaaF6dADbCb"; //m.getAccount(0);
-
-  const stateContractAddress = "0x3C9acB2205Aa72A05F6D77d708b5Cf85FCa3a896"; //"0x1a4cC30f2aA0377b0c3bc9848766D90cb4404124"; // "<StateContractAddress>"; // Replace with actual state contract address
-  const idType = "0x01B2"; // "0x0113";
-  const expirationTime = BigInt(60 * 60 * 24 * 7); // 1 week
-  const templateRoot = BigInt(
-    "3532467563022391950170321692541635800576371972220969617740093781820662149190",
-  );
-  const initializeData = passportCredentialIssuerInterface.encodeFunctionData("initializeIssuer", [
-    expirationTime,
-    templateRoot,
-    [],
-    [],
-    [signerAddress],
-    stateContractAddress,
-    idType,
-  ]);
-
-  const passportCredentialIssuer = m.contract("PassportCredentialIssuer", [
-    passportCredentialIssuerImpl,
-    initializeData,
-  ]);
-
-
+  // Return the contract instance, along with the original proxy and proxyAdmin contracts
+  // so that they can be used by other modules, or in tests and scripts.
+  return { passportCredentialIssuer, proxy, proxyAdmin };
 });

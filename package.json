@@ -10,6 +10,10 @@
     "lint:contracts": "npx solhint contracts/**/*.sol",
     "prettier:contracts": "prettier --write --plugin=prettier-plugin-solidity 'contracts/**/*.sol'",
     "deploy:anonAadhharCredentialIssuer:polygon:amoy": "npx hardhat ignition deploy ignition/modules/anonAadhaarCredentialIssuer/deployAnonAadhaarCredentialIssuer.ts --network polygon-amoy --verify",
+    "deploy:passportCredentialIssuer:polygon:amoy": "npx hardhat ignition deploy ignition/modules/passportCredentialIssuer/deployPassportCredentialIssuer.ts --network polygon-amoy --strategy create2 --verify",
+    "upgrade:passportCredentialIssuer:polygon:amoy": "npx hardhat ignition deploy ignition/modules/passportCredentialIssuer/upgradePassportCredentialIssuer.ts --network polygon-amoy --strategy create2 --verify",
+    "deploy:passportCredentialIssuer:billions:test": "npx hardhat ignition deploy ignition/modules/passportCredentialIssuer/deployPassportCredentialIssuer.ts --network billions-test --strategy create2 --verify",
+    "upgrade:passportCredentialIssuer:billions:test": "npx hardhat ignition deploy ignition/modules/passportCredentialIssuer/upgradePassportCredentialIssuer.ts --network billions-test --strategy create2 --verify",
     "setIssuerDID:anonAadhharCredentialIssuer:polygon:amoy": "npx hardhat run scripts/setCredentialIssuerAnonAadhaarCredentialIssuer.ts --network polygon-amoy"
   },
   "keywords": [],

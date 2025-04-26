@@ -75,9 +75,9 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
     poseidon4Elements.target as string,
   );
 
-  // Deploy PassportCredentialIssuerImplV1
+  // Deploy PassportCredentialIssuer
   const PassportCredentialIssuerImplFactory = await ethers.getContractFactory(
-    "PassportCredentialIssuerImplV1",
+    "PassportCredentialIssuer",
     {
       libraries: {
         IdentityLib: identityLib.target,
