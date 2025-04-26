@@ -1,5 +1,6 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 import { artifacts, ethers } from "hardhat";
+import { contractsInfo, TRANSPARENT_UPGRADEABLE_PROXY_ABI, TRANSPARENT_UPGRADEABLE_PROXY_BYTECODE } from "../../../helpers/constants";
 
 function getPassportCredentialIssuerInitializeData() {
   const passportCredentialIssuerArtifact = artifacts.readArtifactSync(
@@ -8,7 +9,40 @@ function getPassportCredentialIssuerInitializeData() {
   return new ethers.Interface(passportCredentialIssuerArtifact.abi);
 }
 
-export default buildModule("DeployPassportCredentialIssuer", (m) => {
+const PassportCredentialIssuerProxyModule = buildModule("PassportCredentialIssuerProxyModule", (m) => {
+  const proxyAdminOwner = m.getAccount(0);
+
+  // This contract is supposed to be deployed to the same address across many networks,
+  // so the first implementation address is a dummy contract that does nothing but accepts any calldata.
+  // Therefore, it is a mechanism to deploy TransparentUpgradeableProxy contract
+  // with constant constructor arguments, so predictable init bytecode and predictable CREATE2 address.
+  // Subsequent upgrades are supposed to switch this proxy to the real implementation.
+
+  const proxy = m.contract(
+    "TransparentUpgradeableProxy",
+    {
+      abi: TRANSPARENT_UPGRADEABLE_PROXY_ABI,
+      contractName: "TransparentUpgradeableProxy",
+      bytecode: TRANSPARENT_UPGRADEABLE_PROXY_BYTECODE,
+      sourceName: "",
+      linkReferences: {},
+    },
+    [
+      contractsInfo.CREATE2_ADDRESS_ANCHOR.unifiedAddress,
+      proxyAdminOwner,
+      contractsInfo.PASSPORT_CREDENTIAL_ISSUER.create2Calldata,
+    ],
+  );
+
+  const proxyAdminAddress = m.readEventArgument(proxy, "AdminChanged", "newAdmin");
+  const proxyAdmin = m.contractAt("ProxyAdmin", proxyAdminAddress);
+  return { proxyAdmin, proxy };
+});
+
+export const PassportCredentialIssuerModule = buildModule("PassportCredentialIssuerModule", (m) => {
+  // Get the proxy and proxy admin from the previous module.
+  const { proxy, proxyAdmin } = m.useModule(PassportCredentialIssuerProxyModule);
+
   const smtLibAddress = m.contractAt("SmtLib", "0x682364078e26C1626abD2B95109D2019E241F0F6");
   const poseidonUtil3lAddress = m.contractAt(
     "PoseidonUnit3L",
@@ -57,8 +91,5 @@ export default buildModule("DeployPassportCredentialIssuer", (m) => {
     initializeData,
   ]);
 
-  return {
-    passportCredentialIssuer,
-    passportCredentialIssuerImpl,
-  };
+
 });
