@@ -1,12 +1,24 @@
 import hre, { ethers, upgrades } from "hardhat";
 import { Contract, Signer } from "ethers";
 import { PassportData, genMockPassportData } from "passport-utils";
-import { DeployedActors, CredentialVerifier } from "./types";
+import {
+  DeployedActors,
+  CredentialVerifier,
+  DeployedActorsAnonAadhaar,
+  AnonAadhaarVerifier,
+} from "./types";
 import { poseidonContract } from "circomlibjs";
 // Verifier artifacts
 import CredentialVerifierArtifact from "../../artifacts/contracts/verifiers/credential/Verifier_credential_sha256.sol/Verifier_credential_sha256.json";
+import AnonAadhaarlVerifierArtifact from "../../artifacts/contracts/verifiers/anonAadhaarV1/Verifier_anon_aadhaar_v1.sol/Verifier_anon_aadhaar_v1.json";
+import { Id, DID } from "@iden3/js-iden3-core";
+import { Merklizer } from "@iden3/js-jsonld-merklization";
 
-import { PassportCredentialIssuer, PassportCredentialIssuerImplV1 } from "../../typechain-types";
+import {
+  PassportCredentialIssuer,
+  PassportCredentialIssuerImplV1,
+  AnonAadhaarCredentialIssuerImplV1,
+} from "../../typechain-types";
 import { chainIdInfoMap } from "./constants";
 
 export async function deploySystemFixtures(): Promise<DeployedActors> {
@@ -461,5 +473,104 @@ async function deployState(
     crossChainProofValidator,
     groth16VerifierStateTransition,
     defaultIdType,
+  };
+}
+
+export async function deployAnonAadhaarIssuerFixtures(
+  publicKeyHashes: bigint[] = [
+    18063425702624337643644061197836918910810808173893535653269228433734128853484n, // prod (?)
+    15134874015316324267425466444584014077184337590635665158241104437045239495873n,
+  ],
+  templateRoot: bigint = 13618331910493816144112635202719102044017718006809336112633915446302833345855n,
+): Promise<DeployedActorsAnonAadhaar> {
+  let [owner, user1, user2] = await ethers.getSigners();
+
+  const newBalance = "0x" + ethers.parseEther("10000").toString(16);
+
+  await ethers.provider.send("hardhat_setBalance", [await owner.getAddress(), newBalance]);
+  await ethers.provider.send("hardhat_setBalance", [await user1.getAddress(), newBalance]);
+  await ethers.provider.send("hardhat_setBalance", [await user2.getAddress(), newBalance]);
+
+  // Deploy credential verifier
+  const anonAadhaarVerifierArtifact = AnonAadhaarlVerifierArtifact;
+  const anonAadhaarVerifierFactory = await ethers.getContractFactory(
+    anonAadhaarVerifierArtifact.abi,
+    anonAadhaarVerifierArtifact.bytecode,
+    owner,
+  );
+  const anonAadhaarVerifier: AnonAadhaarVerifier = await anonAadhaarVerifierFactory.deploy();
+  await anonAadhaarVerifier.waitForDeployment();
+
+  const [poseidon3Elements, poseidon4Elements] = await deployPoseidons([3, 4]);
+  const stContracts = await deployStateWithLibraries();
+  const identityLib = await deployIdentityLib(
+    stContracts.smtLib.target as string,
+    poseidon3Elements.target as string,
+    poseidon4Elements.target as string,
+  );
+
+  // Deploy AnonAadhaarCredentialIssuerImplV1
+  const AnonAadhaarIssuerImplFactory = await ethers.getContractFactory(
+    "AnonAadhaarCredentialIssuerImplV1",
+    {
+      libraries: {
+        IdentityLib: identityLib.target,
+      },
+    },
+    owner,
+  );
+  const anonAadhaarIssuerImpl = await AnonAadhaarIssuerImplFactory.deploy();
+  await anonAadhaarIssuerImpl.waitForDeployment();
+
+  const nullifierSeed = 12345678n;
+  const expirationTime = 15776640n;
+
+  const anonAadhaarIssuerInitData = anonAadhaarIssuerImpl.interface.encodeFunctionData(
+    "initialize(uint256,uint256[],uint256,uint256,address,address,bytes2)",
+    [
+      nullifierSeed,
+      publicKeyHashes,
+      expirationTime,
+      templateRoot,
+      await anonAadhaarVerifier.getAddress(),
+      await stContracts.state.getAddress(),
+      stContracts.defaultIdType,
+    ],
+  );
+  const anonAadhaarIssuerProxyFactory = await ethers.getContractFactory(
+    "AnonAadhaarCredentialIssuer",
+    owner,
+  );
+
+  const anonAadhaarIssuerProxy = await anonAadhaarIssuerProxyFactory.deploy(
+    anonAadhaarIssuerImpl.target,
+    anonAadhaarIssuerInitData,
+  );
+  await anonAadhaarIssuerProxy.waitForDeployment();
+
+  const anonAadhaarIssuerContract = (await ethers.getContractAt(
+    "AnonAadhaarCredentialIssuerImplV1",
+    anonAadhaarIssuerProxy.target,
+  )) as AnonAadhaarCredentialIssuerImplV1;
+
+  // set issuerDidHas
+  const updateIssuerTx = await anonAadhaarIssuerContract.setIssuerDidHash(
+    "12146166192964646439780403715116050536535442384123009131510511003232108502337",
+  );
+  await updateIssuerTx.wait();
+
+  return {
+    owner,
+    user1,
+    user2,
+    anonAadhaarIssuer: anonAadhaarIssuerContract,
+    anonAadhaarIssuerImpl: anonAadhaarIssuerImpl,
+    anonAadhaarVerifier: anonAadhaarVerifier,
+    state: stContracts.state,
+    identityLib,
+    idType: stContracts.defaultIdType,
+    expirationTime,
+    templateRoot,
+    nullifierSeed,
   };
 }

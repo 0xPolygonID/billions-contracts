@@ -39,6 +39,9 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       expect(
         await passportCredentialIssuer.credentialCircuitIdToRequestIds(credentialCircuitId),
       ).to.equal(1);
+      expect(
+        await passportCredentialIssuer.credentialRequestIdToCircuitIds(1),
+      ).to.equal(credentialCircuitId);
     });
 
     it("should not allow direct initialization of hub implementation", async () => {
@@ -231,6 +234,9 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
         expect(
           await passportCredentialIssuer.credentialCircuitIdToRequestIds(credentialCircuitIds[i]),
         ).to.equal(lastRequestId + i + 1);
+        expect(
+          await passportCredentialIssuer.credentialRequestIdToCircuitIds(lastRequestId + i + 1),
+        ).to.equal(credentialCircuitIds[i]);
       }
     });
 

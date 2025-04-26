@@ -8,7 +8,9 @@
     "test:coverage": "npx hardhat coverage",
     "test:integration": "npx hardhat test test/integration/integration.test.ts",
     "lint:contracts": "npx solhint contracts/**/*.sol",
-    "prettier:contracts": "prettier --write --plugin=prettier-plugin-solidity 'contracts/**/*.sol'"
+    "prettier:contracts": "prettier --write --plugin=prettier-plugin-solidity 'contracts/**/*.sol'",
+    "deploy:anonAadhharCredentialIssuer:polygon:amoy": "npx hardhat ignition deploy ignition/modules/anonAadhaarCredentialIssuer/deployAnonAadhaarCredentialIssuer.ts --network polygon-amoy --verify",
+    "setIssuerDID:anonAadhharCredentialIssuer:polygon:amoy": "npx hardhat run scripts/setCredentialIssuerAnonAadhaarCredentialIssuer.ts --network polygon-amoy"
   },
   "keywords": [],
   "author": "",
@@ -47,5 +49,9 @@
     "ws": "^8.17.1",
     "elliptic": "^6.6.0",
     "cookie": "^1.0.1"
+  },
+  "dependencies": {
+    "@iden3/js-iden3-core": "^1.4.1",
+    "@iden3/js-jsonld-merklization": "^1.4.1"
   }
 }

@@ -22,5 +22,10 @@ jobs:
       - name: Download circuits
         run: ./dl_circuits.sh
 
+      # To check if merge conflicts were resolved correctly
+      - name: Validate JSON files
+        run: |
+          find ignition/deployments -name "*.json" -print0 | xargs -0 -n1 jq empty
+
       - name: Run tests
         run: npm run test
