@@ -68,12 +68,20 @@ describe("Commitment Registration Tests", function () {
   describe("Verify passport", async () => {
     it("Should verify passport successfully", async () => {
       const { passportCredentialIssuer, user1 } = deployedActors;
-      
+
       await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
 
-      await passportCredentialIssuer.addSigner(
-        `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
-      );
+      await expect(
+        passportCredentialIssuer.addSigner(
+          `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
+        ),
+      )
+        .to.emit(passportCredentialIssuer, "SignerAdded")
+        .withArgs("0xD840543405B0B835F078c59C54Fe66ddD7395C34");
+
+      await expect(passportCredentialIssuer.addSignerDev(await user1.getAddress()))
+        .to.emit(passportCredentialIssuer, "SignerAdded")
+        .withArgs(await user1.getAddress());
 
       const signedPassportData: PassportDataSigned = {
         linkId: BigInt(credentialProof.publicSignals[2]),
@@ -121,7 +129,7 @@ describe("Commitment Registration Tests", function () {
       await passportCredentialIssuer.cleanNullifier(signedPassportData.nullifier);
 
       expect(await passportCredentialIssuer.nullifierExists(signedPassportData.nullifier)).to.be
-      .false;
+        .false;
 
       await expect(
         passportCredentialIssuer.submitZKPResponseV2(
@@ -136,9 +144,17 @@ describe("Commitment Registration Tests", function () {
 
       await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
 
-      await passportCredentialIssuer.addSigner(
-        `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
-      );
+      await expect(
+        passportCredentialIssuer.addSigner(
+          `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
+        ),
+      )
+        .to.emit(passportCredentialIssuer, "SignerAdded")
+        .withArgs("0xD840543405B0B835F078c59C54Fe66ddD7395C34");
+
+      await expect(passportCredentialIssuer.addSignerDev(await user1.getAddress()))
+        .to.emit(passportCredentialIssuer, "SignerAdded")
+        .withArgs(await user1.getAddress());
 
       const signedPassportData: PassportDataSigned = {
         linkId: BigInt(credentialProofCurrentDateExpired.publicSignals[2]),
@@ -181,9 +197,17 @@ describe("Commitment Registration Tests", function () {
 
       await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
 
-      await passportCredentialIssuer.addSigner(
-        `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
-      );
+      await expect(
+        passportCredentialIssuer.addSigner(
+          `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
+        ),
+      )
+        .to.emit(passportCredentialIssuer, "SignerAdded")
+        .withArgs("0xD840543405B0B835F078c59C54Fe66ddD7395C34");
+
+      await expect(passportCredentialIssuer.addSignerDev(await user1.getAddress()))
+        .to.emit(passportCredentialIssuer, "SignerAdded")
+        .withArgs(await user1.getAddress());
 
       const signedPassportData: PassportDataSigned = {
         linkId: BigInt(credentialProofIssuanceDateExpired.publicSignals[2]),
@@ -229,7 +253,7 @@ describe("Commitment Registration Tests", function () {
       await passportCredentialIssuer.addSigner(
         `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
       );
-      
+
       const signedPassportData: PassportDataSigned = {
         linkId: BigInt(credentialProof.publicSignals[2]),
         nullifier: 1n,

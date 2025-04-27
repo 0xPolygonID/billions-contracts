@@ -145,15 +145,6 @@ describe("Validation of TEE attestations", function () {
       `0x${bytesToHex(base64ToBytes(jsonAttestationClaim.attestation))}`,
       false,
     );
-
-    const attestationRawBytes = await getAttestationRawBytes(JSON.stringify(jsonAttestationClaim));
-
-    await nitroAttestationValidatorWrapper.validateAttestationV2(
-      `0x${attestationRawBytes.protectedHeader}`,
-      `0x${attestationRawBytes.rawPayload}`,
-      `0x${attestationRawBytes.signature}`,
-      false,
-    );
   }).timeout(240000);
 
   /* it("Validate signature off-chain", async function () {

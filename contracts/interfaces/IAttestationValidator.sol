@@ -50,21 +50,6 @@ interface IAttestationValidator {
     ) external returns (bytes memory, bytes32 imageHash, bool);
 
     /**
-     * @dev Validates the attestation
-     * @param protectedHeader bytes for the protected header
-     * @param rawPayload bytes for the raw payload
-     * @param signature bytes for the signature
-     * @param checkCertificatesValidation indicates wether to check expiration for the certificates
-     * @return User data bytes and a boolean indicating if the attestation is valid
-     */
-    function validateAttestationV2(
-        bytes calldata protectedHeader,
-        bytes calldata rawPayload,
-        bytes calldata signature,
-        bool checkCertificatesValidation
-    ) external returns (bytes memory, bytes32 imageHash, bool);
-
-    /**
      * @dev Parse the attestation data and return the parsed data
      * @param attestation The attestation bytes data
      */

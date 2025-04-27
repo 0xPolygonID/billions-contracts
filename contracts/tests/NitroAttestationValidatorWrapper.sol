@@ -17,20 +17,6 @@ contract NitroAttestationValidatorWrapper {
         _attestationValidator.validateAttestation(attestation, checkCertificatesValidation);
     }
 
-    function validateAttestationV2(
-        bytes calldata protectedHeader,
-        bytes calldata rawPayload,
-        bytes calldata signature,
-        bool checkCertificatesValidation
-    ) external {
-        _attestationValidator.validateAttestationV2(
-            protectedHeader,
-            rawPayload,
-            signature,
-            checkCertificatesValidation
-        );
-    }
-
     function parseAttestation(bytes calldata attestation) external view {
         _attestationValidator.parseAttestation(attestation);
     }

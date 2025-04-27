@@ -193,6 +193,13 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         emit SignerAdded(userDataDecoded);
     }
 
+    //TODO: remove this function in production
+    function addSignerDev(address signer) public onlyProxy onlyOwner {
+        PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
+        $._signers.add(signer);
+        emit SignerAdded(signer);
+    }
+
     /**
      * @notice Retrieves the signers.
      */

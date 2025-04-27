@@ -130,33 +130,6 @@ contract NitroAttestationValidator is Ownable2StepUpgradeable, IAttestationValid
     }
 
     /**
-     * @dev Validates the attestation
-     * @param protectedHeader bytes for the protected header
-     * @param rawPayload bytes for the raw payload
-     * @param signature bytes for the signature
-     * @param checkCertificatesValidation indicates wether to check expiration for the credential
-     * @return User data bytes and a boolean indicating if the attestation is valid
-     */
-    function validateAttestationV2(
-        bytes calldata protectedHeader,
-        bytes calldata rawPayload,
-        bytes calldata signature,
-        bool checkCertificatesValidation
-    ) external view returns (bytes memory, bytes32, bool) {
-        // 1. Parse the payload from the attestation
-        Payload memory payload = _parsePayload(rawPayload);
-        // 2. Validate the attestation
-        return
-            _validateAttestation(
-                protectedHeader,
-                payload,
-                rawPayload,
-                signature,
-                checkCertificatesValidation
-            );
-    }
-
-    /**
      * @dev Parse the attestation data and return the parsed data
      * @param attestation The attestation bytes data
      */
