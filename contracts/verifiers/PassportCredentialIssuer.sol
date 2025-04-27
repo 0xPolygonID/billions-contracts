@@ -143,7 +143,7 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         address owner
     ) public initializer {
         super.initialize(stateAddress, idType);
-        __Ownable_init(msg.sender);
+        __Ownable_init(owner);
 
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
         $._expirationTime = expirationTime;
@@ -151,16 +151,12 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         $._requestIds = 1;
 
         __EIP712_init("PassportIssuerV1", DOMAIN_VERSION);
-        addSigners(signers);
-        updateCredentialVerifiers(credentialCircuitIds, credentialVerifierAddresses);
+        _addSigners(signers);
+        _updateCredentialVerifiers(credentialCircuitIds, credentialVerifierAddresses);
     }
 
     function addSigners(address[] calldata signers) public onlyOwner {
-        PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
-        for (uint256 i = 0; i < signers.length; i++) {
-            $._signers.add(signers[i]);
-            emit SignerAdded(signers[i]);
-        }
+        _addSigners(signers);
     }
 
     /**
@@ -213,23 +209,7 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         string[] calldata circuitIds,
         address[] calldata verifierAddresses
     ) public virtual onlyOwner {
-        PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
-        if (circuitIds.length != verifierAddresses.length) {
-            revert LengthMismatch(circuitIds.length, verifierAddresses.length);
-        }
-        for (uint256 i = 0; i < circuitIds.length; i++) {
-            $._credentialVerifiers[circuitIds[i]] = verifierAddresses[i];
-
-            uint256 requestId = $._credentialCircuitIdToRequestId[circuitIds[i]];
-            if (requestId == 0) {
-                requestId = $._requestIds;
-                $._credentialCircuitIdToRequestId[circuitIds[i]] = requestId;
-                $._credentialRequestIdToCircuitId[requestId] = circuitIds[i];
-                $._requestIds++;
-            }
-
-            emit CredentialCircuitVerifierUpdated(circuitIds[i], verifierAddresses[i], requestId);
-        }
+        _updateCredentialVerifiers(circuitIds, verifierAddresses);
     }
 
     /**
@@ -237,9 +217,7 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
      * @param circuitId The circuit id identifier.
      * @return The credential verifier address.
      */
-    function credentialVerifiers(
-        string memory circuitId
-    ) external view virtual returns (address) {
+    function credentialVerifiers(string memory circuitId) external view virtual returns (address) {
         return _getPassportCredentialIssuerV1Storage()._credentialVerifiers[circuitId];
     }
 
@@ -476,5 +454,36 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         );
         _setNullifier(nullifier);
         _addHashAndTransit(hashIndex, hashValue);
+    }
+
+    function _addSigners(address[] calldata signers) internal {
+        PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
+        for (uint256 i = 0; i < signers.length; i++) {
+            $._signers.add(signers[i]);
+            emit SignerAdded(signers[i]);
+        }
+    }
+
+    function _updateCredentialVerifiers(
+        string[] calldata circuitIds,
+        address[] calldata verifierAddresses
+    ) internal {
+        PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
+        if (circuitIds.length != verifierAddresses.length) {
+            revert LengthMismatch(circuitIds.length, verifierAddresses.length);
+        }
+        for (uint256 i = 0; i < circuitIds.length; i++) {
+            $._credentialVerifiers[circuitIds[i]] = verifierAddresses[i];
+
+            uint256 requestId = $._credentialCircuitIdToRequestId[circuitIds[i]];
+            if (requestId == 0) {
+                requestId = $._requestIds;
+                $._credentialCircuitIdToRequestId[circuitIds[i]] = requestId;
+                $._credentialRequestIdToCircuitId[requestId] = circuitIds[i];
+                $._requestIds++;
+            }
+
+            emit CredentialCircuitVerifierUpdated(circuitIds[i], verifierAddresses[i], requestId);
+        }
     }
 }
