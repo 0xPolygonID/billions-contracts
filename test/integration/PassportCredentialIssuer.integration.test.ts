@@ -11,7 +11,7 @@ import {
 } from "../utils/packData";
 import { base64ToBytes, bytesToHex } from "@0xpolygonid/js-sdk";
 import jsonAttestationWithUserData from "../data/TEEAttestationWithUserData.json";
-const imageHash = "0xb46a627218ca4511d9d55c64181dcdd465c3c44822ee1610c4fab0e7a5ba9997";
+const imageHash = "0xc980e59163ce244bb4bb6211f48c7b46f88a4f40943e84eb99bdc41e129bd293";
 
 describe("Commitment Registration Tests", function () {
   this.timeout(0);

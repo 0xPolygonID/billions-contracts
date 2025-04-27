@@ -5,8 +5,8 @@ import { ethers } from "hardhat";
 import jsonAttestationWithUserData from "../data/TEEAttestationWithUserData.json";
 import { base64ToBytes, bytesToHex } from "@0xpolygonid/js-sdk";
 
-const imageHash = "0xb46a627218ca4511d9d55c64181dcdd465c3c44822ee1610c4fab0e7a5ba9997";
-const imageHash2 = "0xc980e59163ce244bb4bb6211f48c7b46f88a4f40943e84eb99bdc41e129bd293";
+const imageHash = "0xc980e59163ce244bb4bb6211f48c7b46f88a4f40943e84eb99bdc41e129bd293";
+const imageHash2 = "0xb46a627218ca4511d9d55c64181dcdd465c3c44822ee1610c4fab0e7a5ba9997";
 
 describe("Unit Tests for PassportCredentialIssuer", () => {
   let deployedActors: DeployedActors;
@@ -39,9 +39,9 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       expect(
         await passportCredentialIssuer.credentialCircuitIdToRequestIds(credentialCircuitId),
       ).to.equal(1);
-      expect(
-        await passportCredentialIssuer.credentialRequestIdToCircuitIds(1),
-      ).to.equal(credentialCircuitId);
+      expect(await passportCredentialIssuer.credentialRequestIdToCircuitIds(1)).to.equal(
+        credentialCircuitId,
+      );
     });
 
     it("should not allow direct initialization of hub implementation", async () => {
@@ -128,7 +128,9 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
         passportCredentialIssuer.addSigner(
           `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
         ),
-      ).not.to.be.reverted;
+      )
+        .to.emit(passportCredentialIssuer, "SignerAdded")
+        .withArgs("0xD840543405B0B835F078c59C54Fe66ddD7395C34");
     }).timeout(160000);
 
     it("should not add signer if caller is not owner", async () => {

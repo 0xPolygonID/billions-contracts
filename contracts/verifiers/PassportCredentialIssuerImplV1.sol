@@ -181,14 +181,13 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
             revert InvalidAttestation();
         }
 
-        // TODO: remove this line after testing
-        userData = hex"70997970C51812dc3A010C7d01b50e0d17dc79C8";
         // 1. decode user data
         address userDataDecoded;
         assembly {
             userDataDecoded := mload(add(userData, 20))
         }
 
+        // 2. add signer
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
         $._signers.add(userDataDecoded);
         emit SignerAdded(userDataDecoded);
