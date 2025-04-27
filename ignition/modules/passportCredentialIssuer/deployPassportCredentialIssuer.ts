@@ -1,5 +1,4 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
-import { artifacts, ethers } from "hardhat";
 import {
   contractsInfo,
   TRANSPARENT_UPGRADEABLE_PROXY_ABI,
@@ -10,7 +9,7 @@ import {
  * This is the first module that will be run. It deploys the proxy and the
  * proxy admin, and returns them so that they can be used by other modules.
  */
-const PassportCredentialIssuerProxyModule = buildModule(
+export const PassportCredentialIssuerProxyModule = buildModule(
   "PassportCredentialIssuerProxyModule",
   (m) => {
     // This address is the owner of the ProxyAdmin contract,

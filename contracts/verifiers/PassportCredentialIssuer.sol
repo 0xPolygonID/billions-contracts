@@ -143,7 +143,7 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         address owner
     ) public initializer {
         super.initialize(stateAddress, idType);
-        __Ownable_init(owner);
+        __Ownable_init(msg.sender);
 
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
         $._expirationTime = expirationTime;
