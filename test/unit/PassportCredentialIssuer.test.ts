@@ -36,69 +36,53 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       expect(
         await passportCredentialIssuer.credentialCircuitIdToRequestIds(credentialCircuitId),
       ).to.equal(1);
-      expect(
-        await passportCredentialIssuer.credentialRequestIdToCircuitIds(1),
-      ).to.equal(credentialCircuitId);
+      expect(await passportCredentialIssuer.credentialRequestIdToCircuitIds(1)).to.equal(
+        credentialCircuitId,
+      );
     });
 
-    it("should not allow direct initialization of hub implementation", async () => {
+    it("should not allow direct initialization of PassportCredentialIssuer implementation", async () => {
       const { owner, state, idType, identityLib } = deployedActors;
 
-      const PassportCredentialIssuerImplFactory = await ethers.getContractFactory(
-        "PassportCredentialIssuerImplV1",
-        {
-          libraries: {
-            IdentityLib: identityLib.target,
-          },
-        },
-        owner,
-      );
-      const passportCredentialIssuerImpl = await PassportCredentialIssuerImplFactory.deploy();
-
-      await expect(
-        passportCredentialIssuerImpl.initializeIssuer(0, 0, [], [], [], state.target, idType),
-      ).to.be.revertedWithCustomError(passportCredentialIssuerImpl, "InvalidInitialization");
-    });
-
-    it("should revert when Credential circuit verifier arrays length mismatch", async () => {
-      const { owner, state, idType, identityLib } = deployedActors;
-
-      const PassportCredentialIssuerImplFactory = await ethers.getContractFactory(
-        "PassportCredentialIssuerImplV1",
-        {
-          libraries: {
-            IdentityLib: identityLib.target,
-          },
-        },
-        owner,
-      );
-      const passportCredentialIssuerImpl = await PassportCredentialIssuerImplFactory.deploy();
-      await passportCredentialIssuerImpl.waitForDeployment();
-
-      let initializeData = passportCredentialIssuerImpl.interface.encodeFunctionData(
-        "initializeIssuer",
-        [0, 0, ["1"], [], [], state.target, idType],
-      );
-      const passportCredentialIssuerProxyFactory = await ethers.getContractFactory(
+      const PassportCredentialIssuerFactory = await ethers.getContractFactory(
         "PassportCredentialIssuer",
+        {
+          libraries: {
+            IdentityLib: identityLib.target,
+          },
+        },
         owner,
       );
+      const passportCredentialIssuer = await PassportCredentialIssuerFactory.deploy();
 
       await expect(
-        passportCredentialIssuerProxyFactory.deploy(
-          passportCredentialIssuerImpl.target,
-          initializeData,
+        passportCredentialIssuer.initialize(
+          0,
+          0,
+          [],
+          [],
+          [],
+          state.target,
+          idType,
+          await owner.getAddress(),
         ),
-      )
-        .to.be.revertedWithCustomError(passportCredentialIssuerImpl, "LengthMismatch")
-        .withArgs(1, 0);
+      ).to.be.revertedWithCustomError(passportCredentialIssuer, "InvalidInitialization");
     });
-
+    
     it("should not allow initialization after initialized", async () => {
-      const { passportCredentialIssuer, state, idType } = deployedActors;
+      const { passportCredentialIssuer, state, idType, owner } = deployedActors;
 
       await expect(
-        passportCredentialIssuer.initializeIssuer(0, 0, [], [], [], state.target, idType),
+        passportCredentialIssuer.initialize(
+          0,
+          0,
+          [],
+          [],
+          [],
+          state.target,
+          idType,
+          await owner.getAddress(),
+        ),
       ).to.be.revertedWithCustomError(passportCredentialIssuer, "InvalidInitialization");
     });
   });
@@ -125,14 +109,6 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       ).to.be.revertedWithCustomError(passportCredentialIssuer, "OwnableUnauthorizedAccount");
     });
 
-    it("should not add signer if caller is not proxy", async () => {
-      const { passportCredentialIssuerImpl, user2 } = deployedActors;
-
-      await expect(
-        passportCredentialIssuerImpl.addSigners([await user2.getAddress()]),
-      ).to.be.revertedWithCustomError(passportCredentialIssuerImpl, "UUPSUnauthorizedCallContext");
-    });
-
     it("should update expiration time", async () => {
       const { passportCredentialIssuer, user1 } = deployedActors;
       const newExpirationTime = 60 * 60;
@@ -153,15 +129,6 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       ).to.be.revertedWithCustomError(passportCredentialIssuer, "OwnableUnauthorizedAccount");
     });
 
-    it("should not update expiration time if caller is not proxy", async () => {
-      const { passportCredentialIssuerImpl, user1 } = deployedActors;
-      const newExpirationTime = 60 * 60;
-
-      await expect(
-        passportCredentialIssuerImpl.setExpirationTime(newExpirationTime),
-      ).to.be.revertedWithCustomError(passportCredentialIssuerImpl, "UUPSUnauthorizedCallContext");
-    });
-
     it("should update template root time", async () => {
       const { passportCredentialIssuer } = deployedActors;
       const newTemplateRoot = 10;
@@ -180,15 +147,6 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       await expect(
         passportCredentialIssuer.connect(user1).setTemplateRoot(newTemplateRoot),
       ).to.be.revertedWithCustomError(passportCredentialIssuer, "OwnableUnauthorizedAccount");
-    });
-
-    it("should not update expiration time if caller is not proxy", async () => {
-      const { passportCredentialIssuerImpl } = deployedActors;
-      const newTemplateRoot = 10;
-
-      await expect(
-        passportCredentialIssuerImpl.setTemplateRoot(newTemplateRoot),
-      ).to.be.revertedWithCustomError(passportCredentialIssuerImpl, "UUPSUnauthorizedCallContext");
     });
 
     it("should update credential verifier", async () => {
@@ -233,18 +191,6 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
           .updateCredentialVerifiers([credentialCircuitId], [newVerifierAddress]),
       ).to.be.revertedWithCustomError(passportCredentialIssuer, "OwnableUnauthorizedAccount");
     });
-
-    it("should not update credential verifier if caller is not proxy", async () => {
-      const { passportCredentialIssuerImpl, user1 } = deployedActors;
-      const credentialCircuitId = "1";
-      const newVerifierAddress = await user1.getAddress();
-
-      await expect(
-        passportCredentialIssuerImpl
-          .connect(user1)
-          .updateCredentialVerifiers([credentialCircuitId], [newVerifierAddress]),
-      ).to.be.revertedWithCustomError(passportCredentialIssuerImpl, "UUPSUnauthorizedCallContext");
-    });
   });
 
   describe("View functions", () => {
@@ -253,200 +199,12 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       expect(await passportCredentialIssuer.getSigners()).to.deep.equal([await user1.getAddress()]);
     });
 
-    it("should not return when view function is called by non-proxy", async () => {
-      const { passportCredentialIssuerImpl } = deployedActors;
-      await expect(passportCredentialIssuerImpl.getSigners()).to.be.revertedWithCustomError(
-        passportCredentialIssuerImpl,
-        "UUPSUnauthorizedCallContext",
-      );
-    });
 
     it("should return correct credential circuit verifier address", async () => {
       const { passportCredentialIssuer, credentialVerifier } = deployedActors;
       const credentialCircuitId = "credential_sha256";
       expect(await passportCredentialIssuer.credentialVerifiers(credentialCircuitId)).to.equal(
         credentialVerifier.target,
-      );
-    });
-
-    it("should not return when view function is called by non-proxy", async () => {
-      const { passportCredentialIssuerImpl } = deployedActors;
-      const credentialCircuitId = "credential_sha256";
-      await expect(
-        passportCredentialIssuerImpl.credentialVerifiers(credentialCircuitId),
-      ).to.be.revertedWithCustomError(passportCredentialIssuerImpl, "UUPSUnauthorizedCallContext");
-    });
-  });
-
-  describe("Upgradeabilitiy", () => {
-    it("should preserve state after upgrade", async () => {
-      const { passportCredentialIssuer, owner, identityLib } = deployedActors;
-
-      const credentialCircuitId = "credential_sha256";
-      const signersBefore = await passportCredentialIssuer.getSigners();
-      const credentialVerifierAddressBefore =
-        await passportCredentialIssuer.credentialVerifiers(credentialCircuitId);
-
-      const PassportIssuerCredentialV2Factory = await ethers.getContractFactory(
-        "testUpgradedPassportCredentialIssuerImplV1",
-        {
-          libraries: {
-            IdentityLib: identityLib.target,
-          },
-        },
-        owner,
-      );
-      const passportCredentialIssuerV2Implementation =
-        await PassportIssuerCredentialV2Factory.deploy();
-      await passportCredentialIssuerV2Implementation.waitForDeployment();
-
-      const passportCredentialIssuerAsImpl = await ethers.getContractAt(
-        "testUpgradedPassportCredentialIssuerImplV1",
-        passportCredentialIssuer.target,
-      );
-
-      await passportCredentialIssuerAsImpl
-        .connect(owner)
-        .upgradeToAndCall(
-          passportCredentialIssuerV2Implementation.target,
-          PassportIssuerCredentialV2Factory.interface.encodeFunctionData("initialize(bool)", [
-            true,
-          ]),
-        );
-
-      const passportCredentialIssuerV2 = await ethers.getContractAt(
-        "testUpgradedPassportCredentialIssuerImplV1",
-        passportCredentialIssuer.target,
-      );
-
-      expect(await passportCredentialIssuerV2.isTest()).to.equal(true);
-
-      expect(await passportCredentialIssuerV2.getSigners()).to.deep.equal(signersBefore);
-      expect(await passportCredentialIssuerV2.credentialVerifiers(credentialCircuitId)).to.equal(
-        credentialVerifierAddressBefore,
-      );
-
-      const implementationSlot =
-        "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
-      const implementationAddress = await ethers.provider.getStorage(
-        passportCredentialIssuer.target,
-        implementationSlot,
-      );
-      expect(ethers.zeroPadValue(implementationAddress, 32)).to.equal(
-        ethers.zeroPadValue(passportCredentialIssuerV2Implementation.target.toString(), 32),
-      );
-    });
-
-    it("should not allow non-proxy to upgrade implementation", async () => {
-      const { passportCredentialIssuer, passportCredentialIssuerImpl, identityLib, owner } =
-        deployedActors;
-
-      const PassportCredentialIssuerV2Factory = await ethers.getContractFactory(
-        "testUpgradedPassportCredentialIssuerImplV1",
-        {
-          libraries: {
-            IdentityLib: identityLib.target,
-          },
-        },
-        owner,
-      );
-      const passportCredentialIssuerV2Implementation =
-        await PassportCredentialIssuerV2Factory.deploy();
-      await passportCredentialIssuerV2Implementation.waitForDeployment();
-
-      const passportCredentialIssuerAsImpl = await ethers.getContractAt(
-        "testUpgradedPassportCredentialIssuerImplV1",
-        passportCredentialIssuer.target,
-      );
-
-      await expect(
-        passportCredentialIssuerImpl
-          .connect(owner)
-          .upgradeToAndCall(
-            passportCredentialIssuerV2Implementation.target,
-            PassportCredentialIssuerV2Factory.interface.encodeFunctionData("initialize(bool)", [
-              true,
-            ]),
-          ),
-      ).to.be.revertedWithCustomError(
-        passportCredentialIssuerAsImpl,
-        "UUPSUnauthorizedCallContext",
-      );
-    });
-
-    it("should not allow non-owner to upgrade implementation", async () => {
-      const { passportCredentialIssuer, owner, user1, identityLib } = deployedActors;
-
-      const PassportCredentialIssuerV2Factory = await ethers.getContractFactory(
-        "testUpgradedPassportCredentialIssuerImplV1",
-        {
-          libraries: {
-            IdentityLib: identityLib.target,
-          },
-        },
-        owner,
-      );
-      const passportCredentialIssuerV2Implementation =
-        await PassportCredentialIssuerV2Factory.deploy();
-      await passportCredentialIssuerV2Implementation.waitForDeployment();
-
-      const passportCredentialIssuerAsImpl = await ethers.getContractAt(
-        "testUpgradedPassportCredentialIssuerImplV1",
-        passportCredentialIssuer.target,
-      );
-
-      await expect(
-        passportCredentialIssuerAsImpl
-          .connect(user1)
-          .upgradeToAndCall(
-            passportCredentialIssuerV2Implementation.target,
-            PassportCredentialIssuerV2Factory.interface.encodeFunctionData("initialize(bool)", [
-              true,
-            ]),
-          ),
-      ).to.be.revertedWithCustomError(passportCredentialIssuerAsImpl, "OwnableUnauthorizedAccount");
-    });
-
-    it("should not allow implementation contract to be initialized directly", async () => {
-      const { passportCredentialIssuer, owner, identityLib } = deployedActors;
-
-      const PassportCredentialIssuerV2Factory = await ethers.getContractFactory(
-        "testUpgradedPassportCredentialIssuerImplV1",
-        {
-          libraries: {
-            IdentityLib: identityLib.target,
-          },
-        },
-        owner,
-      );
-      const passportCredentialIssuerV2Implementation =
-        await PassportCredentialIssuerV2Factory.deploy();
-      await passportCredentialIssuerV2Implementation.waitForDeployment();
-
-      await expect(
-        passportCredentialIssuerV2Implementation.initialize(true),
-      ).to.be.revertedWithCustomError(passportCredentialIssuer, "InvalidInitialization");
-    });
-
-    it("should not allow direct calls to implementation contract", async () => {
-      const { owner, identityLib } = deployedActors;
-
-      const PassportCredentialIssuerV2Factory = await ethers.getContractFactory(
-        "testUpgradedPassportCredentialIssuerImplV1",
-        {
-          libraries: {
-            IdentityLib: identityLib.target,
-          },
-        },
-        owner,
-      );
-      const passportCredentialIssuerV2Implementation =
-        await PassportCredentialIssuerV2Factory.deploy();
-      await passportCredentialIssuerV2Implementation.waitForDeployment();
-
-      await expect(passportCredentialIssuerV2Implementation.isTest()).to.be.revertedWithCustomError(
-        passportCredentialIssuerV2Implementation,
-        "UUPSUnauthorizedCallContext",
       );
     });
   });

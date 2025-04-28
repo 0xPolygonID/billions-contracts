@@ -48,7 +48,7 @@ export const PassportCredentialIssuerProxyModule = buildModule(
  * This is the second module that will be run, and it is also the only module exported from this file.
  * It creates a contract instance for the Demo contract using the proxy from the previous module.
  */
-export default buildModule("PassportCredentialIssuerModule", (m) => {
+export const PassportCredentialIssuerModule = buildModule("PassportCredentialIssuerModule", (m) => {
   // Get the proxy and proxy admin from the previous module.
   const { proxy, proxyAdmin } = m.useModule(PassportCredentialIssuerProxyModule);
 
@@ -83,3 +83,5 @@ export default buildModule("PassportCredentialIssuerModule", (m) => {
   // so that they can be used by other modules, or in tests and scripts.
   return { passportCredentialIssuer, proxy, proxyAdmin };
 });
+
+export default PassportCredentialIssuerModule;

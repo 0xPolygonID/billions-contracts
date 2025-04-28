@@ -5,8 +5,8 @@ import type { PublicSignals, Groth16Proof } from "snarkjs";
 
 // Contract imports
 import {
-  PassportCredentialIssuerImplV1,
   AnonAadhaarCredentialIssuerImplV1,
+  PassportCredentialIssuer,
 } from "../../typechain-types";
 
 export type CircuitProof = any;
@@ -32,8 +32,7 @@ export interface BaseActors {
 
 export interface DeployedActors extends BaseActors {
   mockPassport: PassportData;
-  passportCredentialIssuer: PassportCredentialIssuerImplV1;
-  passportCredentialIssuerImpl: PassportCredentialIssuerImplV1;
+  passportCredentialIssuer: PassportCredentialIssuer;
   credentialVerifier: CredentialVerifier;
   expirationTime: bigint;
   templateRoot: bigint;

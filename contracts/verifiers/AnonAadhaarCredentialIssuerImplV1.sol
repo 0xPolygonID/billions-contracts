@@ -92,9 +92,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         $.templateRoot = templateRoot;
         $.anonAadhaarVerifier = anonAadhaarVerifier;
 
-        for (uint256 i = 0; i < publicKeysHashes.length; i++) {
-            $.publicKeysHashes[publicKeysHashes[i]] = true;
-        }
+        _addPublicKeyHashesBatch(publicKeysHashes);
     }
 
     /**
@@ -212,6 +210,10 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
      * @param publicKeysHashes The array of public key hashes to add.
      */
     function addPublicKeyHashesBatch(uint256[] calldata publicKeysHashes) public onlyProxy onlyOwner {
+        _addPublicKeyHashesBatch(publicKeysHashes);
+    }
+
+    function _addPublicKeyHashesBatch(uint256[] calldata publicKeysHashes) internal {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
         for (uint256 i = 0; i < publicKeysHashes.length; i++) {
             $.publicKeysHashes[publicKeysHashes[i]] = true;

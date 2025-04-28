@@ -1,4 +1,4 @@
-import hre, { ethers, upgrades } from "hardhat";
+import hre, { ethers, ignition, upgrades } from "hardhat";
 import { Contract, Signer } from "ethers";
 import { PassportData, genMockPassportData } from "passport-utils";
 import {
@@ -11,19 +11,112 @@ import { poseidonContract } from "circomlibjs";
 // Verifier artifacts
 import CredentialVerifierArtifact from "../../artifacts/contracts/verifiers/credential/Verifier_credential_sha256.sol/Verifier_credential_sha256.json";
 import AnonAadhaarlVerifierArtifact from "../../artifacts/contracts/verifiers/anonAadhaarV1/Verifier_anon_aadhaar_v1.sol/Verifier_anon_aadhaar_v1.json";
-import { Id, DID } from "@iden3/js-iden3-core";
-import { Merklizer } from "@iden3/js-jsonld-merklization";
 
-import {
-  PassportCredentialIssuer,
-  PassportCredentialIssuerImplV1,
-  AnonAadhaarCredentialIssuerImplV1,
-} from "../../typechain-types";
+import { AnonAadhaarCredentialIssuerImplV1, PassportCredentialIssuer } from "../../typechain-types";
 import { chainIdInfoMap } from "./constants";
+import {
+  contractsInfo,
+  TRANSPARENT_UPGRADEABLE_PROXY_ABI,
+  TRANSPARENT_UPGRADEABLE_PROXY_BYTECODE,
+} from "../../helpers/constants";
+import Create2AddressAnchorModule from "../../ignition/modules/create2AddressAnchor/create2AddressAnchor";
+import { buildModule } from "@nomicfoundation/ignition-core";
+
+const PassportCredentialIssuerProxyModule = buildModule(
+  "PassportCredentialIssuerProxyModule",
+  (m) => {
+    const { create2AddressAnchor } = m.useModule(Create2AddressAnchorModule);
+
+    const proxyAdminOwner = m.getAccount(0);
+
+    const proxy = m.contract(
+      "TransparentUpgradeableProxy",
+      {
+        abi: TRANSPARENT_UPGRADEABLE_PROXY_ABI,
+        contractName: "TransparentUpgradeableProxy",
+        bytecode: TRANSPARENT_UPGRADEABLE_PROXY_BYTECODE,
+        sourceName: "",
+        linkReferences: {},
+      },
+      [
+        create2AddressAnchor,
+        proxyAdminOwner,
+        contractsInfo.PASSPORT_CREDENTIAL_ISSUER.create2Calldata,
+      ],
+    );
+
+    const proxyAdminAddress = m.readEventArgument(proxy, "AdminChanged", "newAdmin");
+    const proxyAdmin = m.contractAt("ProxyAdmin", proxyAdminAddress);
+    return { proxyAdmin, proxy };
+  },
+);
+
+const PassportCredentialIssuerModule = buildModule("PassportCredentialIssuerModule", (m) => {
+  const { proxy, proxyAdmin } = m.useModule(PassportCredentialIssuerProxyModule);
+
+  const passportCredentialIssuer = m.contractAt(
+    contractsInfo.PASSPORT_CREDENTIAL_ISSUER.name,
+    proxy,
+  );
+
+  return { passportCredentialIssuer, proxy, proxyAdmin };
+});
+
+const UpgradePassportCredentialIssuerModule = buildModule(
+  "UpgradePassportCredentialIssuerModule",
+  (m) => {
+    const identityLibAddress = m.getParameter("identityLibAddress");
+    const stateContractAddress = m.getParameter("stateContractAddress");
+    const credentialVerifierAddress = m.getParameter("credentialVerifierAddress");
+    const signerAddress = m.getParameter("signerAddress");
+    const circuitId = m.getParameter("circuitId");
+    const idType = m.getParameter("idType");
+
+    const identityLib = m.contractAt("IdentityLib", identityLibAddress);
+
+    const proxyAdminOwner = m.getAccount(0);
+
+    const { proxy, proxyAdmin } = m.useModule(PassportCredentialIssuerProxyModule);
+
+    const newPassportCredentialIssuerImpl = m.contract("PassportCredentialIssuer", [], {
+      libraries: {
+        IdentityLib: identityLib,
+      },
+    });
+
+    const expirationTime = BigInt(60 * 60 * 24 * 7); // 1 week
+    const templateRoot = BigInt(
+      "3532467563022391950170321692541635800576371972220969617740093781820662149190",
+    );
+
+    const initializeData = m.encodeFunctionCall(
+      newPassportCredentialIssuerImpl,
+      "initialize(uint256,uint256,string[],address[],address[],address,bytes2,address)",
+      [
+        expirationTime,
+        templateRoot,
+        [circuitId],
+        [credentialVerifierAddress],
+        [signerAddress],
+        stateContractAddress,
+        idType,
+        proxyAdminOwner,
+      ],
+    );
+
+    m.call(proxyAdmin, "upgradeAndCall", [proxy, newPassportCredentialIssuerImpl, initializeData], {
+      from: proxyAdminOwner,
+    });
+
+    return {
+      proxyAdmin,
+      proxy,
+    };
+  },
+);
 
 export async function deploySystemFixtures(): Promise<DeployedActors> {
-  let passportCredentialIssuerProxy: PassportCredentialIssuer;
-  let passportCredentialIssuerImpl: PassportCredentialIssuerImplV1;
+  let passportCredentialIssuer: any;
   let credentialVerifier: CredentialVerifier;
   let owner: Signer;
   let user1: Signer;
@@ -75,47 +168,45 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
     poseidon4Elements.target as string,
   );
 
-  // Deploy PassportCredentialIssuer
-  const PassportCredentialIssuerImplFactory = await ethers.getContractFactory(
-    "PassportCredentialIssuer",
-    {
-      libraries: {
-        IdentityLib: identityLib.target,
-      },
-    },
-    owner,
-  );
-  passportCredentialIssuerImpl = await PassportCredentialIssuerImplFactory.deploy();
-  await passportCredentialIssuerImpl.waitForDeployment();
-
   const expirationTime = BigInt(60 * 60 * 24 * 7); // 1 week
   const templateRoot = BigInt(
     "3532467563022391950170321692541635800576371972220969617740093781820662149190",
   );
-  const passportCredentialIssuerInitData =
-    passportCredentialIssuerImpl.interface.encodeFunctionData("initializeIssuer", [
-      expirationTime,
-      templateRoot,
-      ["credential_sha256"],
-      [credentialVerifier.target],
-      [await user1.getAddress()],
-      stContracts.state.target,
-      stContracts.defaultIdType,
-    ]);
-  const passportCredentialIssuerProxyFactory = await ethers.getContractFactory(
-    "PassportCredentialIssuer",
-    owner,
-  );
-  passportCredentialIssuerProxy = await passportCredentialIssuerProxyFactory.deploy(
-    passportCredentialIssuerImpl.target,
-    passportCredentialIssuerInitData,
-  );
-  await passportCredentialIssuerProxy.waitForDeployment();
 
-  const passportCredentialIssuerContract = (await ethers.getContractAt(
-    "PassportCredentialIssuerImplV1",
-    passportCredentialIssuerProxy.target,
-  )) as PassportCredentialIssuerImplV1;
+  passportCredentialIssuer = (await ignition.deploy(PassportCredentialIssuerModule)).proxy;
+  await passportCredentialIssuer.waitForDeployment();
+
+  const passportCredentialIssuerAddress = await passportCredentialIssuer.getAddress();
+
+  console.log(
+    `PassportCredentialIssuer (create2AddressAnchor implementation) contract deployed to address ${passportCredentialIssuerAddress} from ${await owner.getAddress()}`,
+  );
+
+  passportCredentialIssuer = (
+    await ignition.deploy(UpgradePassportCredentialIssuerModule, {
+      parameters: {
+        UpgradePassportCredentialIssuerModule: {
+          identityLibAddress: identityLib.target as string,
+          stateContractAddress: stContracts.state.target as string,
+          idType: stContracts.defaultIdType,
+          credentialVerifierAddress: credentialVerifier.target as string,
+          circuitId: "credential_sha256",
+          signerAddress: await user1.getAddress(),
+        },
+      },
+    })
+  ).proxy;
+
+  await passportCredentialIssuer.waitForDeployment();
+
+  passportCredentialIssuer = (await ethers.getContractAt(
+    "PassportCredentialIssuer",
+    await passportCredentialIssuer.getAddress(),
+  )) as PassportCredentialIssuer;
+
+  console.log(
+    `PassportCredentialIssuer (proxy upgraded) contract deployed to address ${await passportCredentialIssuer.getAddress()} from ${await owner.getAddress()}`,
+  );
 
   return {
     credentialVerifier,
@@ -123,8 +214,7 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
     user1,
     user2,
     mockPassport,
-    passportCredentialIssuer: passportCredentialIssuerContract,
-    passportCredentialIssuerImpl: passportCredentialIssuerImpl,
+    passportCredentialIssuer: passportCredentialIssuer,
     state: stContracts.state,
     identityLib,
     idType: stContracts.defaultIdType,

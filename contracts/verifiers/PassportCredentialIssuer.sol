@@ -132,7 +132,7 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
     // Initializer
     // ====================================================
 
-    function initializeIssuer(
+    function initialize(
         uint256 expirationTime,
         uint256 templateRoot,
         string[] calldata credentialCircuitIds,
