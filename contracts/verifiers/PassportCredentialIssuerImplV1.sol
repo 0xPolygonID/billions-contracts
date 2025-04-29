@@ -29,6 +29,8 @@ error InvalidSignerPassportSignatureProof(address signer);
 error NoCredentialCircuitForRequestId(uint256 requestId);
 error ImageHashIsNotWhitelisted(bytes32 imageHash);
 error InvalidAttestation();
+error InvalidSignerAddress();
+error InvalidAttestationUserDataLength();
 
 /**
  * @dev Address ownership credential issuer.
@@ -181,10 +183,18 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
             revert InvalidAttestation();
         }
 
+        if (userData.length < 20) {
+            revert InvalidAttestationUserDataLength();
+        }
+
         // 1. decode user data
         address userDataDecoded;
         assembly {
             userDataDecoded := mload(add(userData, 20))
+        }
+
+        if (userDataDecoded == address(0)) {
+            revert InvalidSignerAddress();
         }
 
         // 2. add signer
