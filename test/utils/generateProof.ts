@@ -14,7 +14,7 @@ import { PassportData, generateCircuitInputsCredential } from "passport-utils";
 const credentialCircuits: CircuitArtifacts = {
   credential_sha256: {
     wasm: "./circuits/credential_sha256/credential_sha256.wasm",
-    zkey: "./circuits/credential_sha256/credential_sha256_final.zkey",
+    zkey: "./circuits/credential_sha256/credential_sha256.zkey",
     vkey: "./circuits/credential_sha256/credential_sha256_vkey.json",
   },
 };
