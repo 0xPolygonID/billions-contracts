@@ -17,5 +17,12 @@
   "DeployCredentialVerifiersV2#Verifier_credential_sha224": "0x638cfb7017e5cAe64a3e4BF61D753741c90EC14B",
   "DeployCredentialVerifiersV2#Verifier_credential_sha256": "0x2711f33Cf004f8947E3D1540c407Ea602691E661",
   "DeployCredentialVerifiersV2#Verifier_credential_sha384": "0xc89fA32a60aa91f0AbB2225c9e338bf8F634F20d",
-  "DeployCredentialVerifiersV2#Verifier_credential_sha512": "0xFA3b7fA55397dEAAC266D6Fa0de6Dbd718433D27"
+  "DeployCredentialVerifiersV2#Verifier_credential_sha512": "0xFA3b7fA55397dEAAC266D6Fa0de6Dbd718433D27",
+  "DeployAnonAadhaarCredentialIssuer#PoseidonUnit3L": "0x5Bc89782d5eBF62663Df7Ce5fb4bc7408926A240",
+  "DeployAnonAadhaarCredentialIssuer#PoseidonUnit4L": "0x0695cF2c6dfc438a4E40508741888198A6ccacC2",
+  "DeployAnonAadhaarCredentialIssuer#SmtLib": "0x682364078e26C1626abD2B95109D2019E241F0F6",
+  "DeployAnonAadhaarVerifier#Verifier_anon_aadhaar_v1": "0x54792891e9ea0DFA43721b7bECd0E2BEAe913696",
+  "DeployAnonAadhaarCredentialIssuer#IdentityLib": "0x8E6cE845A94F7e8130DD17895dFeE245Ac0c6632",
+  "DeployAnonAadhaarCredentialIssuer#AnonAadhaarCredentialIssuerImplV1": "0x5A4D39368268D20f548729aE7340918Ad04Cf6f0",
+  "DeployAnonAadhaarCredentialIssuer#AnonAadhaarCredentialIssuer": "0x15c7373805B01946dD5E7917DA405808145a8d38"
 }

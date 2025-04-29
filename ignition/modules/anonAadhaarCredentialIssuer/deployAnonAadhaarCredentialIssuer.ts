@@ -37,8 +37,8 @@ export default buildModule("DeployAnonAadhaarCredentialIssuer", (m) => {
     13618331910493816144112635202719102044017718006809336112633915446302833345855n;
 
   // TODO (illia-korotia): move to dynamic config [chainId] => [stateContractAddress, idType]
-  const stateContractAddress = "0x1a4cC30f2aA0377b0c3bc9848766D90cb4404124";
-  const idType = "0x0113";
+  const stateContractAddress = "0x3C9acB2205Aa72A05F6D77d708b5Cf85FCa3a896"; //"0x1a4cC30f2aA0377b0c3bc9848766D90cb4404124";
+  const idType = "0x01B2";
 
   const { deployedContract: anonAadhaarVerifier } = m.useModule(DeployAnonAadhaarVerifierModule);
 
