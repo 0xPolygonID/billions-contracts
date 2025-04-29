@@ -8,7 +8,7 @@ export default buildModule("UpgradePassportCredentialIssuer", (m) => {
 
   const deployedAddressesPath = path.join(
     __dirname,
-    `../deployments/chain-${networkName}/deployed_addresses.json`,
+    `../../deployments/chain-${networkName}/deployed_addresses.json`,
   );
   const deployedAddresses = JSON.parse(fs.readFileSync(deployedAddressesPath, "utf8"));
 
@@ -26,13 +26,13 @@ export default buildModule("UpgradePassportCredentialIssuer", (m) => {
     libraries: {
       IdentityLib: identityLib,
     },
-    id: "PassportCredentialIssuerImplV1_v1_0_1", // Update the version as needed
+    id: "PassportCredentialIssuerImplV1_v1_0_3", // Update the version as needed
   });
 
   const passportCredentialIssuerProxy = m.contractAt(
     "PassportCredentialIssuerImplV1",
     passportCredentialIssuerProxyAddress,
-    { id: "PassportCredentialIssuer_v1_0_1" }
+    { id: "PassportCredentialIssuer_v1_0_3" }
   );
 
   m.call(passportCredentialIssuerProxy, "upgradeToAndCall", [

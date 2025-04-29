@@ -31,8 +31,8 @@ const config: HardhatUserConfig = {
     "billions-main": {
       chainId: 45056,
       url: `${process.env.BILLIONS_MAIN_RPC_URL}`,
-      accounts: process.env.PRIVATE_KEY ? [`0x${process.env.PRIVATE_KEY}`] : DEFAULT_ACCOUNTS,
-      // ledgerAccounts: [`${process.env.LEDGER_ACCOUNT}`],
+      // accounts: process.env.PRIVATE_KEY ? [`0x${process.env.PRIVATE_KEY}`] : DEFAULT_ACCOUNTS,
+      ledgerAccounts: [`${process.env.LEDGER_ACCOUNT}`],
     },
     "billions-test": {
       chainId: 6913,
