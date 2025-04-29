@@ -1,0 +1,16 @@
+{
+  "PassportCredentialIssuerModule": {
+    "signerAddress":"0xDC3461f9f021dD904C71492EaBd86EaaF6dADbCb",
+    "stateContractAddress":"0xaea923d71Bc5ED3A622D4DfCF2f9C338889b1c70",
+    "idType":"0x0112",
+    "expirationTime": 604800,
+    "templateRoot":"3532467563022391950170321692541635800576371972220969617740093781820662149190"
+  },
+  "UpgradePassportCredentialIssuerV1_0_1": {
+    "signerAddress":"0xDC3461f9f021dD904C71492EaBd86EaaF6dADbCb",
+    "stateContractAddress":"0xaea923d71Bc5ED3A622D4DfCF2f9C338889b1c70",
+    "idType":"0x0112",
+    "expirationTime": 604800,
+    "templateRoot":"3532467563022391950170321692541635800576371972220969617740093781820662149190"
+  }
+}

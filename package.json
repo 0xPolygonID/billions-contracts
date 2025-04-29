@@ -14,8 +14,8 @@
     "upgrade:passportCredentialIssuer:polygon:amoy": "npx hardhat ignition deploy ignition/modules/passportCredentialIssuer/upgradePassportCredentialIssuer.ts --network polygon-amoy --strategy create2 --verify",
     "deploy:passportCredentialIssuer:billions:test": "npx hardhat ignition deploy ignition/modules/passportCredentialIssuer/deployPassportCredentialIssuer.ts --network billions-test --strategy create2 --verify",
     "upgrade:passportCredentialIssuer:billions:test": "npx hardhat ignition deploy ignition/modules/passportCredentialIssuer/upgradePassportCredentialIssuer.ts --network billions-test --strategy create2 --verify",
-    "deploy:passportCredentialIssuer:localhost": "npx hardhat ignition deploy ignition/modules/passportCredentialIssuer/deployPassportCredentialIssuer.ts --network localhost --strategy create2",
-    "upgrade:passportCredentialIssuer:localhost": "npx hardhat ignition deploy ignition/modules/passportCredentialIssuer/upgradePassportCredentialIssuer.ts --network localhost --strategy create2",
+    "deploy:passportCredentialIssuer:localhost": "npx hardhat ignition deploy ignition/modules/passportCredentialIssuer/deployPassportCredentialIssuer.ts --network localhost --strategy create2 --parameters ignition/modules/passportCredentialIssuer/parameters.json",
+    "upgrade:passportCredentialIssuer:localhost": "npx hardhat ignition deploy ignition/modules/passportCredentialIssuer/upgradePassportCredentialIssuer.ts --network localhost --parameters ignition/modules/passportCredentialIssuer/parameters.json",
     "setIssuerDID:anonAadhharCredentialIssuer:polygon:amoy": "npx hardhat run scripts/setCredentialIssuerAnonAadhaarCredentialIssuer.ts --network polygon-amoy"
   },
   "keywords": [],
