@@ -67,9 +67,10 @@ describe("Commitment Registration Tests", function () {
 
   describe("Verify passport", async () => {
     it("Should verify passport successfully", async () => {
-      const { passportCredentialIssuer, user1 } = deployedActors;
+      const { passportCredentialIssuer, user1, owner } = deployedActors;
 
       await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
+      await expect(passportCredentialIssuer.addTransactor(await owner.getAddress())).not.to.be.reverted;
 
       await expect(
         passportCredentialIssuer.addSigner(
@@ -140,9 +141,10 @@ describe("Commitment Registration Tests", function () {
     });
 
     it("Should not verify with passport current date expired", async () => {
-      const { passportCredentialIssuer, user1 } = deployedActors;
+      const { passportCredentialIssuer, user1, owner } = deployedActors;
 
       await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
+      await expect(passportCredentialIssuer.addTransactor(await owner.getAddress())).not.to.be.reverted;
 
       await expect(
         passportCredentialIssuer.addSigner(
@@ -193,9 +195,10 @@ describe("Commitment Registration Tests", function () {
     });
 
     it("Should not verify with passport issuance date expired", async () => {
-      const { passportCredentialIssuer, user1 } = deployedActors;
+      const { passportCredentialIssuer, user1, owner } = deployedActors;
 
       await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
+      await passportCredentialIssuer.addTransactor(await owner.getAddress());
 
       await expect(
         passportCredentialIssuer.addSigner(
@@ -246,9 +249,10 @@ describe("Commitment Registration Tests", function () {
     });
 
     it("Should not verify passport with invalid signer", async () => {
-      const { passportCredentialIssuer, user2 } = deployedActors;
+      const { passportCredentialIssuer, user2, owner } = deployedActors;
 
       await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
+      await expect(passportCredentialIssuer.addTransactor(await owner.getAddress())).not.to.be.reverted;
 
       await passportCredentialIssuer.addSigner(
         `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,

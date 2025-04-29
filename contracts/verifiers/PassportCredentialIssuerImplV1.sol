@@ -31,6 +31,7 @@ error ImageHashIsNotWhitelisted(bytes32 imageHash);
 error InvalidAttestation();
 error InvalidSignerAddress();
 error InvalidAttestationUserDataLength();
+error InvalidTransactor(address transactor);
 
 /**
  * @dev Address ownership credential issuer.
@@ -68,6 +69,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         EnumerableSet.AddressSet _signers;
         IAttestationValidator _attestationValidator;
         mapping(bytes32 imageHash => bool isApproved) _imageHashesWhitelist;
+        EnumerableSet.AddressSet _transactors;
     }
 
     struct UserData {
@@ -127,6 +129,11 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
      * @param signer The signer address.
      */
     event SignerAdded(address signer);
+    /**
+     * @notice Emitted when a new transactor is added.
+     * @param transactor The transactor address.
+     */
+    event TransactorAdded(address transactor);
 
     // ====================================================
     // Constructor
@@ -138,6 +145,14 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
      */
     constructor() {
         _disableInitializers();
+    }
+
+  /**
+     * @dev Throws if called by any account other than transactors.
+     */
+    modifier onlyTransactors() {
+        _checkTransactor();
+        _;
     }
 
     // ====================================================
@@ -164,7 +179,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         updateCredentialVerifiers(credentialCircuitIds, credentialVerifierAddresses);
     }
 
-    function addSigner(bytes memory attestation) public onlyProxy onlyOwner {
+    function addSigner(bytes memory attestation) public onlyProxy onlyTransactors {
         // TODO: in production we should pass "true" instead of "false"
         (
             bytes memory userData,
@@ -215,6 +230,19 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
      */
     function getSigners() external view onlyProxy returns (address[] memory) {
         return _getPassportCredentialIssuerV1Storage()._signers.values();
+    }
+
+    function addTransactor(address transactor) public onlyProxy onlyOwner {
+        PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
+        $._transactors.add(transactor);
+        emit TransactorAdded(transactor);
+    }
+
+    /**
+     * @notice Retrieves the transactors.
+     */
+    function getTransactors() external view onlyProxy returns (address[] memory) {
+        return _getPassportCredentialIssuerV1Storage()._transactors.values();
     }
 
     /**
@@ -408,6 +436,12 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
      */
     function removeImageHashFromWhitelist(bytes32 imageHash) public onlyProxy onlyOwner {
         _getPassportCredentialIssuerV1Storage()._imageHashesWhitelist[imageHash] = false;
+    }
+
+    function _checkTransactor() internal view {
+        if (!_getPassportCredentialIssuerV1Storage()._transactors.contains(_msgSender())) {
+            revert InvalidTransactor(_msgSender());
+        }
     }
 
     function _verifyPassportCredential(

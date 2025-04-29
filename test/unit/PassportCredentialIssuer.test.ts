@@ -108,8 +108,9 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
 
   describe("Update functions", () => {
     it("add signer for non whitelisted enclave imageHash", async function () {
-      const { passportCredentialIssuer } = deployedActors;
+      const { passportCredentialIssuer, owner } = deployedActors;
 
+      await passportCredentialIssuer.addTransactor(await owner.getAddress());
       await expect(
         passportCredentialIssuer.addSigner(
           `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
@@ -120,9 +121,10 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
     }).timeout(160000);
 
     it("add signer for whitelisted enclave imageHash", async function () {
-      const { passportCredentialIssuer } = deployedActors;
+      const { passportCredentialIssuer, owner } = deployedActors;
 
       await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
+      await passportCredentialIssuer.addTransactor(await owner.getAddress());
 
       await expect(
         passportCredentialIssuer.addSigner(
@@ -133,14 +135,28 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
         .withArgs("0xD840543405B0B835F078c59C54Fe66ddD7395C34");
     }).timeout(160000);
 
-    it("should not add signer if caller is not owner", async () => {
+    it("add transactor to contract", async function () {
+      const { passportCredentialIssuer, owner } = deployedActors;
+
+      await expect(passportCredentialIssuer.addTransactor(owner))
+        .to.emit(passportCredentialIssuer, "TransactorAdded")
+        .withArgs(await owner.getAddress());
+
+      expect(await passportCredentialIssuer.getTransactors()).to.deep.equal([
+        await owner.getAddress(),
+      ]);
+    });
+
+    it("should not add signer if caller is not a transactor", async () => {
       const { passportCredentialIssuer, user1 } = deployedActors;
 
       await expect(
         passportCredentialIssuer
           .connect(user1)
           .addSigner(`0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`),
-      ).to.be.revertedWithCustomError(passportCredentialIssuer, "OwnableUnauthorizedAccount");
+      )
+        .to.be.revertedWithCustomError(passportCredentialIssuer, "InvalidTransactor")
+        .withArgs(await user1.getAddress());
     });
 
     it("should not add signer if caller is not proxy", async () => {
