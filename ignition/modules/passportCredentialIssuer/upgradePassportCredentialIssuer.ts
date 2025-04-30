@@ -9,13 +9,19 @@ export const UpgradePassportCredentialIssuer = buildModule(
   (m) => {
     // Update the version as needed
     const networkName = hre.network.config.chainId;
+
     const deployedAddressesPath = path.join(
       __dirname,
-      `../../deployments/chain-${networkName}/deployed_addresses.json`,
+      `../deployments/chain-${networkName}/deployed_addresses.json`,
     );
     const deployedAddresses = JSON.parse(fs.readFileSync(deployedAddressesPath, "utf8"));
+    const identityLibAddress = deployedAddresses["PassportCredentialIssuerModule#IdentityLib"];
+    
+    const stateContractAddress = m.getParameter("stateContractAddress");
+    const idType = m.getParameter("idType");
+    const expirationTime = m.getParameter("expirationTime");
+    const templateRoot = m.getParameter("templateRoot");
 
-    const identityLibAddress = deployedAddresses["IdentityLibModule#IdentityLib"];
     const identityLib = m.contractAt("IdentityLib", identityLibAddress);
 
     const proxyAdminOwner = m.getAccount(0);
@@ -28,25 +34,10 @@ export const UpgradePassportCredentialIssuer = buildModule(
       },
     });
 
-    const signerAddress = m.getParameter("signerAddress");
-    const stateContractAddress = m.getParameter("stateContractAddress");
-    const idType = m.getParameter("idType");
-    const expirationTime = m.getParameter("expirationTime");
-    const templateRoot = m.getParameter("templateRoot");
-    
     const initializeData = m.encodeFunctionCall(
       newPassportCredentialIssuerImpl,
       "initialize(uint256,uint256,string[],address[],address[],address,bytes2,address)",
-      [
-        expirationTime,
-        templateRoot,
-        [],
-        [],
-        [signerAddress],
-        stateContractAddress,
-        idType,
-        proxyAdminOwner,
-      ],
+      [expirationTime, templateRoot, [], [], [], stateContractAddress, idType, proxyAdminOwner],
     );
 
     m.call(proxyAdmin, "upgradeAndCall", [proxy, newPassportCredentialIssuerImpl, initializeData], {

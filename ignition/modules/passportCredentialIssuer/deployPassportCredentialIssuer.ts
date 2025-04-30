@@ -49,6 +49,14 @@ export const PassportCredentialIssuerModule = buildModule("PassportCredentialIss
   const proxyAdminOwner = m.getAccount(0);
   const { proxy, proxyAdmin } = m.useModule(PassportCredentialIssuerProxyModule);
 
+  //const identityLibAddress = m.getParameter("identityLibAddress");
+
+  const stateContractAddress = m.getParameter("stateContractAddress");
+  const idType = m.getParameter("idType");
+  const expirationTime = m.getParameter("expirationTime");
+  const templateRoot = m.getParameter("templateRoot");
+
+  //const identityLib = m.contractAt("IdentityLib", identityLibAddress);
   const { identityLib } = m.useModule(IdentityLibModule);
 
   const newPassportCredentialIssuerImpl = m.contract("PassportCredentialIssuer", [], {
@@ -56,12 +64,6 @@ export const PassportCredentialIssuerModule = buildModule("PassportCredentialIss
       IdentityLib: identityLib,
     },
   });
-
-  const signerAddress = m.getParameter("signerAddress");
-  const stateContractAddress = m.getParameter("stateContractAddress");
-  const idType = m.getParameter("idType");
-  const expirationTime = m.getParameter("expirationTime");
-  const templateRoot = m.getParameter("templateRoot");
 
   const initializeData = m.encodeFunctionCall(
     newPassportCredentialIssuerImpl,
@@ -71,7 +73,7 @@ export const PassportCredentialIssuerModule = buildModule("PassportCredentialIss
       templateRoot,
       [],
       [],
-      [signerAddress],
+      [],
       stateContractAddress,
       idType,
       proxyAdminOwner,
