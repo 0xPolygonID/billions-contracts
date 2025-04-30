@@ -56,7 +56,9 @@ export const PassportCredentialIssuerModule = buildModule("PassportCredentialIss
   const expirationTime = m.getParameter("expirationTime");
   const templateRoot = m.getParameter("templateRoot");
 
-  //const identityLib = m.contractAt("IdentityLib", identityLibAddress);
+  // const identityLibAddress = m.getParameter("identityLibAddress");
+  // const identityLib = m.contractAt("IdentityLib", identityLibAddress);
+
   const { identityLib } = m.useModule(IdentityLibModule);
 
   const newPassportCredentialIssuerImpl = m.contract("PassportCredentialIssuer", [], {

@@ -111,7 +111,6 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
     await ignition.deploy(PassportCredentialIssuerModule, {
       parameters: {
         PassportCredentialIssuerModule: {
-          // identityLibAddress: await identityLib.getAddress(),
           stateContractAddress: stContracts.state.target as string,
           idType: stContracts.defaultIdType,
           expirationTime: expirationTime,
