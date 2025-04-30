@@ -14,7 +14,8 @@
     "deploy:passport:issuer:billions:test": "npx hardhat ignition deploy ignition/modules/passportCredentialIssuer/deployPassportCredentialIssuer.ts --network billions-test --verify",
     "deploy:passport:credential:verifiers:billions:test": "npx hardhat ignition deploy ignition/modules/passportCredentialIssuer/deployCredentialVerifiers.ts --network billions-test --verify",
     "update:passport:issuer:credential:verifiers:billions:test": "npx hardhat run scripts/updateVerifiersPassportCredentialIssuer.ts --network billions-test",
-    "setIssuerDID:anonAadhharCredentialIssuer:polygon:amoy": "npx hardhat run scripts/setCredentialIssuerAnonAadhaarCredentialIssuer.ts --network polygon-amoy"
+    "setIssuerDID:anonAadhharCredentialIssuer:polygon:amoy": "npx hardhat run scripts/setCredentialIssuerAnonAadhaarCredentialIssuer.ts --network polygon-amoy",
+    "setIssuerDID:anonAadhharCredentialIssuer:billions:test": "npx hardhat run scripts/setCredentialIssuerAnonAadhaarCredentialIssuer.ts --network billions-test"
   },
   "keywords": [],
   "author": "",
