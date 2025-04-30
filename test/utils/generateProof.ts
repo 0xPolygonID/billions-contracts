@@ -19,10 +19,17 @@ const credentialCircuits: CircuitArtifacts = {
   },
 };
 
-export async function generateCredentialProof(passportData: PassportData, currentDate?: Date, issuanceDate?: Date): Promise<CircuitProof> {
+export async function generateCredentialProof(
+  passportData: PassportData,
+  currentDate?: Date,
+  issuanceDate?: Date,
+): Promise<CircuitProof> {
   console.log(CYAN, "=== Start generateCredentialProof ===", RESET);
-  const credenditalCircuitInputs: CircuitSignals =
-    await generateCircuitInputsCredential(passportData, currentDate, issuanceDate);
+  const credenditalCircuitInputs: CircuitSignals = await generateCircuitInputsCredential(
+    passportData,
+    currentDate,
+    issuanceDate,
+  );
   const startTime = performance.now();
   const credentialProof = await groth16.fullProve(
     credenditalCircuitInputs,

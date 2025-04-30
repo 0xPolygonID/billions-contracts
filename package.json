@@ -38,7 +38,7 @@
     "cose-js": "^0.9.0",
     "dotenv": "^16.4.7",
     "hardhat": "^2.22.19",
-    "passport-utils": "git+https://github.com/0xPolygonID/passport-utils.git",
+    "passport-utils": "git+https://github.com/0xPolygonID/passport-utils.git#6b96cea",
     "prettier": "^3.5.3",
     "prettier-plugin-solidity": "^1.4.2",
     "solhint": "^5.0.5",
