@@ -179,47 +179,11 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         updateCredentialVerifiers(credentialCircuitIds, credentialVerifierAddresses);
     }
 
-    function addSigner(bytes memory attestation) public onlyProxy onlyTransactors {
-        // TODO: in production we should pass "true" instead of "false"
-        (
-            bytes memory userData,
-            bytes32 imageHash,
-            bool validated
-        ) = _getPassportCredentialIssuerV1Storage()._attestationValidator.validateAttestation(
-                attestation,
-                false
-            );
-
-        if (!isWhitelistedImageHash(imageHash)) {
-            revert ImageHashIsNotWhitelisted(imageHash);
-        }
-
-        if (!validated) {
-            revert InvalidAttestation();
-        }
-
-        if (userData.length < 20) {
-            revert InvalidAttestationUserDataLength();
-        }
-
-        // 1. decode user data
-        address userDataDecoded;
-        assembly {
-            userDataDecoded := mload(add(userData, 20))
-        }
-
-        if (userDataDecoded == address(0)) {
-            revert InvalidSignerAddress();
-        }
-
-        // 2. add signer
-        PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
-        $._signers.add(userDataDecoded);
-        emit SignerAdded(userDataDecoded);
-    }
-
-    //TODO: remove this function in production
-    function addSignerDev(address signer) public onlyProxy onlyOwner {
+    /**
+     * @notice Adds a signer to the contract.
+     * @param signer The address of the signer to add.
+     */
+    function addSigner(address signer) public onlyProxy onlyTransactors {
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
         $._signers.add(signer);
         emit SignerAdded(signer);

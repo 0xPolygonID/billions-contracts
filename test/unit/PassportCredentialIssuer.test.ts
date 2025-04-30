@@ -107,34 +107,6 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
   });
 
   describe("Update functions", () => {
-    it("add signer for non whitelisted enclave imageHash", async function () {
-      const { passportCredentialIssuer, owner } = deployedActors;
-
-      await passportCredentialIssuer.addTransactor(await owner.getAddress());
-      await expect(
-        passportCredentialIssuer.addSigner(
-          `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
-        ),
-      )
-        .to.revertedWithCustomError(passportCredentialIssuer, "ImageHashIsNotWhitelisted")
-        .withArgs(imageHash);
-    }).timeout(160000);
-
-    it("add signer for whitelisted enclave imageHash", async function () {
-      const { passportCredentialIssuer, owner } = deployedActors;
-
-      await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
-      await passportCredentialIssuer.addTransactor(await owner.getAddress());
-
-      await expect(
-        passportCredentialIssuer.addSigner(
-          `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
-        ),
-      )
-        .to.emit(passportCredentialIssuer, "SignerAdded")
-        .withArgs("0xD840543405B0B835F078c59C54Fe66ddD7395C34");
-    }).timeout(160000);
-
     it("add transactor to contract", async function () {
       const { passportCredentialIssuer, owner } = deployedActors;
 
@@ -153,19 +125,17 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       await expect(
         passportCredentialIssuer
           .connect(user1)
-          .addSigner(`0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`),
+          .addSigner(await user1.getAddress()),
       )
         .to.be.revertedWithCustomError(passportCredentialIssuer, "InvalidTransactor")
         .withArgs(await user1.getAddress());
     });
 
     it("should not add signer if caller is not proxy", async () => {
-      const { passportCredentialIssuerImpl } = deployedActors;
+      const { passportCredentialIssuerImpl, user1 } = deployedActors;
 
       await expect(
-        passportCredentialIssuerImpl.addSigner(
-          `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
-        ),
+        passportCredentialIssuerImpl.addSigner(await user1.getAddress()),
       ).to.be.revertedWithCustomError(passportCredentialIssuerImpl, "UUPSUnauthorizedCallContext");
     });
 
