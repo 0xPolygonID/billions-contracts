@@ -38,7 +38,7 @@ export default buildModule("DeployPassportCredentialIssuer", (m) => {
   const idType = "0x01B2"; // "0x0113";
   const expirationTime = BigInt(60 * 60 * 24 * 7); // 1 week
   const templateRoot = BigInt(
-    "3532467563022391950170321692541635800576371972220969617740093781820662149190",
+    "20928513831198457326281890226858421791230183718399181538736627412475062693938",
   );
   const initializeData = passportCredentialIssuerInterface.encodeFunctionData("initializeIssuer", [
     expirationTime,
