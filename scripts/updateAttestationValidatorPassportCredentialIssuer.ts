@@ -1,7 +1,7 @@
 import hre, { ethers } from "hardhat";
 import fs from "fs";
 import path from "path";
-import { deployCertificatesLib, deployNitroAttestationValidator } from "../test/utils/deployment";
+import { deployCertificatesLib, deployCertificatesValidator, deployNitroAttestationValidator } from "../test/utils/deployment";
 
 async function main() {
   const networkName = hre.network.config.chainId;
@@ -20,7 +20,12 @@ async function main() {
   );
 
   const certificatesLib = await deployCertificatesLib();
+  const certificatesValidator = await deployCertificatesValidator(certificatesLib);
   const nitroAttestationValidator = await deployNitroAttestationValidator(await certificatesLib.getAddress());
+  
+  await nitroAttestationValidator.setCertificatesValidator(
+    await certificatesValidator.getAddress(),
+  );
 
   await passportCredentialIssuer.setAttestationValidator(nitroAttestationValidator);
 }
