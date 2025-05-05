@@ -45,13 +45,13 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         uint256 issuerDidHash;
         address anonAadhaarVerifier;
         mapping(uint256 => bool) publicKeysHashes;
-        mapping(uint256 => bool) nullifiers;
-        mapping(uint256 nullifier => HashIndexHashValue hashIndexHashValue) nullifierToHashIndexHashValue;
+        mapping(uint256 nullifier => HashIndexHashValueNullifier hashIndexHashValue) nullifiers;
     }
 
-    struct HashIndexHashValue {
+    struct HashIndexHashValueNullifier {
         uint256 hashIndex;
         uint256 hashValue;
+        bool isSet;
     }
 
     // check if the hash was calculated correctly
@@ -138,7 +138,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         }
         if (expirationDate <= block.timestamp) revert ProofExpired();
         if (!$.publicKeysHashes[pubKeyHash]) revert InvalidPubKeyHash();
-        if ($.nullifiers[nullifier]) revert NullifierAlreadyExists();
+        if ($.nullifiers[nullifier].isSet) revert NullifierAlreadyExists();
     }
 
     function _addHashAndTransit(uint256 hi, uint256 hv) private {
@@ -148,13 +148,12 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
 
     function _setNullifier(uint256 nullifier, uint256 hi, uint256 hv) private {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
-        $.nullifiers[nullifier] = true;
-        $.nullifierToHashIndexHashValue[nullifier] = HashIndexHashValue(hi, hv);
+        $.nullifiers[nullifier] = HashIndexHashValueNullifier(hi, hv, true);
     }
 
     function nullifierExists(uint256 nullifier) external view returns (bool) {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
-        return $.nullifiers[nullifier];
+        return $.nullifiers[nullifier].isSet;
     }
 
     function _afterProofSubmit(
@@ -202,9 +201,8 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
      */
     function cleanNullifier(uint256 nullifier) public onlyProxy onlyOwner {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
-        if (!$.nullifiers[nullifier]) revert NullifierDoesNotExist();
-        $.nullifiers[nullifier] = false;
-        $.nullifierToHashIndexHashValue[nullifier] = HashIndexHashValue(0, 0);
+        if (!$.nullifiers[nullifier].isSet) revert NullifierDoesNotExist();
+        $.nullifiers[nullifier] = HashIndexHashValueNullifier(0, 0, false);
         emit NullifierCleaned(nullifier);
     }
 

@@ -55,18 +55,18 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
     struct PassportCredentialIssuerV1Storage {
         uint256 _expirationTime;
         uint256 _templateRoot;
-        mapping(uint256 => bool) _nullifiers;
         mapping(string circuitId => address verifier) _credentialVerifiers;
         mapping(uint256 requestId => string circuitId) _credentialRequestIdToCircuitId;
         mapping(string circuitId => uint256 requestId) _credentialCircuitIdToRequestId;
         uint256 _requestIds;
         EnumerableSet.AddressSet _signers;
-        mapping(uint256 nullifier => HashIndexHashValue hashIndexHashValue) _nullifierToHashIndexHashValue;
+        mapping(uint256 nullifier => HashIndexHashValueNullifier hashIndexHashValue) _nullifiers;
     }
 
-    struct HashIndexHashValue {
+    struct HashIndexHashValueNullifier {
         uint256 hashIndex;
         uint256 hashValue;
+        bool isSet;
     }
 
     struct PassportCredentialMessage {
@@ -272,13 +272,12 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
 
     function cleanNullifier(uint256 nullifier) external onlyOwner {
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
-        require($._nullifiers[nullifier], "Nullifier does not exist");
-        $._nullifiers[nullifier] = false;
-        $._nullifierToHashIndexHashValue[nullifier] = HashIndexHashValue(0, 0);
+        require($._nullifiers[nullifier].isSet, "Nullifier does not exist");
+        $._nullifiers[nullifier] = HashIndexHashValueNullifier(0, 0, false);
     }
 
     function nullifierExists(uint256 nullifier) external view returns (bool) {
-        return _getPassportCredentialIssuerV1Storage()._nullifiers[nullifier];
+        return _getPassportCredentialIssuerV1Storage()._nullifiers[nullifier].isSet;
     }
 
     /// @notice Submits a ZKP response V2
@@ -381,7 +380,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         if (issuanceDate + $._expirationTime < block.timestamp)
             revert IssuanceDateExpired(issuanceDate);
 
-        if ($._nullifiers[nullifier]) revert NullifierAlreadyExists(nullifier);
+        if ($._nullifiers[nullifier].isSet) revert NullifierAlreadyExists(nullifier);
     }
 
     function _addHashAndTransit(uint256 hi, uint256 hv) internal {
@@ -391,8 +390,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
 
     function _setNullifier(uint256 nullifier, uint256 hi, uint256 hv) internal {
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
-        $._nullifiers[nullifier] = true;
-        $._nullifierToHashIndexHashValue[nullifier] = HashIndexHashValue(hi, hv);
+        $._nullifiers[nullifier] = HashIndexHashValueNullifier(hi, hv, true);
     }
 
     function _verifyCredentialProof(
