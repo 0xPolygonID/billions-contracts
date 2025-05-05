@@ -11,6 +11,7 @@ import {ICredentialCircuitVerifier} from "../interfaces/ICredentialCircuitVerifi
 import {CircuitConstants} from "../constants/CircuitConstants.sol";
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {DateTime} from "@quant-finance/solidity-datetime/contracts/DateTime.sol";
+import "hardhat/console.sol";
 
 error InvalidResponsesLength(uint256 length, uint256 expectedLength);
 error InvalidLinkId(uint256 linkId1, uint256 linkId2);
@@ -125,6 +126,7 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
      * @dev Prevents direct initialization of the implementation contract.
      */
     constructor() {
+        console.log("PassportCredentialIssuer constructor %s", address(this));
         _disableInitializers();
     }
 
@@ -142,6 +144,7 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         bytes2 idType,
         address owner
     ) public initializer {
+        console.log("PassportCredentialIssuer initialize %s", address(this));
         super.initialize(stateAddress, idType);
         __Ownable_init(owner);
 

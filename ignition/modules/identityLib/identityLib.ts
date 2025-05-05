@@ -1,25 +1,14 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 import { contractsInfo } from "../../../helpers/constants";
-import { Poseidon2Module, Poseidon3Module, Poseidon4Module } from "./libraries";
-
-export const SmtLibModule = buildModule("SmtLibModule", (m) => {
-  const { poseidon: poseidonUnit2L } = m.useModule(Poseidon2Module);
-  const { poseidon: poseidonUnit3L } = m.useModule(Poseidon3Module);
-
-  const smtLib = m.contract(contractsInfo.SMT_LIB.name, [], {
-    libraries: {
-      PoseidonUnit2L: poseidonUnit2L,
-      PoseidonUnit3L: poseidonUnit3L,
-    },
-  });
-
-  return { smtLib };
-});
 
 export const IdentityLibModule = buildModule("IdentityLibModule", (m) => {
-  const { smtLib } = m.useModule(SmtLibModule);
-  const { poseidon: poseidonUnit3L } = m.useModule(Poseidon3Module);
-  const { poseidon: poseidonUnit4L } = m.useModule(Poseidon4Module);
+  const poseidon3ElementAddress = m.getParameter("poseidon3ElementAddress");
+  const poseidon4ElementAddress = m.getParameter("poseidon4ElementAddress");
+  const smtLibAddress = m.getParameter("smtLibAddress");
+
+  const smtLib = m.contractAt(contractsInfo.SMT_LIB.name, smtLibAddress);
+  const poseidonUnit3L = m.contractAt(contractsInfo.POSEIDON_3.name, poseidon3ElementAddress);
+  const poseidonUnit4L = m.contractAt(contractsInfo.POSEIDON_4.name, poseidon4ElementAddress);
 
   const identityLib = m.contract("IdentityLib", [], {
     libraries: {

@@ -22,6 +22,13 @@ import {
 import Create2AddressAnchorModule from "../../ignition/modules/create2AddressAnchor/create2AddressAnchor";
 import PassportCredentialIssuerModule from "../../ignition/modules/passportCredentialIssuer/deployPassportCredentialIssuer";
 import IdentityLibModule from "../../ignition/modules/identityLib/identityLib";
+import {
+  Poseidon1Module,
+  Poseidon2Module,
+  Poseidon3Module,
+  Poseidon4Module,
+  SmtLibModule,
+} from "../../ignition/modules/identityLib/libraries";
 
 export async function deploySystemFixtures(): Promise<DeployedActors> {
   let passportCredentialIssuer: PassportCredentialIssuer;
@@ -64,23 +71,6 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
   credentialVerifier = await credentialVerifierFactory.deploy();
   await credentialVerifier.waitForDeployment();
 
-  const [poseidon3Elements, poseidon4Elements] = await deployPoseidons([3, 4]);
-  const stContracts = await deployStateWithLibraries();
-
-  const identityLib = await deployIdentityLib(
-    stContracts.smtLib.target as string,
-    poseidon3Elements.target as string,
-    poseidon4Elements.target as string,
-  );
-
-  const { identityLib: identityLib2 } = await ignition.deploy(IdentityLibModule);
-  await identityLib2.waitForDeployment();
-
-  const expirationTime = BigInt(60 * 60 * 24 * 7); // 1 week
-  const templateRoot = BigInt(
-    "3532467563022391950170321692541635800576371972220969617740093781820662149190",
-  );
-
   await owner.sendTransaction({
     to: "0xeD456e05CaAb11d66C4c797dD6c1D6f9A7F352b5",
     value: ethers.parseEther("100.0"),
@@ -107,19 +97,38 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
   const contractAddress = await create2AddressAnchor.getAddress();
   console.log(`Create2AddressAnchor deployed to: ${contractAddress}`);
 
-  const passportCredentialIssuerProxy = (
-    await ignition.deploy(PassportCredentialIssuerModule, {
+  const stContracts = await deployStateWithLibraries();
+
+  const expirationTime = BigInt(60 * 60 * 24 * 7); // 1 week
+  const templateRoot = BigInt(
+    "3532467563022391950170321692541635800576371972220969617740093781820662149190",
+  );
+
+  const { poseidon: poseidon4Elements } = await ignition.deploy(Poseidon4Module, {
+    strategy: "create2",
+  });
+  poseidon4Elements.waitForDeployment();
+  console.log(`Poseidon4 deployed to: ${await poseidon4Elements.getAddress()}`);
+
+  const { identityLib, proxy: passportCredentialIssuerProxy } = await ignition.deploy(
+    PassportCredentialIssuerModule,
+    {
       parameters: {
-        PassportCredentialIssuerModule: {
+        PassportCredentialIssuerProxyModule: {
           stateContractAddress: stContracts.state.target as string,
           idType: stContracts.defaultIdType,
           expirationTime: expirationTime,
           templateRoot: templateRoot,
         },
+        IdentityLibModule: {
+          poseidon3ElementAddress: await stContracts.poseidon3.getAddress(),
+          poseidon4ElementAddress: await poseidon4Elements.getAddress(),
+          smtLibAddress: await stContracts.smtLib.getAddress(),
+        },  
       },
       strategy: "create2",
-    })
-  ).proxy;
+    },
+  );
   await passportCredentialIssuerProxy.waitForDeployment();
 
   const passportCredentialIssuerAddress = await passportCredentialIssuerProxy.getAddress();
@@ -149,6 +158,9 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
     idType: stContracts.defaultIdType,
     expirationTime,
     templateRoot,
+    poseidon3: stContracts.poseidon3,
+    poseidon4: poseidon4Elements,
+    smtLib: stContracts.smtLib,    
   };
 }
 
@@ -160,39 +172,6 @@ async function deployPoseidon(nInputs: number) {
   const poseidon = await Poseidon.deploy();
   await poseidon.waitForDeployment();
   return poseidon;
-}
-
-export async function deployPoseidons(poseidonSizeParams: number[]): Promise<Contract[]> {
-  poseidonSizeParams.forEach((size) => {
-    if (![1, 2, 3, 4, 5, 6].includes(size)) {
-      throw new Error(
-        `Poseidon should be integer in a range 1..6. Poseidon size provided: ${size}`,
-      );
-    }
-  });
-
-  const result: any = [];
-
-  for (const size of poseidonSizeParams) {
-    const p = await deployPoseidon(size);
-    result.push(p);
-  }
-
-  return result;
-}
-
-async function deploySmtLib(poseidon2Address: string, poseidon3Address: string): Promise<Contract> {
-  const smtLib = await ethers.deployContract("SmtLib", {
-    libraries: {
-      PoseidonUnit2L: poseidon2Address,
-      PoseidonUnit3L: poseidon3Address,
-    },
-  });
-
-  await smtLib.waitForDeployment();
-  console.log(`SmtLib deployed to:  ${await smtLib.getAddress()}`);
-
-  return smtLib;
 }
 
 export async function getChainId() {
@@ -293,14 +272,34 @@ export async function deployStateWithLibraries(supportedIdTypes: string[] = []):
   groth16verifier: Contract;
   defaultIdType;
 }> {
-  const [poseidon1Elements, poseidon2Elements, poseidon3Elements] = await deployPoseidons([
-    1, 2, 3,
-  ]);
+  const { poseidon: poseidon1Elements } = await ignition.deploy(Poseidon1Module, {
+    strategy: "create2",
+  });
+  poseidon1Elements.waitForDeployment();
+  console.log(`Poseidon1 deployed to: ${await poseidon1Elements.getAddress()}`);
+  const { poseidon: poseidon2Elements } = await ignition.deploy(Poseidon2Module, {
+    strategy: "create2",
+  });
+  poseidon2Elements.waitForDeployment();
+  console.log(`Poseidon2 deployed to: ${await poseidon2Elements.getAddress()}`);
+  const { poseidon: poseidon3Elements } = await ignition.deploy(Poseidon3Module, {
+    strategy: "create2",
+  });
+  poseidon3Elements.waitForDeployment();
+  console.log(`Poseidon3 deployed to: ${await poseidon3Elements.getAddress()}`);
 
-  const smtLib = await deploySmtLib(
-    await poseidon2Elements.getAddress(),
-    await poseidon3Elements.getAddress(),
-  );
+  const { smtLib } = await ignition.deploy(SmtLibModule, {
+    parameters: {
+      SmtLibModule: {
+        poseidon2ElementAddress: await poseidon2Elements.getAddress(),
+        poseidon3ElementAddress: await poseidon3Elements.getAddress(),
+      },
+    },
+    strategy: "create2",
+  });
+
+  smtLib.waitForDeployment();
+  console.log(`SmtLib deployed to: ${await smtLib.getAddress()}`);
 
   const {
     state,

@@ -14,7 +14,7 @@ export type CircuitProof = any;
 // Verifier type imports
 import type {
   Verifier_credential_sha256 as ProdCredentialVerifier,
-  Verifier_anon_aadhaar_v1 as ProdAnonAadhaarV1Verifier,
+  Verifier_anon_aadhaar_v1 as ProdAnonAadhaarV1Verifier,  
 } from "../../typechain-types";
 
 // Type definitions
@@ -36,6 +36,9 @@ export interface DeployedActors extends BaseActors {
   credentialVerifier: CredentialVerifier;
   expirationTime: bigint;
   templateRoot: bigint;
+  poseidon3: any;
+  poseidon4: any;
+  smtLib: any;
 }
 
 export interface DeployedActorsAnonAadhaar extends BaseActors {

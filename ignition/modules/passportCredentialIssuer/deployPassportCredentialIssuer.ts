@@ -10,8 +10,8 @@ import IdentityLibModule from "../identityLib/identityLib";
  * This is the first module that will be run. It deploys the proxy and the
  * proxy admin, and returns them so that they can be used by other modules.
  */
-export const PassportCredentialIssuerProxyModule = buildModule(
-  "PassportCredentialIssuerProxyModule",
+export const PassportCredentialIssuerProxyFirstImplementationModule = buildModule(
+  "PassportCredentialIssuerProxyFirstImplementationModule",
   (m) => {
     // This address is the owner of the ProxyAdmin contract,
     // so it will be the only account that can upgrade the proxy when needed.
@@ -45,19 +45,14 @@ export const PassportCredentialIssuerProxyModule = buildModule(
   },
 );
 
-export const PassportCredentialIssuerModule = buildModule("PassportCredentialIssuerModule", (m) => {
+const PassportCredentialIssuerProxyModule = buildModule("PassportCredentialIssuerProxyModule", (m) => {
   const proxyAdminOwner = m.getAccount(0);
-  const { proxy, proxyAdmin } = m.useModule(PassportCredentialIssuerProxyModule);
-
-  //const identityLibAddress = m.getParameter("identityLibAddress");
+  const { proxy, proxyAdmin } = m.useModule(PassportCredentialIssuerProxyFirstImplementationModule);
 
   const stateContractAddress = m.getParameter("stateContractAddress");
   const idType = m.getParameter("idType");
   const expirationTime = m.getParameter("expirationTime");
   const templateRoot = m.getParameter("templateRoot");
-
-  // const identityLibAddress = m.getParameter("identityLibAddress");
-  // const identityLib = m.contractAt("IdentityLib", identityLibAddress);
 
   const { identityLib } = m.useModule(IdentityLibModule);
 
@@ -86,7 +81,15 @@ export const PassportCredentialIssuerModule = buildModule("PassportCredentialIss
     from: proxyAdminOwner,
   });
 
-  return { proxyAdmin, proxy };
+  return { identityLib, proxyAdmin, proxy };
+});
+
+const PassportCredentialIssuerModule = buildModule("PassportCredentialIssuerModule", (m) => {
+  const { identityLib, proxy, proxyAdmin } = m.useModule(PassportCredentialIssuerProxyModule);
+
+  const passportCredentialIssuer = m.contractAt("PassportCredentialIssuer", proxy);
+
+  return { passportCredentialIssuer, identityLib, proxy, proxyAdmin };
 });
 
 export default PassportCredentialIssuerModule;
