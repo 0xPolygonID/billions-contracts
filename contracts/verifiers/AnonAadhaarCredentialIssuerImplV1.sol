@@ -46,6 +46,12 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         address anonAadhaarVerifier;
         mapping(uint256 => bool) publicKeysHashes;
         mapping(uint256 => bool) nullifiers;
+        mapping(uint256 nullifier => HashIndexHashValue hashIndexHashValue) nullifierToHashIndexHashValue;
+    }
+
+    struct HashIndexHashValue {
+        uint256 hashIndex;
+        uint256 hashValue;
     }
 
     // check if the hash was calculated correctly
@@ -140,9 +146,10 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         _getIdentityBaseStorage().identity.transitState();
     }
 
-    function _setNullifier(uint256 nullifier) private {
+    function _setNullifier(uint256 nullifier, uint256 hi, uint256 hv) private {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
         $.nullifiers[nullifier] = true;
+        $.nullifierToHashIndexHashValue[nullifier] = HashIndexHashValue(hi, hv);
     }
 
     function nullifierExists(uint256 nullifier) external view returns (bool) {
@@ -175,7 +182,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
             templateRoot,
             issuerDidHash
         );
-        _setNullifier(nullifier);
+        _setNullifier(nullifier, hashIndex, hashValue);
         _addHashAndTransit(hashIndex, hashValue);
     }
 

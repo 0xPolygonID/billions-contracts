@@ -61,6 +61,12 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         mapping(string circuitId => uint256 requestId) _credentialCircuitIdToRequestId;
         uint256 _requestIds;
         EnumerableSet.AddressSet _signers;
+        mapping(uint256 nullifier => HashIndexHashValue hashIndexHashValue) _nullifierToHashIndexHashValue;
+    }
+
+    struct HashIndexHashValue {
+        uint256 hashIndex;
+        uint256 hashValue;
     }
 
     struct PassportCredentialMessage {
@@ -76,7 +82,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
     /**
      * @dev Version of the contract
      */
-    string public constant VERSION = "1.0.1";
+    string public constant VERSION = "1.0.2";
 
     // check if the hash was calculated correctly
     // keccak256(abi.encode(uint256(keccak256("polygonid.storage.PassportCredentialIssuerV1")) - 1)) & ~bytes32(uint256(0xff))
@@ -382,9 +388,10 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         _getIdentityBaseStorage().identity.transitState();
     }
 
-    function _setNullifier(uint256 nullifier) internal {
+    function _setNullifier(uint256 nullifier, uint256 hi, uint256 hv) internal {
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
         $._nullifiers[nullifier] = true;
+        $._nullifierToHashIndexHashValue[nullifier] = HashIndexHashValue(hi, hv);
     }
 
     function _verifyCredentialProof(
@@ -473,7 +480,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
             passportSignatureProof.passportCredentialMsg.linkId,
             nullifier
         );
-        _setNullifier(nullifier);
+        _setNullifier(nullifier, hashIndex, hashValue);
         _addHashAndTransit(hashIndex, hashValue);
     }
 }
