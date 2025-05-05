@@ -204,6 +204,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
         if (!$.nullifiers[nullifier]) revert NullifierDoesNotExist();
         $.nullifiers[nullifier] = false;
+        $.nullifierToHashIndexHashValue[nullifier] = HashIndexHashValue(0, 0);
         emit NullifierCleaned(nullifier);
     }
 

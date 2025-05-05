@@ -274,6 +274,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
         require($._nullifiers[nullifier], "Nullifier does not exist");
         $._nullifiers[nullifier] = false;
+        $._nullifierToHashIndexHashValue[nullifier] = HashIndexHashValue(0, 0);
     }
 
     function nullifierExists(uint256 nullifier) external view returns (bool) {
