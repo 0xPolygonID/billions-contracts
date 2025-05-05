@@ -47,6 +47,10 @@ export interface DeployedActorsAnonAadhaar extends BaseActors {
   expirationTime: bigint;
   templateRoot: bigint;
   nullifierSeed: bigint;
+  publicKeyHashes: bigint[];
+  poseidon3: any;
+  poseidon4: any;
+  smtLib: any;
 }
 
 // Contract type exports

@@ -580,5 +580,9 @@ export async function deployAnonAadhaarIssuerFixtures(
     expirationTime,
     templateRoot,
     nullifierSeed,
+    publicKeyHashes,
+    poseidon3: stContracts.poseidon3,
+    poseidon4: poseidon4Elements,
+    smtLib: stContracts.smtLib,
   };
 }

@@ -222,19 +222,11 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
     });
 
     it("Should have upgraded the proxy to new PassportCredentialIssuer", async function () {
-      const { owner, passportCredentialIssuer: pa } = deployedActors;
+      const { owner } = deployedActors;
 
-      //console.log(await pa.getTemplateRoot());
-      // First upgrade works
       const { passportCredentialIssuer } = await ignition.deploy(UpgradedPassportCredentialIssuerModule,
         {
           parameters: {
-            PassportCredentialIssuerProxyModule: {
-              stateContractAddress: deployedActors.state.target as string,
-              idType: deployedActors.idType,
-              expirationTime: deployedActors.expirationTime,
-              templateRoot: deployedActors.templateRoot,
-            },
             IdentityLibModule: {
               poseidon3ElementAddress: deployedActors.poseidon3.target as string,
               poseidon4ElementAddress: deployedActors.poseidon4.target as string,
@@ -243,7 +235,6 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
           },
         },
       );
-      // console.log(await passportCredentialIssuer.getTemplateRoot());
 
       expect(await passportCredentialIssuer.connect(owner).VERSION()).to.equal("1.0.0");
     });

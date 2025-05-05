@@ -1,7 +1,8 @@
 import { expect } from "chai";
 import { deployAnonAadhaarIssuerFixtures } from "../utils/deployment";
 import { DeployedActorsAnonAadhaar } from "../utils/types";
-import { ethers } from "hardhat";
+import { ethers, ignition } from "hardhat";
+import UpgradedAnonAadHaarCredentialIssuerModule from "../../ignition/modules/anonAadhaarCredentialIssuer/upgradeAnonAadhaarCredentialIssuer";
 
 describe("Unit Tests for AnonAadhaarCredentialIssuerImplV1", () => {
   let deployedActors: DeployedActorsAnonAadhaar;
@@ -72,6 +73,24 @@ describe("Unit Tests for AnonAadhaarCredentialIssuerImplV1", () => {
       const { anonAadhaarIssuer, owner } = deployedActors;
 
       expect(await anonAadhaarIssuer.connect(owner).VERSION()).to.equal("1.0.0");
+    });
+
+    it("Should have upgraded the proxy to new AnonAadHaarCredentialIssuer", async function () {
+      const { owner, nullifierSeed, publicKeyHashes } = deployedActors;
+
+      const { anonAadHaarCredentialIssuer } = await ignition.deploy(UpgradedAnonAadHaarCredentialIssuerModule,
+        {
+          parameters: {
+            IdentityLibModule: {
+              poseidon3ElementAddress: deployedActors.poseidon3.target as string,
+              poseidon4ElementAddress: deployedActors.poseidon4.target as string,
+              smtLibAddress: deployedActors.smtLib.target as string,
+            }, 
+          },
+        },
+      );
+
+      expect(await anonAadHaarCredentialIssuer.connect(owner).VERSION()).to.equal("1.0.0");
     });
 
     /* it("should preserve state after upgrade and update VERSION", async () => {
