@@ -11,6 +11,7 @@ import {ICredentialCircuitVerifier} from "../interfaces/ICredentialCircuitVerifi
 import {CircuitConstants} from "../constants/CircuitConstants.sol";
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {DateTime} from "@quant-finance/solidity-datetime/contracts/DateTime.sol";
+import {IAttestationValidator} from "../interfaces/IAttestationValidator.sol";
 
 error InvalidResponsesLength(uint256 length, uint256 expectedLength);
 error InvalidLinkId(uint256 linkId1, uint256 linkId2);
@@ -26,6 +27,8 @@ error InvalidCredentialProof();
 error InvalidPassportSignatureProof();
 error InvalidSignerPassportSignatureProof(address signer);
 error NoCredentialCircuitForRequestId(uint256 requestId);
+error NullifierDoesNotExist(uint256 nullifier);
+error InvalidTransactor(address transactor);
 
 /**
  * @dev Address ownership credential issuer.
@@ -55,12 +58,26 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
     struct PassportCredentialIssuerV1Storage {
         uint256 _expirationTime;
         uint256 _templateRoot;
-        mapping(uint256 => bool) _nullifiers;
         mapping(string circuitId => address verifier) _credentialVerifiers;
         mapping(uint256 requestId => string circuitId) _credentialRequestIdToCircuitId;
         mapping(string circuitId => uint256 requestId) _credentialCircuitIdToRequestId;
         uint256 _requestIds;
         EnumerableSet.AddressSet _signers;
+        IAttestationValidator _attestationValidator;
+        mapping(bytes32 imageHash => bool isApproved) _imageHashesWhitelist;
+        EnumerableSet.AddressSet _transactors;
+        mapping(uint256 nullifier => HashIndexHashValueNullifier hashIndexHashValue) _nullifiers;
+    }
+
+    struct UserData {
+        IZKPVerifier.ZKPResponse[] responses;
+        bytes crossChainProofs;
+    }
+
+    struct HashIndexHashValueNullifier {
+        uint256 hashIndex;
+        uint256 hashValue;
+        bool isSet;
     }
 
     struct PassportCredentialMessage {
@@ -115,6 +132,11 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
      * @param signer The signer address.
      */
     event SignerAdded(address signer);
+    /**
+     * @notice Emitted when a new transactor is added.
+     * @param transactor The transactor address.
+     */
+    event TransactorAdded(address transactor);
 
     // ====================================================
     // Constructor
@@ -128,6 +150,14 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         _disableInitializers();
     }
 
+    /**
+     * @dev Throws if called by any account other than transactors.
+     */
+    modifier onlyTransactors() {
+        _checkTransactor();
+        _;
+    }
+
     // ====================================================
     // Initializer
     // ====================================================
@@ -137,7 +167,6 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         uint256 templateRoot,
         string[] calldata credentialCircuitIds,
         address[] calldata credentialVerifierAddresses,
-        address[] calldata signers,
         address stateAddress,
         bytes2 idType,
         address owner
@@ -151,19 +180,33 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         $._requestIds = 1;
 
         __EIP712_init("PassportIssuerV1", DOMAIN_VERSION);
-        _addSigners(signers);
         _updateCredentialVerifiers(credentialCircuitIds, credentialVerifierAddresses);
     }
 
-    function addSigners(address[] calldata signers) public onlyOwner {
-        _addSigners(signers);
+    function addSigner(address signer) public onlyTransactors {
+        PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
+        $._signers.add(signer);
+        emit SignerAdded(signer);
     }
 
     /**
      * @notice Retrieves the signers.
      */
-    function getSigners() external view returns (address[] memory) {
+    function getSigners() external view onlyTransactors returns (address[] memory) {
         return _getPassportCredentialIssuerV1Storage()._signers.values();
+    }
+
+    function addTransactor(address transactor) public onlyOwner {
+        PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
+        $._transactors.add(transactor);
+        emit TransactorAdded(transactor);
+    }
+
+    /**
+     * @notice Retrieves the transactors.
+     */
+    function getTransactors() external view returns (address[] memory) {
+        return _getPassportCredentialIssuerV1Storage()._transactors.values();
     }
 
     /**
@@ -198,6 +241,14 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
     function setTemplateRoot(uint256 templateRoot) external onlyOwner {
         _getPassportCredentialIssuerV1Storage()._templateRoot = templateRoot;
         emit TemplateRootUpdated(templateRoot);
+    }
+
+    /**
+     * @dev Set attestation validator
+     * @param validator - attestation validator
+     */
+    function setAttestationValidator(IAttestationValidator validator) external onlyOwner {
+        _getPassportCredentialIssuerV1Storage()._attestationValidator = validator;
     }
 
     /**
@@ -245,12 +296,14 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
 
     function cleanNullifier(uint256 nullifier) external onlyOwner {
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
-        require($._nullifiers[nullifier], "Nullifier does not exist");
-        $._nullifiers[nullifier] = false;
+        if (!$._nullifiers[nullifier].isSet) {
+            revert NullifierDoesNotExist(nullifier);
+        }
+        $._nullifiers[nullifier] = HashIndexHashValueNullifier(0, 0, false);
     }
 
     function nullifierExists(uint256 nullifier) external view returns (bool) {
-        return _getPassportCredentialIssuerV1Storage()._nullifiers[nullifier];
+        return _getPassportCredentialIssuerV1Storage()._nullifiers[nullifier].isSet;
     }
 
     /// @notice Submits a ZKP response V2
@@ -299,6 +352,39 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
             credentialCircuitProof,
             passportSignatureProof[0]
         );
+    }
+
+    /**
+     * @dev Checks if imageHash of the enclave is whitelisted
+     * @param imageHash The imageHash of the enclave
+     * @return True if imageHash is whitelisted, otherwise returns false
+     */
+    function isWhitelistedImageHash(
+        bytes32 imageHash
+    ) public view virtual returns (bool) {
+        return _getPassportCredentialIssuerV1Storage()._imageHashesWhitelist[imageHash];
+    }
+
+    /**
+     * @dev Adds an imageHash of the enclave to the whitelist
+     * @param imageHash The imageHash of the enclave to add
+     */
+    function addImageHashToWhitelist(bytes32 imageHash) public onlyOwner {
+        _getPassportCredentialIssuerV1Storage()._imageHashesWhitelist[imageHash] = true;
+    }
+
+    /**
+     * @dev Removes an imageHash of the enclave from the whitelist
+     * @param imageHash The imageHash of the enclave to remove
+     */
+    function removeImageHashFromWhitelist(bytes32 imageHash) public onlyOwner {
+        _getPassportCredentialIssuerV1Storage()._imageHashesWhitelist[imageHash] = false;
+    }
+
+    function _checkTransactor() internal view {
+        if (!_getPassportCredentialIssuerV1Storage()._transactors.contains(_msgSender())) {
+            revert InvalidTransactor(_msgSender());
+        }
     }
 
     function _verifyPassportCredential(
@@ -353,7 +439,7 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         if (issuanceDate + $._expirationTime < block.timestamp)
             revert IssuanceDateExpired(issuanceDate);
 
-        if ($._nullifiers[nullifier]) revert NullifierAlreadyExists(nullifier);
+        if ($._nullifiers[nullifier].isSet) revert NullifierAlreadyExists(nullifier);
     }
 
     function _addHashAndTransit(uint256 hi, uint256 hv) internal {
@@ -361,9 +447,9 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         _getIdentityBaseStorage().identity.transitState();
     }
 
-    function _setNullifier(uint256 nullifier) internal {
+    function _setNullifier(uint256 nullifier, uint256 hi, uint256 hv) internal {
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
-        $._nullifiers[nullifier] = true;
+        $._nullifiers[nullifier] = HashIndexHashValueNullifier(hi, hv, true);
     }
 
     function _verifyCredentialProof(
@@ -452,16 +538,8 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
             passportSignatureProof.passportCredentialMsg.linkId,
             nullifier
         );
-        _setNullifier(nullifier);
+         _setNullifier(nullifier, hashIndex, hashValue);
         _addHashAndTransit(hashIndex, hashValue);
-    }
-
-    function _addSigners(address[] calldata signers) internal {
-        PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
-        for (uint256 i = 0; i < signers.length; i++) {
-            $._signers.add(signers[i]);
-            emit SignerAdded(signers[i]);
-        }
     }
 
     function _updateCredentialVerifiers(

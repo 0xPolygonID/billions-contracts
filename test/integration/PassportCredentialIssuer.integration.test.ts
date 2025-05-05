@@ -9,6 +9,9 @@ import {
   PassportDataSigned,
   prepareProof,
 } from "../utils/packData";
+import { base64ToBytes, bytesToHex } from "@0xpolygonid/js-sdk";
+import jsonAttestationWithUserData from "../data/TEEAttestationWithUserData.json";
+const imageHash = "0xc980e59163ce244bb4bb6211f48c7b46f88a4f40943e84eb99bdc41e129bd293";
 
 describe("Commitment Registration Tests", function () {
   this.timeout(0);
@@ -64,7 +67,15 @@ describe("Commitment Registration Tests", function () {
 
   describe("Verify passport", async () => {
     it("Should verify passport successfully", async () => {
-      const { passportCredentialIssuer, user1 } = deployedActors;
+      const { passportCredentialIssuer, user1, owner } = deployedActors;
+
+      await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
+      await expect(passportCredentialIssuer.addTransactor(await owner.getAddress())).not.to.be
+        .reverted;
+
+      await expect(passportCredentialIssuer.addSigner(await user1.getAddress()))
+        .to.emit(passportCredentialIssuer, "SignerAdded")
+        .withArgs(await user1.getAddress());
 
       const signedPassportData: PassportDataSigned = {
         linkId: BigInt(credentialProof.publicSignals[2]),
@@ -112,7 +123,7 @@ describe("Commitment Registration Tests", function () {
       await passportCredentialIssuer.cleanNullifier(signedPassportData.nullifier);
 
       expect(await passportCredentialIssuer.nullifierExists(signedPassportData.nullifier)).to.be
-      .false;
+        .false;
 
       await expect(
         passportCredentialIssuer.submitZKPResponseV2(
@@ -123,7 +134,15 @@ describe("Commitment Registration Tests", function () {
     });
 
     it("Should not verify with passport current date expired", async () => {
-      const { passportCredentialIssuer, user1 } = deployedActors;
+      const { passportCredentialIssuer, user1, owner } = deployedActors;
+
+      await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
+      await expect(passportCredentialIssuer.addTransactor(await owner.getAddress())).not.to.be
+        .reverted;
+
+        await expect(passportCredentialIssuer.addSigner(await user1.getAddress()))
+        .to.emit(passportCredentialIssuer, "SignerAdded")
+        .withArgs(await user1.getAddress());
 
       const signedPassportData: PassportDataSigned = {
         linkId: BigInt(credentialProofCurrentDateExpired.publicSignals[2]),
@@ -162,7 +181,14 @@ describe("Commitment Registration Tests", function () {
     });
 
     it("Should not verify with passport issuance date expired", async () => {
-      const { passportCredentialIssuer, user1 } = deployedActors;
+      const { passportCredentialIssuer, user1, owner } = deployedActors;
+
+      await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
+      await passportCredentialIssuer.addTransactor(await owner.getAddress());
+
+      await expect(passportCredentialIssuer.addSigner(await user1.getAddress()))
+        .to.emit(passportCredentialIssuer, "SignerAdded")
+        .withArgs(await user1.getAddress());
 
       const signedPassportData: PassportDataSigned = {
         linkId: BigInt(credentialProofIssuanceDateExpired.publicSignals[2]),
@@ -201,7 +227,13 @@ describe("Commitment Registration Tests", function () {
     });
 
     it("Should not verify passport with invalid signer", async () => {
-      const { passportCredentialIssuer, user2 } = deployedActors;
+      const { passportCredentialIssuer, user2, owner } = deployedActors;
+
+      await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
+      await expect(passportCredentialIssuer.addTransactor(await owner.getAddress())).not.to.be
+        .reverted;
+
+      await passportCredentialIssuer.addSigner(await owner.getAddress());
 
       const signedPassportData: PassportDataSigned = {
         linkId: BigInt(credentialProof.publicSignals[2]),

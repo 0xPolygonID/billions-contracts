@@ -64,11 +64,10 @@ const PassportCredentialIssuerProxyModule = buildModule("PassportCredentialIssue
 
   const initializeData = m.encodeFunctionCall(
     newPassportCredentialIssuerImpl,
-    "initialize(uint256,uint256,string[],address[],address[],address,bytes2,address)",
+    "initialize(uint256,uint256,string[],address[],address,bytes2,address)",
     [
       expirationTime,
       templateRoot,
-      [],
       [],
       [],
       stateContractAddress,

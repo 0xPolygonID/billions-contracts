@@ -14,15 +14,22 @@ import { PassportData, generateCircuitInputsCredential } from "passport-utils";
 const credentialCircuits: CircuitArtifacts = {
   credential_sha256: {
     wasm: "./circuits/credential_sha256/credential_sha256.wasm",
-    zkey: "./circuits/credential_sha256/credential_sha256_final.zkey",
+    zkey: "./circuits/credential_sha256/credential_sha256.zkey",
     vkey: "./circuits/credential_sha256/credential_sha256_vkey.json",
   },
 };
 
-export async function generateCredentialProof(passportData: PassportData, currentDate?: Date, issuanceDate?: Date): Promise<CircuitProof> {
+export async function generateCredentialProof(
+  passportData: PassportData,
+  currentDate?: Date,
+  issuanceDate?: Date,
+): Promise<CircuitProof> {
   console.log(CYAN, "=== Start generateCredentialProof ===", RESET);
-  const credenditalCircuitInputs: CircuitSignals =
-    await generateCircuitInputsCredential(passportData, currentDate, issuanceDate);
+  const credenditalCircuitInputs: CircuitSignals = await generateCircuitInputsCredential(
+    passportData,
+    currentDate,
+    issuanceDate,
+  );
   const startTime = performance.now();
   const credentialProof = await groth16.fullProve(
     credenditalCircuitInputs,

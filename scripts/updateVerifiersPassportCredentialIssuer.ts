@@ -23,7 +23,7 @@ async function main() {
   const credentialCircuitIds: string[] = [];
   const credentialVerifierAddresses: string[] = [];
 
-  const deploymentKey = "DeployCredentialVerifiers";
+  const deploymentKey = "DeployCredentialVerifiersV2";
 
   if (!deploymentKey) {
     console.error("Please specify the deployment key.");
@@ -38,6 +38,9 @@ async function main() {
   }
 
   if (credentialCircuitIds.length > 0) {
+    console.log(
+      `Updating credential verifiers for ${credentialCircuitIds.length} circuits in PassportCredentialIssuer...`);
+    console.log(credentialCircuitIds, credentialVerifierAddresses);
     await passportCredentialIssuer.updateCredentialVerifiers(
       credentialCircuitIds,
       credentialVerifierAddresses,

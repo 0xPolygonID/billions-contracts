@@ -12,7 +12,7 @@ import { poseidonContract } from "circomlibjs";
 import CredentialVerifierArtifact from "../../artifacts/contracts/verifiers/credential/Verifier_credential_sha256.sol/Verifier_credential_sha256.json";
 import AnonAadhaarlVerifierArtifact from "../../artifacts/contracts/verifiers/anonAadhaarV1/Verifier_anon_aadhaar_v1.sol/Verifier_anon_aadhaar_v1.json";
 
-import { AnonAadhaarCredentialIssuer, PassportCredentialIssuer } from "../../typechain-types";
+import { PassportCredentialIssuer } from "../../typechain-types";
 import { chainIdInfoMap } from "./constants";
 import {
   contractsInfo,
@@ -21,7 +21,6 @@ import {
 } from "../../helpers/constants";
 import Create2AddressAnchorModule from "../../ignition/modules/create2AddressAnchor/create2AddressAnchor";
 import PassportCredentialIssuerModule from "../../ignition/modules/passportCredentialIssuer/deployPassportCredentialIssuer";
-import IdentityLibModule from "../../ignition/modules/identityLib/identityLib";
 import {
   Poseidon1Module,
   Poseidon2Module,
@@ -101,7 +100,7 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
 
   const expirationTime = BigInt(60 * 60 * 24 * 7); // 1 week
   const templateRoot = BigInt(
-    "3532467563022391950170321692541635800576371972220969617740093781820662149190",
+    "20928513831198457326281890226858421791230183718399181538736627412475062693938",
   );
 
   const { poseidon: poseidon4Elements } = await ignition.deploy(Poseidon4Module, {
@@ -140,11 +139,18 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
     passportCredentialIssuerAddress,
   );
 
-  await passportCredentialIssuer.addSigners([await user1.getAddress()]);
+  await passportCredentialIssuer.addTransactor(await owner.getAddress());
+  //await passportCredentialIssuer.addSigner(await user1.getAddress());
   await passportCredentialIssuer.updateCredentialVerifiers(
     ["credential_sha256"],
     [credentialVerifier.target as string],
   );
+
+  const certificatesLib = await deployCertificatesLib();
+  const nitroAttestationValidator = await deployNitroAttestationValidator(
+    await certificatesLib.getAddress(),
+  );
+  await passportCredentialIssuer.setAttestationValidator(nitroAttestationValidator);
 
   return {
     credentialVerifier,
@@ -164,14 +170,56 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
   };
 }
 
-async function deployPoseidon(nInputs: number) {
-  const abi = poseidonContract.generateABI(nInputs);
-  const bytecode = poseidonContract.createCode(nInputs);
 
-  const Poseidon = await ethers.getContractFactory(abi, bytecode);
-  const poseidon = await Poseidon.deploy();
-  await poseidon.waitForDeployment();
-  return poseidon;
+export async function deployNitroAttestationValidator(
+  certificatesLibAddress: string,
+): Promise<Contract> {
+  const [owner] = await ethers.getSigners();
+  const NitroAttestationValidatorFactory = await ethers.getContractFactory(
+    "NitroAttestationValidator",
+    {
+      libraries: {
+        CertificatesLib: certificatesLibAddress,
+      },
+    },
+  );
+
+  const NitroAttestationValidator = await upgrades.deployProxy(
+    NitroAttestationValidatorFactory,
+    [await owner.getAddress()],
+    {
+      unsafeAllow: ["external-library-linking"],
+    },
+  );
+  await NitroAttestationValidator.waitForDeployment();
+  console.log(
+    `NitroAttestationValidator deployed to: ${await NitroAttestationValidator.getAddress()}`,
+  );
+
+  return NitroAttestationValidator;
+}
+
+export async function deployCertificatesLib(): Promise<Contract> {
+  const certificatesLib = await ethers.deployContract("CertificatesLib");
+  await certificatesLib.waitForDeployment();
+  console.log(`CertificatesLib deployed to:  ${await certificatesLib.getAddress()}`);
+
+  return certificatesLib;
+}
+
+export async function deployCertificatesLibWrapper(): Promise<Contract> {
+  const certificatesLib = await deployCertificatesLib();
+  const CertificatesLibWrapperFactory = await ethers.getContractFactory("CertificatesLibWrapper", {
+    libraries: {
+      CertificatesLib: await certificatesLib.getAddress(),
+    },
+  });
+
+  const CertificatesLibWrapper = await CertificatesLibWrapperFactory.deploy();
+  await CertificatesLibWrapper.waitForDeployment();
+  console.log(`CertificatesLibWrapper deployed to: ${await CertificatesLibWrapper.getAddress()}`);
+
+  return CertificatesLibWrapper;
 }
 
 export async function getChainId() {
@@ -414,7 +462,7 @@ export async function deployAnonAadhaarIssuerFixtures(
     18063425702624337643644061197836918910810808173893535653269228433734128853484n, // prod (?)
     15134874015316324267425466444584014077184337590635665158241104437045239495873n,
   ],
-  templateRoot: bigint = 13618331910493816144112635202719102044017718006809336112633915446302833345855n,
+  templateRoot: bigint = 5086122537745747254581491345739247223240245653900608092926314604019374578867n,
 ): Promise<DeployedActorsAnonAadhaar> {
   let [owner, user1, user2] = await ethers.getSigners();
 

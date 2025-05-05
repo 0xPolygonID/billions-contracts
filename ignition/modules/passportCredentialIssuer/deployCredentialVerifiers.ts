@@ -1,7 +1,7 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 import { DEPLOYED_CIRCUITS_CREDENTIAL } from "passport-utils";
 
-export default buildModule("DeployCredentialVerifiers", (m) => {
+export default buildModule("DeployCredentialVerifiersV2", (m) => {
   const deployedContracts: Record<string, any> = {};
 
   DEPLOYED_CIRCUITS_CREDENTIAL.forEach((circuit) => {

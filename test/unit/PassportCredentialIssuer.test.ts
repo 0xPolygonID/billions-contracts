@@ -3,6 +3,11 @@ import { deploySystemFixtures } from "../utils/deployment";
 import { DeployedActors } from "../utils/types";
 import { ethers, ignition } from "hardhat";
 import UpgradedPassportCredentialIssuerModule from "../../ignition/modules/passportCredentialIssuer/upgradePassportCredentialIssuer";
+import jsonAttestationWithUserData from "../data/TEEAttestationWithUserData.json";
+import { base64ToBytes, bytesToHex } from "@0xpolygonid/js-sdk";
+
+const imageHash = "0xc980e59163ce244bb4bb6211f48c7b46f88a4f40943e84eb99bdc41e129bd293";
+const imageHash2 = "0xb46a627218ca4511d9d55c64181dcdd465c3c44822ee1610c4fab0e7a5ba9997";
 
 describe("Unit Tests for PassportCredentialIssuer", () => {
   let deployedActors: DeployedActors;
@@ -32,8 +37,6 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
         credentialVerifier.target,
       );
 
-      expect(await passportCredentialIssuer.getSigners()).to.deep.equal([await user1.getAddress()]);
-
       expect(
         await passportCredentialIssuer.credentialCircuitIdToRequestIds(credentialCircuitId),
       ).to.equal(1);
@@ -62,7 +65,6 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
           0,
           [],
           [],
-          [],
           state.target,
           idType,
           await owner.getAddress(),
@@ -79,7 +81,6 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
           0,
           [],
           [],
-          [],
           state.target,
           idType,
           await owner.getAddress(),
@@ -89,25 +90,28 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
   });
 
   describe("Update functions", () => {
-    it("should add signers", async () => {
-      const { passportCredentialIssuer, user1, user2 } = deployedActors;
+    it("add transactor to contract", async function () {
+      const { passportCredentialIssuer, owner } = deployedActors;
 
-      await expect(passportCredentialIssuer.addSigners([await user2.getAddress()]))
-        .to.emit(passportCredentialIssuer, "SignerAdded")
-        .withArgs(await user2.getAddress());
+      await expect(passportCredentialIssuer.addTransactor(owner))
+        .to.emit(passportCredentialIssuer, "TransactorAdded")
+        .withArgs(await owner.getAddress());
 
-      expect(await passportCredentialIssuer.getSigners()).to.deep.equal([
-        await user1.getAddress(),
-        await user2.getAddress(),
+      expect(await passportCredentialIssuer.getTransactors()).to.deep.equal([
+        await owner.getAddress(),
       ]);
     });
 
-    it("should not add signer if caller is not owner", async () => {
-      const { passportCredentialIssuer, user1, user2 } = deployedActors;
+    it("should not add signer if caller is not a transactor", async () => {
+      const { passportCredentialIssuer, user1 } = deployedActors;
 
       await expect(
-        passportCredentialIssuer.connect(user1).addSigners([await user2.getAddress()]),
-      ).to.be.revertedWithCustomError(passportCredentialIssuer, "OwnableUnauthorizedAccount");
+        passportCredentialIssuer
+          .connect(user1)
+          .addSigner(await user1.getAddress()),
+      )
+        .to.be.revertedWithCustomError(passportCredentialIssuer, "InvalidTransactor")
+        .withArgs(await user1.getAddress());
     });
 
     it("should update expiration time", async () => {
@@ -197,7 +201,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
   describe("View functions", () => {
     it("should return correct signer addresses", async () => {
       const { passportCredentialIssuer, user1 } = deployedActors;
-      expect(await passportCredentialIssuer.getSigners()).to.deep.equal([await user1.getAddress()]);
+      expect(await passportCredentialIssuer.getSigners()).to.deep.equal([]);
     });
 
 
