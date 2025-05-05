@@ -219,9 +219,10 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       });
     });
 
-    it.only("Should have upgraded the proxy to new PassportCredentialIssuer", async function () {
-      const { owner } = deployedActors;
+    it("Should have upgraded the proxy to new PassportCredentialIssuer", async function () {
+      const { owner, passportCredentialIssuer: pa } = deployedActors;
 
+      //console.log(await pa.getTemplateRoot());
       // First upgrade works
       const { passportCredentialIssuer } = await ignition.deploy(UpgradedPassportCredentialIssuerModule,
         {
@@ -232,12 +233,11 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
               expirationTime: deployedActors.expirationTime,
               templateRoot: deployedActors.templateRoot,
             },
-            UpgradePassportCredentialIssuerModule: {
+            UpgradePassportCredentialIssuerModuleV1_0_1: {
               stateContractAddress: deployedActors.state.target as string,
               idType: deployedActors.idType,
               expirationTime: deployedActors.expirationTime,
               templateRoot: deployedActors.templateRoot,
-              identityLibAddress: deployedActors.identityLib.target as string,
             },
             IdentityLibModule: {
               poseidon3ElementAddress: deployedActors.poseidon3.target as string,
@@ -245,40 +245,11 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
               smtLibAddress: deployedActors.smtLib.target as string,
             }, 
           },
-          //strategy: "create2",
         },
       );
+      // console.log(await passportCredentialIssuer.getTemplateRoot());
 
       expect(await passportCredentialIssuer.connect(owner).VERSION()).to.equal("1.0.0");
-
-      // Second upgrade works
-      const { passportCredentialIssuer: passportCredentialIssuer2 } = await ignition.deploy(UpgradedPassportCredentialIssuerModule,
-        {
-          parameters: {
-            PassportCredentialIssuerProxyModule: {
-              stateContractAddress: deployedActors.state.target as string,
-              idType: deployedActors.idType,
-              expirationTime: deployedActors.expirationTime,
-              templateRoot: deployedActors.templateRoot,
-            },
-            UpgradePassportCredentialIssuerModule: {
-              stateContractAddress: deployedActors.state.target as string,
-              idType: deployedActors.idType,
-              expirationTime: deployedActors.expirationTime,
-              templateRoot: deployedActors.templateRoot,
-              identityLibAddress: deployedActors.identityLib.target as string,
-            },
-            IdentityLibModule: {
-              poseidon3ElementAddress: deployedActors.poseidon3.target as string,
-              poseidon4ElementAddress: deployedActors.poseidon4.target as string,
-              smtLibAddress: deployedActors.smtLib.target as string,
-            }, 
-          },
-          //strategy: "create2",
-        },
-      );
-
-      expect(await passportCredentialIssuer2.connect(owner).VERSION()).to.equal("1.0.0");
     });
   });
 });

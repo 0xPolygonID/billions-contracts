@@ -1,16 +1,12 @@
 {
-  "PassportCredentialIssuerModule#PoseidonUnit3L": "0x5Bc89782d5eBF62663Df7Ce5fb4bc7408926A240",
-  "PassportCredentialIssuerModule#PoseidonUnit4L": "0x0695cF2c6dfc438a4E40508741888198A6ccacC2",
-  "PassportCredentialIssuerModule#SmtLib": "0x682364078e26C1626abD2B95109D2019E241F0F6",
-  "PassportCredentialIssuerProxyModule#TransparentUpgradeableProxy": "0xd81e4fF849eb84C240c92556d91DC915616C21fD",
-  "PassportCredentialIssuerModule#IdentityLib": "0xD2F31Bb3129aBF5627D043A539692a4603eB32d3",
-  "PassportCredentialIssuerProxyModule#ProxyAdmin": "0x6A669d63F52df15d328ED38ce5BeA178FB2744Ec",
-  "PassportCredentialIssuerModule#PassportCredentialIssuer": "0xd81e4fF849eb84C240c92556d91DC915616C21fD",
-  "UpgradePassportCredentialIssuerV1_0_0#IdentityLib": "0xD2F31Bb3129aBF5627D043A539692a4603eB32d3",
-  "UpgradePassportCredentialIssuerV1_0_0#PassportCredentialIssuer": "0x92291b5B83176424d0135c9c0b13AFc98f2ce5f4",
-  "DeployCredentialVerifiers#Verifier_credential_sha1": "0x71adFdc5bDc50f6Ab73Fa2b487f718146FAD9DcD",
-  "DeployCredentialVerifiers#Verifier_credential_sha224": "0x025165BB305B802B793d44c2F54Bf2b74aD85D23",
-  "DeployCredentialVerifiers#Verifier_credential_sha256": "0xd3712D7bD77a7553A96701ed9F9476931d4a0e60",
-  "DeployCredentialVerifiers#Verifier_credential_sha384": "0xfCfff9c70532f5a652D547De801621A64bE06347",
-  "DeployCredentialVerifiers#Verifier_credential_sha512": "0x559Fc2cF9B8078e29638DfBB7760E0b709b83d7C"
+  "IdentityLibModule#PoseidonUnit3L": "0x5Bc89782d5eBF62663Df7Ce5fb4bc7408926A240",
+  "IdentityLibModule#PoseidonUnit4L": "0x0695cF2c6dfc438a4E40508741888198A6ccacC2",
+  "IdentityLibModule#SmtLib": "0x682364078e26C1626abD2B95109D2019E241F0F6",
+  "PassportCredentialIssuerProxyFirstImplementationModule#TransparentUpgradeableProxy": "0xE8eDB5Cc29956767a0A2B62Aa4F032d1C2B33e6e",
+  "IdentityLibModule#IdentityLib": "0x101c7aC5f6A424EC359c1BBECa6253C16e4709d4",
+  "PassportCredentialIssuerProxyFirstImplementationModule#ProxyAdmin": "0x5b50FD69D004c3e64BFDE5cFfbaF80BbB9cF4BA6",
+  "PassportCredentialIssuerProxyModule#PassportCredentialIssuer": "0xC043c8bE8Ff6A4e7a92631024B6eA4028D97a086",
+  "PassportCredentialIssuerModule#PassportCredentialIssuer": "0xE8eDB5Cc29956767a0A2B62Aa4F032d1C2B33e6e",
+  "UpgradedPassportCredentialIssuerModule#PassportCredentialIssuer": "0xE8eDB5Cc29956767a0A2B62Aa4F032d1C2B33e6e",
+  "UpgradePassportCredentialIssuerModuleV1_0_1#PassportCredentialIssuer": "0xDc2a519e678f5Bf689F80031Ba7075A5fCA9fDE9"
 }
