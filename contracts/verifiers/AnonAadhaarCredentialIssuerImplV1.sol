@@ -35,7 +35,7 @@ event PublicKeyHashAdded(uint256 publicKeyHash);
 contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
     using IdentityLib for IdentityLib.Data;
 
-    string public constant VERSION = "1.0.0";
+    string public constant VERSION = "1.0.1";
 
     /// @custom:storage-location erc7201:polygonid.storage.AnonAadhaarIssuerV1
     struct AnonAadhaarIssuerV1Storage {
@@ -45,7 +45,13 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         uint256 issuerDidHash;
         address anonAadhaarVerifier;
         mapping(uint256 => bool) publicKeysHashes;
-        mapping(uint256 => bool) nullifiers;
+        mapping(uint256 nullifier => HashIndexHashValueNullifier hashIndexHashValue) nullifiers;
+    }
+
+    struct HashIndexHashValueNullifier {
+        uint256 hashIndex;
+        uint256 hashValue;
+        bool isSet;
     }
 
     // check if the hash was calculated correctly
@@ -130,7 +136,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         }
         if (expirationDate <= block.timestamp) revert ProofExpired();
         if (!$.publicKeysHashes[pubKeyHash]) revert InvalidPubKeyHash();
-        if ($.nullifiers[nullifier]) revert NullifierAlreadyExists();
+        if ($.nullifiers[nullifier].isSet) revert NullifierAlreadyExists();
     }
 
     function _addHashAndTransit(uint256 hi, uint256 hv) private {
@@ -138,9 +144,14 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         _getIdentityBaseStorage().identity.transitState();
     }
 
-    function _setNullifier(uint256 nullifier) private {
+    function _setNullifier(uint256 nullifier, uint256 hi, uint256 hv) private {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
-        $.nullifiers[nullifier] = true;
+        $.nullifiers[nullifier] = HashIndexHashValueNullifier(hi, hv, true);
+    }
+
+    function nullifierExists(uint256 nullifier) external view returns (bool) {
+        AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
+        return $.nullifiers[nullifier].isSet;
     }
 
     function _afterProofSubmit(
@@ -168,7 +179,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
             templateRoot,
             issuerDidHash
         );
-        _setNullifier(nullifier);
+        _setNullifier(nullifier, hashIndex, hashValue);
         _addHashAndTransit(hashIndex, hashValue);
     }
 
@@ -188,8 +199,8 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
      */
     function cleanNullifier(uint256 nullifier) public onlyProxy onlyOwner {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
-        if (!$.nullifiers[nullifier]) revert NullifierDoesNotExist();
-        $.nullifiers[nullifier] = false;
+        if (!$.nullifiers[nullifier].isSet) revert NullifierDoesNotExist();
+        $.nullifiers[nullifier] = HashIndexHashValueNullifier(0, 0, false);
         emit NullifierCleaned(nullifier);
     }
 

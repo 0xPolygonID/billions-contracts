@@ -42,6 +42,8 @@ describe("Anon aadhaar credential issuer", function () {
         credentialPreparedProof.pi_c,
       );
 
+      expect(await anonAadhaarIssuer.nullifierExists(anonAadhaarProof.pub_signals[1])).to.be
+        .false;
       expect(
         await anonAadhaarIssuer.submitZKPResponseV2(
           [{ requestId: 0, zkProof: credentialZkProof, data: metadatas }],
@@ -61,6 +63,8 @@ describe("Anon aadhaar credential issuer", function () {
         ),
       ).to.be.revertedWithCustomError(anonAadhaarIssuer, "NullifierAlreadyExists");
 
+      expect(await anonAadhaarIssuer.nullifierExists(anonAadhaarProof.pub_signals[1])).to.be
+      .true;
       await anonAadhaarIssuer.cleanNullifier(anonAadhaarProof.pub_signals[1]);
 
       await expect(
