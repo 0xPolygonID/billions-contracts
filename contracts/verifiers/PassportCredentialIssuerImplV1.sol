@@ -61,6 +61,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
     struct PassportCredentialIssuerV1Storage {
         uint256 _expirationTime;
         uint256 _templateRoot;
+        uint256 __gap;
         mapping(string circuitId => address verifier) _credentialVerifiers;
         mapping(uint256 requestId => string circuitId) _credentialRequestIdToCircuitId;
         mapping(string circuitId => uint256 requestId) _credentialCircuitIdToRequestId;
@@ -96,7 +97,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
     /**
      * @dev Version of the contract
      */
-    string public constant VERSION = "1.0.5";
+    string public constant VERSION = "1.0.6";
 
     // check if the hash was calculated correctly
     // keccak256(abi.encode(uint256(keccak256("polygonid.storage.PassportCredentialIssuerV1")) - 1)) & ~bytes32(uint256(0xff))
