@@ -380,15 +380,12 @@ export const contractsInfo = Object.freeze({
     version: "1.0.0",
     unifiedAddress: "0x167aCF1529176C04AacE628FC0ae4883D8462929",
     create2Calldata: ethers.hexlify(ethers.toUtf8Bytes("iden3.create2.PassportCredentialIssuer")),
-    verificationOpts: {
-      constructorArgsImplementation: [],
-      constructorArgsProxy: [
-        "0x56fF81aBB5cdaC478bF236db717e4976b2ff841e",
-        "0xae15d2023a76174a940cbb2b7f44012c728b9d74",
-        ethers.hexlify(ethers.toUtf8Bytes("iden3.create2.PassportCredentialIssuer")),
-      ],
-      libraries: {},
-    },
+  },
+  ANONAADHAAR_CREDENTIAL_ISSUER: {
+    name: "AnonAadHaarCredentialIssuer",
+    version: "1.0.0",
+    unifiedAddress: "0xC450Bd8705DF646a14F54b1a86b5E6De55dFEe66",
+    create2Calldata: ethers.hexlify(ethers.toUtf8Bytes("iden3.create2.AnonAadHaarCredentialIssuer")),
   }
 });
 

@@ -201,9 +201,7 @@ const config: HardhatUserConfig = {
   ignition: {
     strategyConfig: {
       create2: {
-        salt: "0x000000000000000000000000000000000000000000f4179bc3e4988a1a06f8e1",
-        // TODO: for production use the following salt:
-        //salt: "0x000000000000000000000000000000000000000000f4179bc3e4988a1a06f8d1",
+        salt: "0x000000000000000000000000000000000000000000f4179bc3e4988a1a06f8d1",
         // 20 bytes: zero address; 1 byte: 00 - no cross chain protection, 11 bytes - random salt.
         //
         // CreateX implements different safeguarding mechanisms depending on the encoded values in the salt
