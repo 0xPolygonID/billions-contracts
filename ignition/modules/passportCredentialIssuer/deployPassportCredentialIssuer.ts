@@ -34,20 +34,17 @@ export default buildModule("DeployPassportCredentialIssuer", (m) => {
 
   const passportCredentialIssuerInterface = getPassportCredentialIssuerInitializeData();
 
-  const signerAddress = "0xDC3461f9f021dD904C71492EaBd86EaaF6dADbCb"; //m.getAccount(0);
-
   const stateContractAddress = "0x3C9acB2205Aa72A05F6D77d708b5Cf85FCa3a896"; //"0x1a4cC30f2aA0377b0c3bc9848766D90cb4404124"; // "<StateContractAddress>"; // Replace with actual state contract address
   const idType = "0x01B2"; // "0x0113";
   const expirationTime = BigInt(60 * 60 * 24 * 7); // 1 week
   const templateRoot = BigInt(
-    "3532467563022391950170321692541635800576371972220969617740093781820662149190",
+    "20928513831198457326281890226858421791230183718399181538736627412475062693938",
   );
   const initializeData = passportCredentialIssuerInterface.encodeFunctionData("initializeIssuer", [
     expirationTime,
     templateRoot,
     [],
     [],
-    [signerAddress],
     stateContractAddress,
     idType,
   ]);

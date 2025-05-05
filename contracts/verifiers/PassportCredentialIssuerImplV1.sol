@@ -10,6 +10,7 @@ import {IZKPVerifier} from "@iden3/contracts/interfaces/IZKPVerifier.sol";
 import {ICredentialCircuitVerifier} from "../interfaces/ICredentialCircuitVerifier.sol";
 import {CircuitConstants} from "../constants/CircuitConstants.sol";
 import {ImplRoot} from "../upgradeable/ImplRoot.sol";
+import {IAttestationValidator} from "../interfaces/IAttestationValidator.sol";
 import {DateTime} from "@quant-finance/solidity-datetime/contracts/DateTime.sol";
 
 error InvalidResponsesLength(uint256 length, uint256 expectedLength);
@@ -26,6 +27,11 @@ error InvalidCredentialProof();
 error InvalidPassportSignatureProof();
 error InvalidSignerPassportSignatureProof(address signer);
 error NoCredentialCircuitForRequestId(uint256 requestId);
+error ImageHashIsNotWhitelisted(bytes32 imageHash);
+error InvalidAttestation();
+error InvalidSignerAddress();
+error InvalidAttestationUserDataLength();
+error InvalidTransactor(address transactor);
 
 /**
  * @dev Address ownership credential issuer.
@@ -60,7 +66,15 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         mapping(string circuitId => uint256 requestId) _credentialCircuitIdToRequestId;
         uint256 _requestIds;
         EnumerableSet.AddressSet _signers;
+        IAttestationValidator _attestationValidator;
+        mapping(bytes32 imageHash => bool isApproved) _imageHashesWhitelist;
+        EnumerableSet.AddressSet _transactors;
         mapping(uint256 nullifier => HashIndexHashValueNullifier hashIndexHashValue) _nullifiers;
+    }
+
+    struct UserData {
+        IZKPVerifier.ZKPResponse[] responses;
+        bytes crossChainProofs;
     }
 
     struct HashIndexHashValueNullifier {
@@ -82,7 +96,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
     /**
      * @dev Version of the contract
      */
-    string public constant VERSION = "1.0.2";
+    string public constant VERSION = "1.0.5";
 
     // check if the hash was calculated correctly
     // keccak256(abi.encode(uint256(keccak256("polygonid.storage.PassportCredentialIssuerV1")) - 1)) & ~bytes32(uint256(0xff))
@@ -121,6 +135,11 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
      * @param signer The signer address.
      */
     event SignerAdded(address signer);
+    /**
+     * @notice Emitted when a new transactor is added.
+     * @param transactor The transactor address.
+     */
+    event TransactorAdded(address transactor);
 
     // ====================================================
     // Constructor
@@ -134,6 +153,14 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         _disableInitializers();
     }
 
+  /**
+     * @dev Throws if called by any account other than transactors.
+     */
+    modifier onlyTransactors() {
+        _checkTransactor();
+        _;
+    }
+
     // ====================================================
     // Initializer
     // ====================================================
@@ -143,7 +170,6 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         uint256 templateRoot,
         string[] calldata credentialCircuitIds,
         address[] calldata credentialVerifierAddresses,
-        address[] calldata signers,
         address stateAddress,
         bytes2 idType
     ) public initializer {
@@ -156,16 +182,17 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         $._requestIds = 1;
 
         __EIP712_init("PassportIssuerV1", DOMAIN_VERSION);
-        addSigners(signers);
         updateCredentialVerifiers(credentialCircuitIds, credentialVerifierAddresses);
     }
 
-    function addSigners(address[] calldata signers) public onlyProxy onlyOwner {
+    /**
+     * @notice Adds a signer to the contract.
+     * @param signer The address of the signer to add.
+     */
+    function addSigner(address signer) public onlyProxy onlyTransactors {
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
-        for (uint256 i = 0; i < signers.length; i++) {
-            $._signers.add(signers[i]);
-            emit SignerAdded(signers[i]);
-        }
+        $._signers.add(signer);
+        emit SignerAdded(signer);
     }
 
     /**
@@ -173,6 +200,19 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
      */
     function getSigners() external view onlyProxy returns (address[] memory) {
         return _getPassportCredentialIssuerV1Storage()._signers.values();
+    }
+
+    function addTransactor(address transactor) public onlyProxy onlyOwner {
+        PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
+        $._transactors.add(transactor);
+        emit TransactorAdded(transactor);
+    }
+
+    /**
+     * @notice Retrieves the transactors.
+     */
+    function getTransactors() external view onlyProxy returns (address[] memory) {
+        return _getPassportCredentialIssuerV1Storage()._transactors.values();
     }
 
     /**
@@ -207,6 +247,14 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
     function setTemplateRoot(uint256 templateRoot) external onlyProxy onlyOwner {
         _getPassportCredentialIssuerV1Storage()._templateRoot = templateRoot;
         emit TemplateRootUpdated(templateRoot);
+    }
+
+    /**
+     * @dev Set attestation validator
+     * @param validator - attestation validator
+     */
+    function setAttestationValidator(IAttestationValidator validator) external onlyProxy onlyOwner {
+        _getPassportCredentialIssuerV1Storage()._attestationValidator = validator;
     }
 
     /**
@@ -286,7 +334,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
     function submitZKPResponseV2(
         IZKPVerifier.ZKPResponse[] memory responses,
         bytes memory crossChainProofs
-    ) external {
+    ) public {
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
 
         if (responses.length != 1) {
@@ -326,6 +374,39 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
             credentialCircuitProof,
             passportSignatureProof[0]
         );
+    }
+
+    /**
+     * @dev Checks if imageHash of the enclave is whitelisted
+     * @param imageHash The imageHash of the enclave
+     * @return True if imageHash is whitelisted, otherwise returns false
+     */
+    function isWhitelistedImageHash(
+        bytes32 imageHash
+    ) public view virtual onlyProxy returns (bool) {
+        return _getPassportCredentialIssuerV1Storage()._imageHashesWhitelist[imageHash];
+    }
+
+    /**
+     * @dev Adds an imageHash of the enclave to the whitelist
+     * @param imageHash The imageHash of the enclave to add
+     */
+    function addImageHashToWhitelist(bytes32 imageHash) public onlyProxy onlyOwner {
+        _getPassportCredentialIssuerV1Storage()._imageHashesWhitelist[imageHash] = true;
+    }
+
+    /**
+     * @dev Removes an imageHash of the enclave from the whitelist
+     * @param imageHash The imageHash of the enclave to remove
+     */
+    function removeImageHashFromWhitelist(bytes32 imageHash) public onlyProxy onlyOwner {
+        _getPassportCredentialIssuerV1Storage()._imageHashesWhitelist[imageHash] = false;
+    }
+
+    function _checkTransactor() internal view {
+        if (!_getPassportCredentialIssuerV1Storage()._transactors.contains(_msgSender())) {
+            revert InvalidTransactor(_msgSender());
+        }
     }
 
     function _verifyPassportCredential(

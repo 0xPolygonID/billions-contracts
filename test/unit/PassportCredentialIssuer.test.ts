@@ -2,6 +2,11 @@ import { expect } from "chai";
 import { deploySystemFixtures } from "../utils/deployment";
 import { DeployedActors } from "../utils/types";
 import { ethers } from "hardhat";
+import jsonAttestationWithUserData from "../data/TEEAttestationWithUserData.json";
+import { base64ToBytes, bytesToHex } from "@0xpolygonid/js-sdk";
+
+const imageHash = "0xc980e59163ce244bb4bb6211f48c7b46f88a4f40943e84eb99bdc41e129bd293";
+const imageHash2 = "0xb46a627218ca4511d9d55c64181dcdd465c3c44822ee1610c4fab0e7a5ba9997";
 
 describe("Unit Tests for PassportCredentialIssuer", () => {
   let deployedActors: DeployedActors;
@@ -31,14 +36,12 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
         credentialVerifier.target,
       );
 
-      expect(await passportCredentialIssuer.getSigners()).to.deep.equal([await user1.getAddress()]);
-
       expect(
         await passportCredentialIssuer.credentialCircuitIdToRequestIds(credentialCircuitId),
       ).to.equal(1);
-      expect(
-        await passportCredentialIssuer.credentialRequestIdToCircuitIds(1),
-      ).to.equal(credentialCircuitId);
+      expect(await passportCredentialIssuer.credentialRequestIdToCircuitIds(1)).to.equal(
+        credentialCircuitId,
+      );
     });
 
     it("should not allow direct initialization of hub implementation", async () => {
@@ -56,7 +59,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       const passportCredentialIssuerImpl = await PassportCredentialIssuerImplFactory.deploy();
 
       await expect(
-        passportCredentialIssuerImpl.initializeIssuer(0, 0, [], [], [], state.target, idType),
+        passportCredentialIssuerImpl.initializeIssuer(0, 0, [], [], state.target, idType),
       ).to.be.revertedWithCustomError(passportCredentialIssuerImpl, "InvalidInitialization");
     });
 
@@ -77,7 +80,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
 
       let initializeData = passportCredentialIssuerImpl.interface.encodeFunctionData(
         "initializeIssuer",
-        [0, 0, ["1"], [], [], state.target, idType],
+        [0, 0, ["1"], [], state.target, idType],
       );
       const passportCredentialIssuerProxyFactory = await ethers.getContractFactory(
         "PassportCredentialIssuer",
@@ -98,38 +101,41 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       const { passportCredentialIssuer, state, idType } = deployedActors;
 
       await expect(
-        passportCredentialIssuer.initializeIssuer(0, 0, [], [], [], state.target, idType),
+        passportCredentialIssuer.initializeIssuer(0, 0, [], [], state.target, idType),
       ).to.be.revertedWithCustomError(passportCredentialIssuer, "InvalidInitialization");
     });
   });
 
   describe("Update functions", () => {
-    it("should add signers", async () => {
-      const { passportCredentialIssuer, user1, user2 } = deployedActors;
+    it("add transactor to contract", async function () {
+      const { passportCredentialIssuer, owner } = deployedActors;
 
-      await expect(passportCredentialIssuer.addSigners([await user2.getAddress()]))
-        .to.emit(passportCredentialIssuer, "SignerAdded")
-        .withArgs(await user2.getAddress());
+      await expect(passportCredentialIssuer.addTransactor(owner))
+        .to.emit(passportCredentialIssuer, "TransactorAdded")
+        .withArgs(await owner.getAddress());
 
-      expect(await passportCredentialIssuer.getSigners()).to.deep.equal([
-        await user1.getAddress(),
-        await user2.getAddress(),
+      expect(await passportCredentialIssuer.getTransactors()).to.deep.equal([
+        await owner.getAddress(),
       ]);
     });
 
-    it("should not add signer if caller is not owner", async () => {
-      const { passportCredentialIssuer, user1, user2 } = deployedActors;
+    it("should not add signer if caller is not a transactor", async () => {
+      const { passportCredentialIssuer, user1 } = deployedActors;
 
       await expect(
-        passportCredentialIssuer.connect(user1).addSigners([await user2.getAddress()]),
-      ).to.be.revertedWithCustomError(passportCredentialIssuer, "OwnableUnauthorizedAccount");
+        passportCredentialIssuer
+          .connect(user1)
+          .addSigner(await user1.getAddress()),
+      )
+        .to.be.revertedWithCustomError(passportCredentialIssuer, "InvalidTransactor")
+        .withArgs(await user1.getAddress());
     });
 
     it("should not add signer if caller is not proxy", async () => {
-      const { passportCredentialIssuerImpl, user2 } = deployedActors;
+      const { passportCredentialIssuerImpl, user1 } = deployedActors;
 
       await expect(
-        passportCredentialIssuerImpl.addSigners([await user2.getAddress()]),
+        passportCredentialIssuerImpl.addSigner(await user1.getAddress()),
       ).to.be.revertedWithCustomError(passportCredentialIssuerImpl, "UUPSUnauthorizedCallContext");
     });
 
@@ -245,12 +251,18 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
           .updateCredentialVerifiers([credentialCircuitId], [newVerifierAddress]),
       ).to.be.revertedWithCustomError(passportCredentialIssuerImpl, "UUPSUnauthorizedCallContext");
     });
+
+    it("adding imageHash to whitelisted enclave image hashes", async function () {
+      const { passportCredentialIssuer } = deployedActors;
+      await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
+      await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash2)).not.to.be.reverted;
+    });
   });
 
   describe("View functions", () => {
     it("should return correct signer addresses", async () => {
       const { passportCredentialIssuer, user1 } = deployedActors;
-      expect(await passportCredentialIssuer.getSigners()).to.deep.equal([await user1.getAddress()]);
+      expect(await passportCredentialIssuer.getSigners()).to.deep.equal([]);
     });
 
     it("should not return when view function is called by non-proxy", async () => {

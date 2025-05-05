@@ -28,7 +28,7 @@ describe("Anon aadhaar credential issuer", function () {
   });
 
   describe("Verify anon aadhaar", async () => {
-    it("Should verify passport successfully", async () => {
+    it("Should verify aadhaar QR successfully", async () => {
       const { anonAadhaarIssuer } = deployedActors;
 
       const metadatas = "0x";
@@ -74,6 +74,5 @@ describe("Anon aadhaar credential issuer", function () {
         ),
       ).to.be.revertedWith("Identity trees haven't changed");
     });
-    
   });
 });

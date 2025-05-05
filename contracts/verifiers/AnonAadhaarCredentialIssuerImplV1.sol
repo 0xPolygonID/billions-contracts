@@ -98,10 +98,8 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         $.templateRoot = templateRoot;
         $.anonAadhaarVerifier = anonAadhaarVerifier;
 
-        for (uint256 i = 0; i < publicKeysHashes.length; i++) {
-            $.publicKeysHashes[publicKeysHashes[i]] = true;
-        }
-    }
+        addPublicKeyHashesBatch(publicKeysHashes);
+    }    
 
     /**
      * @notice Updates the issuer DID hash.
