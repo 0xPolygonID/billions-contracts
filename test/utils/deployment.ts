@@ -11,8 +11,6 @@ import { poseidonContract } from "circomlibjs";
 // Verifier artifacts
 import CredentialVerifierArtifact from "../../artifacts/contracts/verifiers/credential/Verifier_credential_sha256.sol/Verifier_credential_sha256.json";
 import AnonAadhaarlVerifierArtifact from "../../artifacts/contracts/verifiers/anonAadhaarV1/Verifier_anon_aadhaar_v1.sol/Verifier_anon_aadhaar_v1.json";
-import { Id, DID } from "@iden3/js-iden3-core";
-import { Merklizer } from "@iden3/js-jsonld-merklization";
 
 import {
   PassportCredentialIssuer,
