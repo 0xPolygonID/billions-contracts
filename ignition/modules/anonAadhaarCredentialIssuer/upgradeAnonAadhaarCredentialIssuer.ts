@@ -8,13 +8,13 @@ export default buildModule("UpgradeAnonAadhaarCredentialIssuer", (m) => {
 
   const deployedAddressesPath = path.join(
     __dirname,
-    `../deployments/chain-${networkName}/deployed_addresses.json`,
+    `../../deployments/chain-${networkName}/deployed_addresses.json`,
   );
   const deployedAddresses = JSON.parse(fs.readFileSync(deployedAddressesPath, "utf8"));
 
   // Update the key as needed with latest proxy futureId reference in deployed_addresses.json for AnonAadhaarCredentialIssuerImplV1
   const passportCredentialIssuerProxyAddress =
-    deployedAddresses["UpgradeAnonAadhaarCredentialIssuer#AnonAadhaarCredentialIssuer"];
+    deployedAddresses["DeployAnonAadhaarCredentialIssuer#AnonAadhaarCredentialIssuer"];
   if (!passportCredentialIssuerProxyAddress) {
     throw new Error(
       "AnonAadhaarCredentialIssuer proxy address not found in deployed_addresses.json",
