@@ -32,7 +32,7 @@ event PublicKeyHashAdded(uint256 publicKeyHash);
  * @dev Address ownership credential issuer.
  * This issuer issues non-merklized credentials in a decentralized manner.
  */
-contract AnonAadhaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
+contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
     using IdentityLib for IdentityLib.Data;
 
     string public constant VERSION = "1.0.0";
@@ -45,7 +45,13 @@ contract AnonAadhaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
         uint256 issuerDidHash;
         address anonAadhaarVerifier;
         mapping(uint256 => bool) publicKeysHashes;
-        mapping(uint256 => bool) nullifiers;
+        mapping(uint256 nullifier => HashIndexHashValueNullifier hashIndexHashValue) nullifiers;
+    }
+
+    struct HashIndexHashValueNullifier {
+        uint256 hashIndex;
+        uint256 hashValue;
+        bool isSet;
     }
 
     // check if the hash was calculated correctly
@@ -131,7 +137,7 @@ contract AnonAadhaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
         }
         if (expirationDate <= block.timestamp) revert ProofExpired();
         if (!$.publicKeysHashes[pubKeyHash]) revert InvalidPubKeyHash();
-        if ($.nullifiers[nullifier]) revert NullifierAlreadyExists();
+        if ($.nullifiers[nullifier].isSet) revert NullifierAlreadyExists();
     }
 
     function _addHashAndTransit(uint256 hi, uint256 hv) private {
@@ -139,9 +145,14 @@ contract AnonAadhaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
         _getIdentityBaseStorage().identity.transitState();
     }
 
-    function _setNullifier(uint256 nullifier) private {
+    function _setNullifier(uint256 nullifier, uint256 hi, uint256 hv) private {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
-        $.nullifiers[nullifier] = true;
+        $.nullifiers[nullifier] = HashIndexHashValueNullifier(hi, hv, true);
+    }
+
+    function nullifierExists(uint256 nullifier) external view returns (bool) {
+        AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
+        return $.nullifiers[nullifier].isSet;
     }
 
     function _afterProofSubmit(
@@ -169,7 +180,7 @@ contract AnonAadhaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
             templateRoot,
             issuerDidHash
         );
-        _setNullifier(nullifier);
+        _setNullifier(nullifier, hashIndex, hashValue);
         _addHashAndTransit(hashIndex, hashValue);
     }
 
@@ -189,8 +200,8 @@ contract AnonAadhaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
      */
     function cleanNullifier(uint256 nullifier) public onlyOwner {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
-        if (!$.nullifiers[nullifier]) revert NullifierDoesNotExist();
-        $.nullifiers[nullifier] = false;
+        if (!$.nullifiers[nullifier].isSet) revert NullifierDoesNotExist();
+        $.nullifiers[nullifier] = HashIndexHashValueNullifier(0, 0, false);
         emit NullifierCleaned(nullifier);
     }
 

@@ -5,7 +5,7 @@ import type { PublicSignals, Groth16Proof } from "snarkjs";
 
 // Contract imports
 import {
-  AnonAadhaarCredentialIssuerImplV1,
+  AnonAadhaarCredentialIssuer,
   PassportCredentialIssuer,
 } from "../../typechain-types";
 
@@ -42,8 +42,7 @@ export interface DeployedActors extends BaseActors {
 }
 
 export interface DeployedActorsAnonAadhaar extends BaseActors {
-  anonAadhaarIssuer: AnonAadhaarCredentialIssuerImplV1;
-  anonAadhaarIssuerImpl: AnonAadhaarCredentialIssuerImplV1;
+  anonAadhaarIssuer: AnonAadhaarCredentialIssuer;
   anonAadhaarVerifier: ProdAnonAadhaarV1Verifier;
   expirationTime: bigint;
   templateRoot: bigint;

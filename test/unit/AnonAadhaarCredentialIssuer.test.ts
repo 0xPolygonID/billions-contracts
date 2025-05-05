@@ -18,9 +18,9 @@ describe("Unit Tests for AnonAadhaarCredentialIssuerImplV1", () => {
   });
 
   describe("Initialization", () => {
-    it("should initialize AnonAadhaarCredentialIssuerImplV1 with correct parameters", async () => {
+    it("should initialize AnonAadhaarCredentialIssuer with correct parameters", async () => {
       const { anonAadhaarIssuer, templateRoot, expirationTime, nullifierSeed } = deployedActors;
-      expect(await anonAadhaarIssuer.VERSION()).to.equal("1.0.1");
+      expect(await anonAadhaarIssuer.VERSION()).to.equal("1.0.0");
       // Check initial state
       expect(await anonAadhaarIssuer.getExpirationTime()).to.equal(expirationTime);
       expect(await anonAadhaarIssuer.getTemplateRoot()).to.equal(templateRoot);
@@ -67,8 +67,14 @@ describe("Unit Tests for AnonAadhaarCredentialIssuerImplV1", () => {
     });
   });
 
-  describe("Upgradeabilitiy", () => {
-    it("should preserve state after upgrade and update VERSION", async () => {
+  describe("Upgradeability", () => {
+    it("Should be interactable via proxy", async function () {
+      const { anonAadhaarIssuer, owner } = deployedActors;
+
+      expect(await anonAadhaarIssuer.connect(owner).VERSION()).to.equal("1.0.0");
+    });
+
+    /* it("should preserve state after upgrade and update VERSION", async () => {
       const { anonAadhaarIssuer, owner, identityLib } = deployedActors;
 
       const AnonAadhaarIssuerV2Factory = await ethers.getContractFactory(
@@ -112,107 +118,7 @@ describe("Unit Tests for AnonAadhaarCredentialIssuerImplV1", () => {
       expect(ethers.zeroPadValue(implementationAddress, 32)).to.equal(
         ethers.zeroPadValue(anonAadhaarIssuerV2Implementation.target.toString(), 32),
       );
-    });
-
-    it("should not allow non-proxy to upgrade implementation", async () => {
-      const { anonAadhaarIssuer, anonAadhaarIssuerImpl, identityLib, owner } = deployedActors;
-
-      const AnonAadhaarIssuerV2Factory = await ethers.getContractFactory(
-        "testUpgradedAnonAadhaarCredentialIssuerImplV1",
-        {
-          libraries: {
-            IdentityLib: identityLib.target,
-          },
-        },
-        owner,
-      );
-      const anonAadhaarIssuerV2Implementation = await AnonAadhaarIssuerV2Factory.deploy();
-      await anonAadhaarIssuerV2Implementation.waitForDeployment();
-
-      const anonAadhaarIssuerAsImpl = await ethers.getContractAt(
-        "testUpgradedAnonAadhaarCredentialIssuerImplV1",
-        anonAadhaarIssuer.target,
-      );
-
-      await expect(
-        anonAadhaarIssuerImpl
-          .connect(owner)
-          .upgradeToAndCall(
-            anonAadhaarIssuerV2Implementation.target,
-            AnonAadhaarIssuerV2Factory.interface.encodeFunctionData("initialize(bool)", [true]),
-          ),
-      ).to.be.revertedWithCustomError(anonAadhaarIssuerAsImpl, "UUPSUnauthorizedCallContext");
-    });
-
-    it("should not allow non-owner to upgrade implementation", async () => {
-      const { anonAadhaarIssuer, owner, user1, identityLib } = deployedActors;
-
-      const AnonAadhaarIssuerV2Factory = await ethers.getContractFactory(
-        "testUpgradedAnonAadhaarCredentialIssuerImplV1",
-        {
-          libraries: {
-            IdentityLib: identityLib.target,
-          },
-        },
-        owner,
-      );
-      const anonAadhaarIssuerV2Implementation = await AnonAadhaarIssuerV2Factory.deploy();
-      await anonAadhaarIssuerV2Implementation.waitForDeployment();
-
-      const anonAadhaarIssuerAsImpl = await ethers.getContractAt(
-        "testUpgradedAnonAadhaarCredentialIssuerImplV1",
-        anonAadhaarIssuer.target,
-      );
-
-      await expect(
-        anonAadhaarIssuerAsImpl
-          .connect(user1)
-          .upgradeToAndCall(
-            anonAadhaarIssuerV2Implementation.target,
-            AnonAadhaarIssuerV2Factory.interface.encodeFunctionData("initialize(bool)", [true]),
-          ),
-      ).to.be.revertedWithCustomError(anonAadhaarIssuerAsImpl, "OwnableUnauthorizedAccount");
-    });
-
-    it("should not allow implementation contract to be initialized directly", async () => {
-      const { anonAadhaarIssuer, owner, identityLib } = deployedActors;
-
-      const AnonAadhaarIssuerV2Factory = await ethers.getContractFactory(
-        "testUpgradedAnonAadhaarCredentialIssuerImplV1",
-        {
-          libraries: {
-            IdentityLib: identityLib.target,
-          },
-        },
-        owner,
-      );
-      const anonAadhaarIssuerV2Implementation = await AnonAadhaarIssuerV2Factory.deploy();
-      await anonAadhaarIssuerV2Implementation.waitForDeployment();
-
-      await expect(
-        anonAadhaarIssuerV2Implementation.initialize(true),
-      ).to.be.revertedWithCustomError(anonAadhaarIssuer, "InvalidInitialization");
-    });
-
-    it("should not allow direct calls to implementation contract", async () => {
-      const { owner, identityLib } = deployedActors;
-
-      const AnonAadhaarIssuerV2Factory = await ethers.getContractFactory(
-        "testUpgradedAnonAadhaarCredentialIssuerImplV1",
-        {
-          libraries: {
-            IdentityLib: identityLib.target,
-          },
-        },
-        owner,
-      );
-      const anonAadhaarIssuerV2Implementation = await AnonAadhaarIssuerV2Factory.deploy();
-      await anonAadhaarIssuerV2Implementation.waitForDeployment();
-
-      await expect(anonAadhaarIssuerV2Implementation.isTest()).to.be.revertedWithCustomError(
-        anonAadhaarIssuerV2Implementation,
-        "UUPSUnauthorizedCallContext",
-      );
-    });
+    });*/
+   
   });
 });

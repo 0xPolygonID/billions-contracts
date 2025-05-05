@@ -12,7 +12,7 @@ import { poseidonContract } from "circomlibjs";
 import CredentialVerifierArtifact from "../../artifacts/contracts/verifiers/credential/Verifier_credential_sha256.sol/Verifier_credential_sha256.json";
 import AnonAadhaarlVerifierArtifact from "../../artifacts/contracts/verifiers/anonAadhaarV1/Verifier_anon_aadhaar_v1.sol/Verifier_anon_aadhaar_v1.json";
 
-import { PassportCredentialIssuer } from "../../typechain-types";
+import { AnonAadHaarCredentialIssuer, PassportCredentialIssuer } from "../../typechain-types";
 import { chainIdInfoMap } from "./constants";
 import {
   contractsInfo,
@@ -28,6 +28,7 @@ import {
   Poseidon4Module,
   SmtLibModule,
 } from "../../ignition/modules/identityLib/libraries";
+import AnonAadHaarCredentialIssuerModule from "../../ignition/modules/anonAadhaarCredentialIssuer/deployAnonAadhaarCredentialIssuer";
 
 export async function deploySystemFixtures(): Promise<DeployedActors> {
   let passportCredentialIssuer: PassportCredentialIssuer;
@@ -70,31 +71,7 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
   credentialVerifier = await credentialVerifierFactory.deploy();
   await credentialVerifier.waitForDeployment();
 
-  await owner.sendTransaction({
-    to: "0xeD456e05CaAb11d66C4c797dD6c1D6f9A7F352b5",
-    value: ethers.parseEther("100.0"),
-  });
-  const provider = ethers.provider;
-  const txResponse = await provider.broadcastTransaction(
-    SIGNED_SERIALISED_TRANSACTION_GAS_LIMIT_25000000,
-  );
-
-  await txResponse.wait();
-
-  const bytecode = await provider.getCode(CREATEX_FACTORY_ADDRESS);
-  if (bytecode === "0x") {
-    throw Error(`CreateX should've been deployed to ${CREATEX_FACTORY_ADDRESS} but it wasn't`);
-  } else {
-    console.log(`CreateX deployed to: ${CREATEX_FACTORY_ADDRESS}`);
-  }
-
-  const { create2AddressAnchor } = await ignition.deploy(Create2AddressAnchorModule, {
-    strategy: "create2",
-    defaultSender: await owner.getAddress(),
-  });
-
-  const contractAddress = await create2AddressAnchor.getAddress();
-  console.log(`Create2AddressAnchor deployed to: ${contractAddress}`);
+  await deployCreate2Contracts();
 
   const stContracts = await deployStateWithLibraries();
 
@@ -103,9 +80,7 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
     "20928513831198457326281890226858421791230183718399181538736627412475062693938",
   );
 
-  const { poseidon: poseidon4Elements } = await ignition.deploy(Poseidon4Module, {
-    strategy: "create2",
-  });
+  const { poseidon: poseidon4Elements } = await ignition.deploy(Poseidon4Module);
   poseidon4Elements.waitForDeployment();
   console.log(`Poseidon4 deployed to: ${await poseidon4Elements.getAddress()}`);
 
@@ -123,9 +98,8 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
           poseidon3ElementAddress: await stContracts.poseidon3.getAddress(),
           poseidon4ElementAddress: await poseidon4Elements.getAddress(),
           smtLibAddress: await stContracts.smtLib.getAddress(),
-        },  
-      },
-      strategy: "create2",
+        },
+      }
     },
   );
   await passportCredentialIssuerProxy.waitForDeployment();
@@ -166,10 +140,76 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
     templateRoot,
     poseidon3: stContracts.poseidon3,
     poseidon4: poseidon4Elements,
-    smtLib: stContracts.smtLib,    
+    smtLib: stContracts.smtLib,
   };
 }
 
+async function deployCreate2Contracts() {
+  const [owner] = await ethers.getSigners();
+
+  const provider = ethers.provider;
+
+  const nonce = await provider.getTransactionCount(
+    "0xeD456e05CaAb11d66C4c797dD6c1D6f9A7F352b5",
+    "latest",
+  );
+
+  if (nonce == 0) {
+    await owner.sendTransaction({
+      to: "0xeD456e05CaAb11d66C4c797dD6c1D6f9A7F352b5",
+      value: ethers.parseEther("100.0"),
+    });
+
+    const txResponse = await provider.broadcastTransaction(
+      SIGNED_SERIALISED_TRANSACTION_GAS_LIMIT_25000000,
+    );
+
+    await txResponse.wait();
+
+    const bytecode = await provider.getCode(CREATEX_FACTORY_ADDRESS);
+    if (bytecode === "0x") {
+      throw Error(`CreateX should've been deployed to ${CREATEX_FACTORY_ADDRESS} but it wasn't`);
+    } else {
+      console.log(`CreateX deployed to: ${CREATEX_FACTORY_ADDRESS}`);
+    }
+
+    const { create2AddressAnchor } = await ignition.deploy(Create2AddressAnchorModule, {
+      strategy: "create2",
+      defaultSender: await owner.getAddress(),
+    });
+
+    const contractAddress = await create2AddressAnchor.getAddress();
+    console.log(`Create2AddressAnchor deployed to: ${contractAddress}`);
+  }
+}
+
+export async function deployContractWrapper(contractName: string): Promise<Contract> {
+  const ContractWrapper = await ethers.getContractFactory(contractName);
+  const contractWrapper = await ContractWrapper.deploy();
+  console.log(`${contractName} deployed to:`, await contractWrapper.getAddress());
+  return contractWrapper;
+}
+
+export async function deployCertificatesValidator(certificatesLib: any): Promise<Contract> {
+  const [owner] = await ethers.getSigners();
+  const CertificatesValidatorFactory = await ethers.getContractFactory("CertificatesValidator", {
+    libraries: {
+      CertificatesLib: await certificatesLib.getAddress(),
+    },
+  });
+
+  const CertificatesValidator = await upgrades.deployProxy(
+    CertificatesValidatorFactory,
+    [await owner.getAddress()],
+    {
+      unsafeAllow: ["external-library-linking"],
+    },
+  );
+  await CertificatesValidator.waitForDeployment();
+  console.log(`CertificatesValidator deployed to: ${await CertificatesValidator.getAddress()}`);
+
+  return CertificatesValidator;
+}
 
 export async function deployNitroAttestationValidator(
   certificatesLibAddress: string,
@@ -320,19 +360,16 @@ export async function deployStateWithLibraries(supportedIdTypes: string[] = []):
   groth16verifier: Contract;
   defaultIdType;
 }> {
-  const { poseidon: poseidon1Elements } = await ignition.deploy(Poseidon1Module, {
-    strategy: "create2",
-  });
+  const { poseidon: poseidon1Elements } = await ignition.deploy(Poseidon1Module);
   poseidon1Elements.waitForDeployment();
   console.log(`Poseidon1 deployed to: ${await poseidon1Elements.getAddress()}`);
-  const { poseidon: poseidon2Elements } = await ignition.deploy(Poseidon2Module, {
-    strategy: "create2",
-  });
+
+  const { poseidon: poseidon2Elements } = await ignition.deploy(Poseidon2Module);
+
   poseidon2Elements.waitForDeployment();
   console.log(`Poseidon2 deployed to: ${await poseidon2Elements.getAddress()}`);
-  const { poseidon: poseidon3Elements } = await ignition.deploy(Poseidon3Module, {
-    strategy: "create2",
-  });
+
+  const { poseidon: poseidon3Elements } = await ignition.deploy(Poseidon3Module);
   poseidon3Elements.waitForDeployment();
   console.log(`Poseidon3 deployed to: ${await poseidon3Elements.getAddress()}`);
 
@@ -343,7 +380,6 @@ export async function deployStateWithLibraries(supportedIdTypes: string[] = []):
         poseidon3ElementAddress: await poseidon3Elements.getAddress(),
       },
     },
-    strategy: "create2",
   });
 
   smtLib.waitForDeployment();
@@ -465,6 +501,7 @@ export async function deployAnonAadhaarIssuerFixtures(
   templateRoot: bigint = 5086122537745747254581491345739247223240245653900608092926314604019374578867n,
 ): Promise<DeployedActorsAnonAadhaar> {
   let [owner, user1, user2] = await ethers.getSigners();
+  let anonAadHaarCredentialIssuer: AnonAadHaarCredentialIssuer;
 
   const newBalance = "0x" + ethers.parseEther("10000").toString(16);
 
@@ -482,60 +519,51 @@ export async function deployAnonAadhaarIssuerFixtures(
   const anonAadhaarVerifier: AnonAadhaarVerifier = await anonAadhaarVerifierFactory.deploy();
   await anonAadhaarVerifier.waitForDeployment();
 
-  const [poseidon3Elements, poseidon4Elements] = await deployPoseidons([3, 4]);
-  const stContracts = await deployStateWithLibraries();
-  const identityLib = await deployIdentityLib(
-    stContracts.smtLib.target as string,
-    poseidon3Elements.target as string,
-    poseidon4Elements.target as string,
-  );
+  await deployCreate2Contracts();
 
-  // Deploy AnonAadhaarCredentialIssuerImplV1
-  const AnonAadhaarIssuerImplFactory = await ethers.getContractFactory(
-    "AnonAadhaarCredentialIssuer",
-    {
-      libraries: {
-        IdentityLib: identityLib.target,
-      },
-    },
-    owner,
-  );
-  const anonAadhaarIssuerImpl = await AnonAadhaarIssuerImplFactory.deploy();
-  await anonAadhaarIssuerImpl.waitForDeployment();
+  const { poseidon: poseidon4Elements } = await ignition.deploy(Poseidon4Module);
+
+  poseidon4Elements.waitForDeployment();
+  console.log(`Poseidon4 deployed to: ${await poseidon4Elements.getAddress()}`);
+
+  const stContracts = await deployStateWithLibraries();
 
   const nullifierSeed = 12345678n;
   const expirationTime = 15776640n;
 
-  const anonAadhaarIssuerInitData = anonAadhaarIssuerImpl.interface.encodeFunctionData(
-    "initialize(uint256,uint256[],uint256,uint256,address,address,bytes2, address)",
-    [
-      nullifierSeed,
-      publicKeyHashes,
-      expirationTime,
-      templateRoot,
-      await anonAadhaarVerifier.getAddress(),
-      await stContracts.state.getAddress(),
-      stContracts.defaultIdType,
-    ],
+  const { identityLib, proxy: anonAadHaarCredentialIssuerProxy } = await ignition.deploy(
+    AnonAadHaarCredentialIssuerModule,
+    {
+      parameters: {
+        AnonAadHaarCredentialIssuerProxyModule: {
+          stateContractAddress: stContracts.state.target as string,
+          idType: stContracts.defaultIdType,
+          expirationTime: expirationTime,
+          templateRoot: templateRoot,
+          nullifierSeed: nullifierSeed,
+          publicKeyHashes: publicKeyHashes,
+        },
+        IdentityLibModule: {
+          poseidon3ElementAddress: await stContracts.poseidon3.getAddress(),
+          poseidon4ElementAddress: await poseidon4Elements.getAddress(),
+          smtLibAddress: await stContracts.smtLib.getAddress(),
+        },
+      }
+    },
   );
-  const anonAadhaarIssuerProxyFactory = await ethers.getContractFactory(
-    "AnonAadhaarCredentialIssuer",
-    owner,
-  );
+  await anonAadHaarCredentialIssuerProxy.waitForDeployment();
 
-  const anonAadhaarIssuerProxy = await anonAadhaarIssuerProxyFactory.deploy(
-    anonAadhaarIssuerImpl.target,
-    anonAadhaarIssuerInitData,
-  );
-  await anonAadhaarIssuerProxy.waitForDeployment();
+  const anonAadHaarCredentialIssuerAddress = await anonAadHaarCredentialIssuerProxy.getAddress();
 
-  const anonAadhaarIssuerContract = (await ethers.getContractAt(
-    "AnonAadhaarCredentialIssuerImplV1",
-    anonAadhaarIssuerProxy.target,
-  )) as AnonAadhaarCredentialIssuerImplV1;
+  console.log("AnonAadHaarCredentialIssuer deployed address:", anonAadHaarCredentialIssuerAddress);
+
+  anonAadHaarCredentialIssuer = await ethers.getContractAt(
+    contractsInfo.ANONAADHAAR_CREDENTIAL_ISSUER.name,
+    anonAadHaarCredentialIssuerAddress,
+  );
 
   // set issuerDidHas
-  const updateIssuerTx = await anonAadhaarIssuerContract.setIssuerDidHash(
+  const updateIssuerTx = await anonAadHaarCredentialIssuer.setIssuerDidHash(
     "12146166192964646439780403715116050536535442384123009131510511003232108502337",
   );
   await updateIssuerTx.wait();
@@ -544,8 +572,7 @@ export async function deployAnonAadhaarIssuerFixtures(
     owner,
     user1,
     user2,
-    anonAadhaarIssuer: anonAadhaarIssuerContract,
-    anonAadhaarIssuerImpl: anonAadhaarIssuerImpl,
+    anonAadhaarIssuer: anonAadHaarCredentialIssuer,
     anonAadhaarVerifier: anonAadhaarVerifier,
     state: stContracts.state,
     identityLib,
