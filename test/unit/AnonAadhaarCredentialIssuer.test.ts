@@ -20,7 +20,7 @@ describe("Unit Tests for AnonAadhaarCredentialIssuerImplV1", () => {
   describe("Initialization", () => {
     it("should initialize AnonAadhaarCredentialIssuerImplV1 with correct parameters", async () => {
       const { anonAadhaarIssuer, templateRoot, expirationTime, nullifierSeed } = deployedActors;
-      expect(await anonAadhaarIssuer.VERSION()).to.equal("1.0.0");
+      expect(await anonAadhaarIssuer.VERSION()).to.equal("1.0.1");
       // Check initial state
       expect(await anonAadhaarIssuer.getExpirationTime()).to.equal(expirationTime);
       expect(await anonAadhaarIssuer.getTemplateRoot()).to.equal(templateRoot);
@@ -101,7 +101,7 @@ describe("Unit Tests for AnonAadhaarCredentialIssuerImplV1", () => {
       );
 
       // Check if upgrade was successful and version function was added
-      expect(await anonAadhaarIssuerV2.version()).to.equal("1.0.1");
+      expect(await anonAadhaarIssuerV2.version()).to.equal("11.33.1");
 
       const implementationSlot =
         "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";

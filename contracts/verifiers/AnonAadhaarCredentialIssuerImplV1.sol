@@ -35,7 +35,7 @@ event PublicKeyHashAdded(uint256 publicKeyHash);
 contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
     using IdentityLib for IdentityLib.Data;
 
-    string public constant VERSION = "1.0.0";
+    string public constant VERSION = "1.0.1";
 
     /// @custom:storage-location erc7201:polygonid.storage.AnonAadhaarIssuerV1
     struct AnonAadhaarIssuerV1Storage {
@@ -143,6 +143,11 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
     function _setNullifier(uint256 nullifier) private {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
         $.nullifiers[nullifier] = true;
+    }
+
+    function nullifierExists(uint256 nullifier) external view returns (bool) {
+        AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
+        return $.nullifiers[nullifier];
     }
 
     function _afterProofSubmit(
