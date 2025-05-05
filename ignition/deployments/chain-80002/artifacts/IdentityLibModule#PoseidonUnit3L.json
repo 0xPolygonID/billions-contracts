@@ -1,0 +1,30 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "PoseidonUnit3L",
+  "sourceName": "@iden3/contracts/lib/Poseidon.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "uint256[3]",
+          "name": "",
+          "type": "uint256[3]"
+        }
+      ],
+      "name": "poseidon",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x60808060405234601757607c9081601d823930815050f35b600080fdfe6080806040526004361015601257600080fd5b60003560e01c6325cc70e814602657600080fd5b60603660031901126041573660641160415780600060209252f35b600080fdfea264697066735822122099147db5f913d1a9356ee8938aa5745969c0ed1449ab2e86162624a7d45c510364736f6c634300081b0033",
+  "deployedBytecode": "0x6080806040526004361015601257600080fd5b60003560e01c6325cc70e814602657600080fd5b60603660031901126041573660641160415780600060209252f35b600080fdfea264697066735822122099147db5f913d1a9356ee8938aa5745969c0ed1449ab2e86162624a7d45c510364736f6c634300081b0033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

@@ -12,111 +12,26 @@ import { poseidonContract } from "circomlibjs";
 import CredentialVerifierArtifact from "../../artifacts/contracts/verifiers/credential/Verifier_credential_sha256.sol/Verifier_credential_sha256.json";
 import AnonAadhaarlVerifierArtifact from "../../artifacts/contracts/verifiers/anonAadhaarV1/Verifier_anon_aadhaar_v1.sol/Verifier_anon_aadhaar_v1.json";
 
-import { AnonAadhaarCredentialIssuerImplV1, PassportCredentialIssuer } from "../../typechain-types";
+import { AnonAadhaarCredentialIssuer, PassportCredentialIssuer } from "../../typechain-types";
 import { chainIdInfoMap } from "./constants";
 import {
   contractsInfo,
-  TRANSPARENT_UPGRADEABLE_PROXY_ABI,
-  TRANSPARENT_UPGRADEABLE_PROXY_BYTECODE,
+  CREATEX_FACTORY_ADDRESS,
+  SIGNED_SERIALISED_TRANSACTION_GAS_LIMIT_25000000,
 } from "../../helpers/constants";
 import Create2AddressAnchorModule from "../../ignition/modules/create2AddressAnchor/create2AddressAnchor";
-import { buildModule } from "@nomicfoundation/ignition-core";
-
-const PassportCredentialIssuerProxyModule = buildModule(
-  "PassportCredentialIssuerProxyModule",
-  (m) => {
-    const { create2AddressAnchor } = m.useModule(Create2AddressAnchorModule);
-
-    const proxyAdminOwner = m.getAccount(0);
-
-    const proxy = m.contract(
-      "TransparentUpgradeableProxy",
-      {
-        abi: TRANSPARENT_UPGRADEABLE_PROXY_ABI,
-        contractName: "TransparentUpgradeableProxy",
-        bytecode: TRANSPARENT_UPGRADEABLE_PROXY_BYTECODE,
-        sourceName: "",
-        linkReferences: {},
-      },
-      [
-        create2AddressAnchor,
-        proxyAdminOwner,
-        contractsInfo.PASSPORT_CREDENTIAL_ISSUER.create2Calldata,
-      ],
-    );
-
-    const proxyAdminAddress = m.readEventArgument(proxy, "AdminChanged", "newAdmin");
-    const proxyAdmin = m.contractAt("ProxyAdmin", proxyAdminAddress);
-    return { proxyAdmin, proxy };
-  },
-);
-
-const PassportCredentialIssuerModule = buildModule("PassportCredentialIssuerModule", (m) => {
-  const { proxy, proxyAdmin } = m.useModule(PassportCredentialIssuerProxyModule);
-
-  const passportCredentialIssuer = m.contractAt(
-    contractsInfo.PASSPORT_CREDENTIAL_ISSUER.name,
-    proxy,
-  );
-
-  return { passportCredentialIssuer, proxy, proxyAdmin };
-});
-
-const UpgradePassportCredentialIssuerModule = buildModule(
-  "UpgradePassportCredentialIssuerModule",
-  (m) => {
-    const identityLibAddress = m.getParameter("identityLibAddress");
-    const stateContractAddress = m.getParameter("stateContractAddress");
-    const credentialVerifierAddress = m.getParameter("credentialVerifierAddress");
-    const signerAddress = m.getParameter("signerAddress");
-    const circuitId = m.getParameter("circuitId");
-    const idType = m.getParameter("idType");
-
-    const identityLib = m.contractAt("IdentityLib", identityLibAddress);
-
-    const proxyAdminOwner = m.getAccount(0);
-
-    const { proxy, proxyAdmin } = m.useModule(PassportCredentialIssuerProxyModule);
-
-    const newPassportCredentialIssuerImpl = m.contract("PassportCredentialIssuer", [], {
-      libraries: {
-        IdentityLib: identityLib,
-      },
-    });
-
-    const expirationTime = BigInt(60 * 60 * 24 * 7); // 1 week
-    const templateRoot = BigInt(
-      "3532467563022391950170321692541635800576371972220969617740093781820662149190",
-    );
-
-    const initializeData = m.encodeFunctionCall(
-      newPassportCredentialIssuerImpl,
-      "initialize(uint256,uint256,string[],address[],address[],address,bytes2,address)",
-      [
-        expirationTime,
-        templateRoot,
-        [circuitId],
-        [credentialVerifierAddress],
-        [signerAddress],
-        stateContractAddress,
-        idType,
-        proxyAdminOwner,
-      ],
-    );
-
-    m.call(proxyAdmin, "upgradeAndCall", [proxy, newPassportCredentialIssuerImpl, initializeData], {
-      from: proxyAdminOwner,
-    });
-
-    return {
-      proxyAdmin,
-      proxy,
-    };
-  },
-);
+import PassportCredentialIssuerModule from "../../ignition/modules/passportCredentialIssuer/deployPassportCredentialIssuer";
+import IdentityLibModule from "../../ignition/modules/identityLib/identityLib";
+import {
+  Poseidon1Module,
+  Poseidon2Module,
+  Poseidon3Module,
+  Poseidon4Module,
+  SmtLibModule,
+} from "../../ignition/modules/identityLib/libraries";
 
 export async function deploySystemFixtures(): Promise<DeployedActors> {
-  let passportCredentialIssuer: any;
+  let passportCredentialIssuer: PassportCredentialIssuer;
   let credentialVerifier: CredentialVerifier;
   let owner: Signer;
   let user1: Signer;
@@ -156,56 +71,79 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
   credentialVerifier = await credentialVerifierFactory.deploy();
   await credentialVerifier.waitForDeployment();
 
-  // Deploy PoseidonT3
-  const poseidonT3 = await deployPoseidon(3);
-  await poseidonT3.waitForDeployment();
-
-  const [poseidon3Elements, poseidon4Elements] = await deployPoseidons([3, 4]);
-  const stContracts = await deployStateWithLibraries();
-  const identityLib = await deployIdentityLib(
-    stContracts.smtLib.target as string,
-    poseidon3Elements.target as string,
-    poseidon4Elements.target as string,
+  await owner.sendTransaction({
+    to: "0xeD456e05CaAb11d66C4c797dD6c1D6f9A7F352b5",
+    value: ethers.parseEther("100.0"),
+  });
+  const provider = ethers.provider;
+  const txResponse = await provider.broadcastTransaction(
+    SIGNED_SERIALISED_TRANSACTION_GAS_LIMIT_25000000,
   );
+
+  await txResponse.wait();
+
+  const bytecode = await provider.getCode(CREATEX_FACTORY_ADDRESS);
+  if (bytecode === "0x") {
+    throw Error(`CreateX should've been deployed to ${CREATEX_FACTORY_ADDRESS} but it wasn't`);
+  } else {
+    console.log(`CreateX deployed to: ${CREATEX_FACTORY_ADDRESS}`);
+  }
+
+  const { create2AddressAnchor } = await ignition.deploy(Create2AddressAnchorModule, {
+    strategy: "create2",
+    defaultSender: await owner.getAddress(),
+  });
+
+  const contractAddress = await create2AddressAnchor.getAddress();
+  console.log(`Create2AddressAnchor deployed to: ${contractAddress}`);
+
+  const stContracts = await deployStateWithLibraries();
 
   const expirationTime = BigInt(60 * 60 * 24 * 7); // 1 week
   const templateRoot = BigInt(
     "3532467563022391950170321692541635800576371972220969617740093781820662149190",
   );
 
-  passportCredentialIssuer = (await ignition.deploy(PassportCredentialIssuerModule)).proxy;
-  await passportCredentialIssuer.waitForDeployment();
+  const { poseidon: poseidon4Elements } = await ignition.deploy(Poseidon4Module, {
+    strategy: "create2",
+  });
+  poseidon4Elements.waitForDeployment();
+  console.log(`Poseidon4 deployed to: ${await poseidon4Elements.getAddress()}`);
 
-  const passportCredentialIssuerAddress = await passportCredentialIssuer.getAddress();
-
-  console.log(
-    `PassportCredentialIssuer (create2AddressAnchor implementation) contract deployed to address ${passportCredentialIssuerAddress} from ${await owner.getAddress()}`,
-  );
-
-  passportCredentialIssuer = (
-    await ignition.deploy(UpgradePassportCredentialIssuerModule, {
+  const { identityLib, proxy: passportCredentialIssuerProxy } = await ignition.deploy(
+    PassportCredentialIssuerModule,
+    {
       parameters: {
-        UpgradePassportCredentialIssuerModule: {
-          identityLibAddress: identityLib.target as string,
+        PassportCredentialIssuerProxyModule: {
           stateContractAddress: stContracts.state.target as string,
           idType: stContracts.defaultIdType,
-          credentialVerifierAddress: credentialVerifier.target as string,
-          circuitId: "credential_sha256",
-          signerAddress: await user1.getAddress(),
+          expirationTime: expirationTime,
+          templateRoot: templateRoot,
         },
+        IdentityLibModule: {
+          poseidon3ElementAddress: await stContracts.poseidon3.getAddress(),
+          poseidon4ElementAddress: await poseidon4Elements.getAddress(),
+          smtLibAddress: await stContracts.smtLib.getAddress(),
+        },  
       },
-    })
-  ).proxy;
+      strategy: "create2",
+    },
+  );
+  await passportCredentialIssuerProxy.waitForDeployment();
 
-  await passportCredentialIssuer.waitForDeployment();
+  const passportCredentialIssuerAddress = await passportCredentialIssuerProxy.getAddress();
 
-  passportCredentialIssuer = (await ethers.getContractAt(
-    "PassportCredentialIssuer",
-    await passportCredentialIssuer.getAddress(),
-  )) as PassportCredentialIssuer;
+  console.log("PassportCredentialIssuer deployed address:", passportCredentialIssuerAddress);
 
-  console.log(
-    `PassportCredentialIssuer (proxy upgraded) contract deployed to address ${await passportCredentialIssuer.getAddress()} from ${await owner.getAddress()}`,
+  passportCredentialIssuer = await ethers.getContractAt(
+    contractsInfo.PASSPORT_CREDENTIAL_ISSUER.name,
+    passportCredentialIssuerAddress,
+  );
+
+  await passportCredentialIssuer.addSigners([await user1.getAddress()]);
+  await passportCredentialIssuer.updateCredentialVerifiers(
+    ["credential_sha256"],
+    [credentialVerifier.target as string],
   );
 
   return {
@@ -220,6 +158,9 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
     idType: stContracts.defaultIdType,
     expirationTime,
     templateRoot,
+    poseidon3: stContracts.poseidon3,
+    poseidon4: poseidon4Elements,
+    smtLib: stContracts.smtLib,    
   };
 }
 
@@ -231,39 +172,6 @@ async function deployPoseidon(nInputs: number) {
   const poseidon = await Poseidon.deploy();
   await poseidon.waitForDeployment();
   return poseidon;
-}
-
-export async function deployPoseidons(poseidonSizeParams: number[]): Promise<Contract[]> {
-  poseidonSizeParams.forEach((size) => {
-    if (![1, 2, 3, 4, 5, 6].includes(size)) {
-      throw new Error(
-        `Poseidon should be integer in a range 1..6. Poseidon size provided: ${size}`,
-      );
-    }
-  });
-
-  const result: any = [];
-
-  for (const size of poseidonSizeParams) {
-    const p = await deployPoseidon(size);
-    result.push(p);
-  }
-
-  return result;
-}
-
-async function deploySmtLib(poseidon2Address: string, poseidon3Address: string): Promise<Contract> {
-  const smtLib = await ethers.deployContract("SmtLib", {
-    libraries: {
-      PoseidonUnit2L: poseidon2Address,
-      PoseidonUnit3L: poseidon3Address,
-    },
-  });
-
-  await smtLib.waitForDeployment();
-  console.log(`SmtLib deployed to:  ${await smtLib.getAddress()}`);
-
-  return smtLib;
 }
 
 export async function getChainId() {
@@ -333,7 +241,7 @@ async function deployCrossChainProofValidator(
   return crossChainProofValidator;
 }
 
-async function deployIdentityLib(
+export async function deployIdentityLib(
   smtLibAddress: string,
   poseidonUtil3lAddress: string,
   poseidonUtil4lAddress: string,
@@ -364,14 +272,34 @@ export async function deployStateWithLibraries(supportedIdTypes: string[] = []):
   groth16verifier: Contract;
   defaultIdType;
 }> {
-  const [poseidon1Elements, poseidon2Elements, poseidon3Elements] = await deployPoseidons([
-    1, 2, 3,
-  ]);
+  const { poseidon: poseidon1Elements } = await ignition.deploy(Poseidon1Module, {
+    strategy: "create2",
+  });
+  poseidon1Elements.waitForDeployment();
+  console.log(`Poseidon1 deployed to: ${await poseidon1Elements.getAddress()}`);
+  const { poseidon: poseidon2Elements } = await ignition.deploy(Poseidon2Module, {
+    strategy: "create2",
+  });
+  poseidon2Elements.waitForDeployment();
+  console.log(`Poseidon2 deployed to: ${await poseidon2Elements.getAddress()}`);
+  const { poseidon: poseidon3Elements } = await ignition.deploy(Poseidon3Module, {
+    strategy: "create2",
+  });
+  poseidon3Elements.waitForDeployment();
+  console.log(`Poseidon3 deployed to: ${await poseidon3Elements.getAddress()}`);
 
-  const smtLib = await deploySmtLib(
-    await poseidon2Elements.getAddress(),
-    await poseidon3Elements.getAddress(),
-  );
+  const { smtLib } = await ignition.deploy(SmtLibModule, {
+    parameters: {
+      SmtLibModule: {
+        poseidon2ElementAddress: await poseidon2Elements.getAddress(),
+        poseidon3ElementAddress: await poseidon3Elements.getAddress(),
+      },
+    },
+    strategy: "create2",
+  });
+
+  smtLib.waitForDeployment();
+  console.log(`SmtLib deployed to: ${await smtLib.getAddress()}`);
 
   const {
     state,
@@ -516,7 +444,7 @@ export async function deployAnonAadhaarIssuerFixtures(
 
   // Deploy AnonAadhaarCredentialIssuerImplV1
   const AnonAadhaarIssuerImplFactory = await ethers.getContractFactory(
-    "AnonAadhaarCredentialIssuerImplV1",
+    "AnonAadhaarCredentialIssuer",
     {
       libraries: {
         IdentityLib: identityLib.target,
@@ -531,7 +459,7 @@ export async function deployAnonAadhaarIssuerFixtures(
   const expirationTime = 15776640n;
 
   const anonAadhaarIssuerInitData = anonAadhaarIssuerImpl.interface.encodeFunctionData(
-    "initialize(uint256,uint256[],uint256,uint256,address,address,bytes2)",
+    "initialize(uint256,uint256[],uint256,uint256,address,address,bytes2, address)",
     [
       nullifierSeed,
       publicKeyHashes,

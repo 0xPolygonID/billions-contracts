@@ -1,17 +1,20 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 import { contractsInfo } from "../../../helpers/constants";
 
-
 export const IdentityLibModule = buildModule("IdentityLibModule", (m) => {
-  const smtLibAddress = m.contractAt(contractsInfo.SMT_LIB.name, contractsInfo.SMT_LIB.unifiedAddress);
-  const poseidonUtil3lAddress = m.contractAt(contractsInfo.POSEIDON_3.name, contractsInfo.POSEIDON_3.unifiedAddress);
-  const poseidonUtil4lAddress = m.contractAt(contractsInfo.POSEIDON_4.name, contractsInfo.POSEIDON_4.unifiedAddress);
+  const poseidon3ElementAddress = m.getParameter("poseidon3ElementAddress");
+  const poseidon4ElementAddress = m.getParameter("poseidon4ElementAddress");
+  const smtLibAddress = m.getParameter("smtLibAddress");
+
+  const smtLib = m.contractAt(contractsInfo.SMT_LIB.name, smtLibAddress);
+  const poseidonUnit3L = m.contractAt(contractsInfo.POSEIDON_3.name, poseidon3ElementAddress);
+  const poseidonUnit4L = m.contractAt(contractsInfo.POSEIDON_4.name, poseidon4ElementAddress);
 
   const identityLib = m.contract("IdentityLib", [], {
     libraries: {
-      SmtLib: smtLibAddress,
-      PoseidonUnit3L: poseidonUtil3lAddress,
-      PoseidonUnit4L: poseidonUtil4lAddress,
+      SmtLib: smtLib,
+      PoseidonUnit3L: poseidonUnit3L,
+      PoseidonUnit4L: poseidonUnit4L,
     },
   });
 

@@ -4,13 +4,14 @@ import {
   TRANSPARENT_UPGRADEABLE_PROXY_ABI,
   TRANSPARENT_UPGRADEABLE_PROXY_BYTECODE,
 } from "../../../helpers/constants";
+import IdentityLibModule from "../identityLib/identityLib";
 
 /**
  * This is the first module that will be run. It deploys the proxy and the
  * proxy admin, and returns them so that they can be used by other modules.
  */
-export const PassportCredentialIssuerProxyModule = buildModule(
-  "PassportCredentialIssuerProxyModule",
+export const PassportCredentialIssuerProxyFirstImplementationModule = buildModule(
+  "PassportCredentialIssuerProxyFirstImplementationModule",
   (m) => {
     // This address is the owner of the ProxyAdmin contract,
     // so it will be the only account that can upgrade the proxy when needed.
@@ -44,44 +45,51 @@ export const PassportCredentialIssuerProxyModule = buildModule(
   },
 );
 
-/**
- * This is the second module that will be run, and it is also the only module exported from this file.
- * It creates a contract instance for the Demo contract using the proxy from the previous module.
- */
-export const PassportCredentialIssuerModule = buildModule("PassportCredentialIssuerModule", (m) => {
-  // Get the proxy and proxy admin from the previous module.
-  const { proxy, proxyAdmin } = m.useModule(PassportCredentialIssuerProxyModule);
+const PassportCredentialIssuerProxyModule = buildModule("PassportCredentialIssuerProxyModule", (m) => {
+  const proxyAdminOwner = m.getAccount(0);
+  const { proxy, proxyAdmin } = m.useModule(PassportCredentialIssuerProxyFirstImplementationModule);
 
-  // Here we're using m.contractAt(...) a bit differently than we did above.
-  // While we're still using it to create a contract instance, we're now telling Hardhat Ignition
-  // to treat the contract at the proxy address as an instance of the Demo contract.
-  // This allows us to interact with the underlying Demo contract via the proxy from within tests and scripts.
-  const passportCredentialIssuer = m.contractAt(
-    contractsInfo.PASSPORT_CREDENTIAL_ISSUER.name,
-    proxy,
-  );
+  const stateContractAddress = m.getParameter("stateContractAddress");
+  const idType = m.getParameter("idType");
+  const expirationTime = m.getParameter("expirationTime");
+  const templateRoot = m.getParameter("templateRoot");
 
-  const smtLibAddress = m.contractAt("SmtLib", "0x682364078e26C1626abD2B95109D2019E241F0F6");
-  const poseidonUtil3lAddress = m.contractAt(
-    "PoseidonUnit3L",
-    "0x5Bc89782d5eBF62663Df7Ce5fb4bc7408926A240",
-  );
-  const poseidonUtil4lAddress = m.contractAt(
-    "PoseidonUnit4L",
-    "0x0695cF2c6dfc438a4E40508741888198A6ccacC2",
-  );
+  const { identityLib } = m.useModule(IdentityLibModule);
 
-  m.contract("IdentityLib", [], {
+  const newPassportCredentialIssuerImpl = m.contract("PassportCredentialIssuer", [], {
     libraries: {
-      SmtLib: smtLibAddress,
-      PoseidonUnit3L: poseidonUtil3lAddress,
-      PoseidonUnit4L: poseidonUtil4lAddress,
+      IdentityLib: identityLib,
     },
   });
 
-  // Return the contract instance, along with the original proxy and proxyAdmin contracts
-  // so that they can be used by other modules, or in tests and scripts.
-  return { passportCredentialIssuer, proxy, proxyAdmin };
+  const initializeData = m.encodeFunctionCall(
+    newPassportCredentialIssuerImpl,
+    "initialize(uint256,uint256,string[],address[],address[],address,bytes2,address)",
+    [
+      expirationTime,
+      templateRoot,
+      [],
+      [],
+      [],
+      stateContractAddress,
+      idType,
+      proxyAdminOwner,
+    ],
+  );
+
+  m.call(proxyAdmin, "upgradeAndCall", [proxy, newPassportCredentialIssuerImpl, initializeData], {
+    from: proxyAdminOwner,
+  });
+
+  return { identityLib, proxyAdmin, proxy };
+});
+
+const PassportCredentialIssuerModule = buildModule("PassportCredentialIssuerModule", (m) => {
+  const { identityLib, proxy, proxyAdmin } = m.useModule(PassportCredentialIssuerProxyModule);
+
+  const passportCredentialIssuer = m.contractAt("PassportCredentialIssuer", proxy);
+
+  return { passportCredentialIssuer, identityLib, proxy, proxyAdmin };
 });
 
 export default PassportCredentialIssuerModule;
