@@ -211,12 +211,10 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
   });
 
   describe("Upgradeability", function () {
-   describe("Proxy interaction", function () {
-      it("Should be interactable via proxy", async function () {
-        const { passportCredentialIssuer, owner } = deployedActors;
-  
-        expect(await passportCredentialIssuer.connect(owner).VERSION()).to.equal("1.0.0");
-      });
+    it("Should be interactable via proxy", async function () {
+      const { passportCredentialIssuer, owner } = deployedActors;
+
+      expect(await passportCredentialIssuer.connect(owner).VERSION()).to.equal("1.0.0");
     });
 
     it("Should have upgraded the proxy to new PassportCredentialIssuer", async function () {
@@ -228,12 +226,6 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
         {
           parameters: {
             PassportCredentialIssuerProxyModule: {
-              stateContractAddress: deployedActors.state.target as string,
-              idType: deployedActors.idType,
-              expirationTime: deployedActors.expirationTime,
-              templateRoot: deployedActors.templateRoot,
-            },
-            UpgradePassportCredentialIssuerModuleV1_0_1: {
               stateContractAddress: deployedActors.state.target as string,
               idType: deployedActors.idType,
               expirationTime: deployedActors.expirationTime,
