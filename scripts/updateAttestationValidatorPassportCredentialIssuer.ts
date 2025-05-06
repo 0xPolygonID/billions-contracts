@@ -1,7 +1,11 @@
 import hre, { ethers } from "hardhat";
 import fs from "fs";
 import path from "path";
-import { deployCertificatesLib, deployCertificatesValidator, deployNitroAttestationValidator } from "../test/utils/deployment";
+import {
+  deployCertificatesLib,
+  deployCertificatesValidator,
+  deployNitroAttestationValidator,
+} from "../test/utils/deployment";
 
 async function main() {
   const networkName = hre.network.config.chainId;
@@ -12,17 +16,22 @@ async function main() {
   );
   const deployedAddresses = JSON.parse(fs.readFileSync(deployedAddressesPath, "utf8"));
 
-  const passportCredentialIssuerAddress = deployedAddresses["DeployPassportCredentialIssuer#PassportCredentialIssuer"];
+  const passportCredentialIssuerAddress =
+    deployedAddresses[
+      "PassportCredentialIssuerProxyFirstImplementationModule#TransparentUpgradeableProxy"
+    ];
 
   const passportCredentialIssuer = await ethers.getContractAt(
-    "PassportCredentialIssuerImplV1",
+    "PassportCredentialIssuer",
     passportCredentialIssuerAddress,
   );
 
   const certificatesLib = await deployCertificatesLib();
   const certificatesValidator = await deployCertificatesValidator(certificatesLib);
-  const nitroAttestationValidator = await deployNitroAttestationValidator(await certificatesLib.getAddress());
-  
+  const nitroAttestationValidator = await deployNitroAttestationValidator(
+    await certificatesLib.getAddress(),
+  );
+
   await nitroAttestationValidator.setCertificatesValidator(
     await certificatesValidator.getAddress(),
   );
