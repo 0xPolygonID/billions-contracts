@@ -3,6 +3,7 @@ import { deployAnonAadhaarIssuerFixtures } from "../utils/deployment";
 import { DeployedActorsAnonAadhaar } from "../utils/types";
 import { ethers, ignition } from "hardhat";
 import UpgradedAnonAadHaarCredentialIssuerModule from "../../ignition/modules/anonAadhaarCredentialIssuer/upgradeAnonAadhaarCredentialIssuer";
+import { contractsInfo } from "../../helpers/constants";
 
 describe("Unit Tests for AnonAadhaarCredentialIssuerImplV1", () => {
   let deployedActors: DeployedActorsAnonAadhaar;
@@ -21,7 +22,7 @@ describe("Unit Tests for AnonAadhaarCredentialIssuerImplV1", () => {
   describe("Initialization", () => {
     it("should initialize AnonAadhaarCredentialIssuer with correct parameters", async () => {
       const { anonAadhaarIssuer, templateRoot, expirationTime, nullifierSeed } = deployedActors;
-      expect(await anonAadhaarIssuer.VERSION()).to.equal("1.0.0");
+      expect(await anonAadhaarIssuer.VERSION()).to.equal(contractsInfo.ANONAADHAAR_CREDENTIAL_ISSUER.version);
       // Check initial state
       expect(await anonAadhaarIssuer.getExpirationTime()).to.equal(expirationTime);
       expect(await anonAadhaarIssuer.getTemplateRoot()).to.equal(templateRoot);
@@ -72,7 +73,7 @@ describe("Unit Tests for AnonAadhaarCredentialIssuerImplV1", () => {
     it("Should be interactable via proxy", async function () {
       const { anonAadhaarIssuer, owner } = deployedActors;
 
-      expect(await anonAadhaarIssuer.connect(owner).VERSION()).to.equal("1.0.0");
+      expect(await anonAadhaarIssuer.connect(owner).VERSION()).to.equal(contractsInfo.ANONAADHAAR_CREDENTIAL_ISSUER.version);
     });
 
     it("Should have upgraded the proxy to new AnonAadHaarCredentialIssuer", async function () {
@@ -115,7 +116,7 @@ describe("Unit Tests for AnonAadhaarCredentialIssuerImplV1", () => {
       );*/
       /************************************************************************************************/
 
-      expect(await anonAaadHaarCredentialIssuerUpdated.connect(owner).VERSION()).to.equal("1.0.0");
+      expect(await anonAaadHaarCredentialIssuerUpdated.connect(owner).VERSION()).to.equal(contractsInfo.ANONAADHAAR_CREDENTIAL_ISSUER.version);
       expect(await anonAaadHaarCredentialIssuerUpdated.getNullifierSeed()).to.equal(nullifierSeed);
 
       for (const publicKeyHash of publicKeyHashes) {

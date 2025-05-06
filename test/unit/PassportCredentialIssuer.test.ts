@@ -5,6 +5,7 @@ import { ethers, ignition } from "hardhat";
 import UpgradedPassportCredentialIssuerModule from "../../ignition/modules/passportCredentialIssuer/upgradePassportCredentialIssuer";
 import jsonAttestationWithUserData from "../data/TEEAttestationWithUserData.json";
 import { base64ToBytes, bytesToHex } from "@0xpolygonid/js-sdk";
+import { contractsInfo } from "../../helpers/constants";
 
 const imageHash = "0xc980e59163ce244bb4bb6211f48c7b46f88a4f40943e84eb99bdc41e129bd293";
 const imageHash2 = "0xb46a627218ca4511d9d55c64181dcdd465c3c44822ee1610c4fab0e7a5ba9997";
@@ -213,7 +214,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
     it("Should be interactable via proxy", async function () {
       const { passportCredentialIssuer, owner } = deployedActors;
 
-      expect(await passportCredentialIssuer.connect(owner).VERSION()).to.equal("1.0.0");
+      expect(await passportCredentialIssuer.connect(owner).VERSION()).to.equal(contractsInfo.PASSPORT_CREDENTIAL_ISSUER.version);
     });
 
     it("Should have upgraded the proxy to new PassportCredentialIssuer", async function () {
@@ -260,7 +261,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       });*/
       /************************************************************************************************/
 
-      expect(await passportCredentialIssuerUpdated.connect(owner).VERSION()).to.equal("1.0.0");
+      expect(await passportCredentialIssuerUpdated.connect(owner).VERSION()).to.equal(contractsInfo.PASSPORT_CREDENTIAL_ISSUER.version);
       expect(await passportCredentialIssuerUpdated.isWhitelistedImageHash(imageHash)).to.equal(
         true,
       );
