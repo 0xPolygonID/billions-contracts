@@ -31,7 +31,6 @@ import {
 import AnonAadHaarCredentialIssuerModule from "../../ignition/modules/anonAadhaarCredentialIssuer/deployAnonAadhaarCredentialIssuer";
 
 export async function deploySystemFixtures(): Promise<DeployedActors> {
-  let passportCredentialIssuer: PassportCredentialIssuer;
   let credentialVerifier: CredentialVerifier;
   let owner: Signer;
   let user1: Signer;
@@ -84,7 +83,7 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
   poseidon4Elements.waitForDeployment();
   console.log(`Poseidon4 deployed to: ${await poseidon4Elements.getAddress()}`);
 
-  const { identityLib, proxy: passportCredentialIssuerProxy } = await ignition.deploy(
+  const { identityLib, passportCredentialIssuer, newPassportCredentialIssuerImpl } = await ignition.deploy(
     PassportCredentialIssuerModule,
     {
       parameters: {
@@ -102,16 +101,9 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
       }
     },
   );
-  await passportCredentialIssuerProxy.waitForDeployment();
 
-  const passportCredentialIssuerAddress = await passportCredentialIssuerProxy.getAddress();
-
-  console.log("PassportCredentialIssuer deployed address:", passportCredentialIssuerAddress);
-
-  passportCredentialIssuer = await ethers.getContractAt(
-    contractsInfo.PASSPORT_CREDENTIAL_ISSUER.name,
-    passportCredentialIssuerAddress,
-  );
+  console.log("PassportCredentialIssuer deployed address:", passportCredentialIssuer.target);
+  console.log("PassportCredentialIssuer implementation address:", newPassportCredentialIssuerImpl.target);
 
   await passportCredentialIssuer.addTransactor(await owner.getAddress());
   //await passportCredentialIssuer.addSigner(await user1.getAddress());
@@ -501,7 +493,6 @@ export async function deployAnonAadhaarIssuerFixtures(
   templateRoot: bigint = 5086122537745747254581491345739247223240245653900608092926314604019374578867n,
 ): Promise<DeployedActorsAnonAadhaar> {
   let [owner, user1, user2] = await ethers.getSigners();
-  let anonAadHaarCredentialIssuer: AnonAadHaarCredentialIssuer;
 
   const newBalance = "0x" + ethers.parseEther("10000").toString(16);
 
@@ -531,7 +522,7 @@ export async function deployAnonAadhaarIssuerFixtures(
   const nullifierSeed = 12345678n;
   const expirationTime = 15776640n;
 
-  const { identityLib, proxy: anonAadHaarCredentialIssuerProxy } = await ignition.deploy(
+  const { identityLib, anonAadHaarCredentialIssuer, newAnonAadHaarCredentialIssuerImpl } = await ignition.deploy(
     AnonAadHaarCredentialIssuerModule,
     {
       parameters: {
@@ -551,16 +542,9 @@ export async function deployAnonAadhaarIssuerFixtures(
       }
     },
   );
-  await anonAadHaarCredentialIssuerProxy.waitForDeployment();
 
-  const anonAadHaarCredentialIssuerAddress = await anonAadHaarCredentialIssuerProxy.getAddress();
-
-  console.log("AnonAadHaarCredentialIssuer deployed address:", anonAadHaarCredentialIssuerAddress);
-
-  anonAadHaarCredentialIssuer = await ethers.getContractAt(
-    contractsInfo.ANONAADHAAR_CREDENTIAL_ISSUER.name,
-    anonAadHaarCredentialIssuerAddress,
-  );
+  console.log("AnonAadHaarCredentialIssuer deployed address:", anonAadHaarCredentialIssuer.target);
+  console.log("AnonAadHaarCredentialIssuer implementation address:", newAnonAadHaarCredentialIssuerImpl.target);
 
   // set issuerDidHas
   const updateIssuerTx = await anonAadHaarCredentialIssuer.setIssuerDidHash(

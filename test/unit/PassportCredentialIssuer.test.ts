@@ -25,7 +25,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
 
   describe("Initialization", () => {
     it("should initialize Passport Credential Issuer with correct parameters", async () => {
-      const { passportCredentialIssuer, credentialVerifier, expirationTime, templateRoot, user1 } =
+      const { passportCredentialIssuer, credentialVerifier, expirationTime, templateRoot } =
         deployedActors;
 
       // Check initial state
@@ -71,7 +71,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
         ),
       ).to.be.revertedWithCustomError(passportCredentialIssuer, "InvalidInitialization");
     });
-    
+
     it("should not allow initialization after initialized", async () => {
       const { passportCredentialIssuer, state, idType, owner } = deployedActors;
 
@@ -105,11 +105,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
     it("should not add signer if caller is not a transactor", async () => {
       const { passportCredentialIssuer, user1 } = deployedActors;
 
-      await expect(
-        passportCredentialIssuer
-          .connect(user1)
-          .addSigner(await user1.getAddress()),
-      )
+      await expect(passportCredentialIssuer.connect(user1).addSigner(await user1.getAddress()))
         .to.be.revertedWithCustomError(passportCredentialIssuer, "InvalidTransactor")
         .withArgs(await user1.getAddress());
     });
@@ -204,7 +200,6 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       expect(await passportCredentialIssuer.getSigners()).to.deep.equal([]);
     });
 
-
     it("should return correct credential circuit verifier address", async () => {
       const { passportCredentialIssuer, credentialVerifier } = deployedActors;
       const credentialCircuitId = "credential_sha256";
@@ -222,21 +217,39 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
     });
 
     it("Should have upgraded the proxy to new PassportCredentialIssuer", async function () {
-      const { owner } = deployedActors;
+      const { owner, passportCredentialIssuer: passportCredentialIssuerPrev } = deployedActors;
 
-      const { passportCredentialIssuer } = await ignition.deploy(UpgradedPassportCredentialIssuerModule,
+      const imageHash = "0xc980e59163ce244bb4bb6211f48c7b46f88a4f40943e84eb99bdc41e129bd293";
+      //await passportCredentialIssuerPrev.addImageHashToWhitelist(imageHash);
+
+      //expect(await passportCredentialIssuerPrev.isWhitelistedImageHash(imageHash)).to.equal(true);
+
+      const { passportCredentialIssuer, newPassportCredentialIssuerImpl } = await ignition.deploy(
+        UpgradedPassportCredentialIssuerModule,
         {
           parameters: {
             IdentityLibModule: {
               poseidon3ElementAddress: deployedActors.poseidon3.target as string,
               poseidon4ElementAddress: deployedActors.poseidon4.target as string,
               smtLibAddress: deployedActors.smtLib.target as string,
-            }, 
+            },
           },
         },
       );
-
+      1;
+      console.log("Proxy address: ", passportCredentialIssuer.target);
+      console.log("New implementation address: ", newPassportCredentialIssuerImpl.target);
       expect(await passportCredentialIssuer.connect(owner).VERSION()).to.equal("1.0.0");
+      //expect(await passportCredentialIssuer.isWhitelistedImageHash(imageHash)).to.equal(true);
+      const implementationSlot =
+        "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
+      const implementationAddress = await ethers.provider.getStorage(
+        passportCredentialIssuer.target,
+        implementationSlot,
+      );
+      expect(ethers.zeroPadValue(implementationAddress, 32)).to.equal(
+        ethers.zeroPadValue(newPassportCredentialIssuerImpl.target.toString(), 32),
+      );
     });
   });
 });

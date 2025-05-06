@@ -24,6 +24,7 @@ const UpgradePassportCredentialIssuerModule = buildModule(
     });
 
     return {
+      newPassportCredentialIssuerImpl,
       proxyAdmin,
       proxy,
     };
@@ -31,11 +32,11 @@ const UpgradePassportCredentialIssuerModule = buildModule(
 );
 
 const UpgradedPassportCredentialIssuerModule = buildModule("UpgradedPassportCredentialIssuerModule", (m) => {
-  const { proxy, proxyAdmin } = m.useModule(UpgradePassportCredentialIssuerModule);
+  const { newPassportCredentialIssuerImpl, proxy, proxyAdmin } = m.useModule(UpgradePassportCredentialIssuerModule);
 
   const passportCredentialIssuer = m.contractAt("PassportCredentialIssuer", proxy);
 
-  return { passportCredentialIssuer, proxy, proxyAdmin };
+  return { passportCredentialIssuer, newPassportCredentialIssuerImpl, proxy, proxyAdmin };
 });
 
 export default UpgradedPassportCredentialIssuerModule;

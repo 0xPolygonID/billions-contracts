@@ -78,66 +78,29 @@ describe("Unit Tests for AnonAadhaarCredentialIssuerImplV1", () => {
     it("Should have upgraded the proxy to new AnonAadHaarCredentialIssuer", async function () {
       const { owner, nullifierSeed, publicKeyHashes } = deployedActors;
 
-      const { anonAadHaarCredentialIssuer } = await ignition.deploy(UpgradedAnonAadHaarCredentialIssuerModule,
+      const { anonAadHaarCredentialIssuer, newAnonAadHaarCredentialIssuerImpl } = await ignition.deploy(
+        UpgradedAnonAadHaarCredentialIssuerModule,
         {
           parameters: {
             IdentityLibModule: {
               poseidon3ElementAddress: deployedActors.poseidon3.target as string,
               poseidon4ElementAddress: deployedActors.poseidon4.target as string,
               smtLibAddress: deployedActors.smtLib.target as string,
-            }, 
+            },
           },
         },
       );
 
       expect(await anonAadHaarCredentialIssuer.connect(owner).VERSION()).to.equal("1.0.0");
-    });
-
-    /* it("should preserve state after upgrade and update VERSION", async () => {
-      const { anonAadhaarIssuer, owner, identityLib } = deployedActors;
-
-      const AnonAadhaarIssuerV2Factory = await ethers.getContractFactory(
-        "testUpgradedAnonAadhaarCredentialIssuerImplV1",
-        {
-          libraries: {
-            IdentityLib: identityLib.target,
-          },
-        },
-        owner,
-      );
-      const anonAadhaarIssuerV2Implementation = await AnonAadhaarIssuerV2Factory.deploy();
-      await anonAadhaarIssuerV2Implementation.waitForDeployment();
-
-      const anonAadhaarIssuerAsImpl = await ethers.getContractAt(
-        "testUpgradedAnonAadhaarCredentialIssuerImplV1",
-        anonAadhaarIssuer.target,
-      );
-
-      await anonAadhaarIssuerAsImpl
-        .connect(owner)
-        .upgradeToAndCall(
-          anonAadhaarIssuerV2Implementation.target,
-          AnonAadhaarIssuerV2Factory.interface.encodeFunctionData("initialize(bool)", [true]),
-        );
-
-      const anonAadhaarIssuerV2 = await ethers.getContractAt(
-        "testUpgradedAnonAadhaarCredentialIssuerImplV1",
-        anonAadhaarIssuer.target,
-      );
-
-      // Check if upgrade was successful and version function was added
-      expect(await anonAadhaarIssuerV2.version()).to.equal("11.33.1");
-
       const implementationSlot =
         "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
       const implementationAddress = await ethers.provider.getStorage(
-        anonAadhaarIssuer.target,
+        anonAadHaarCredentialIssuer.target,
         implementationSlot,
       );
       expect(ethers.zeroPadValue(implementationAddress, 32)).to.equal(
-        ethers.zeroPadValue(anonAadhaarIssuerV2Implementation.target.toString(), 32),
+        ethers.zeroPadValue(newAnonAadHaarCredentialIssuerImpl.target.toString(), 32),
       );
-    });*/
-   
+    });
   });
 });

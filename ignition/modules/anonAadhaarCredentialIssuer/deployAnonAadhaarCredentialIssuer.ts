@@ -100,16 +100,16 @@ const AnonAadHaarCredentialIssuerProxyModule = buildModule(
       },
     );
 
-    return { identityLib, proxyAdmin, proxy };
+    return { identityLib, newAnonAadHaarCredentialIssuerImpl, proxyAdmin, proxy };
   },
 );
 
 const AnonAadHaarCredentialIssuerModule = buildModule("AnonAadHaarCredentialIssuerModule", (m) => {
-  const { identityLib, proxy, proxyAdmin } = m.useModule(AnonAadHaarCredentialIssuerProxyModule);
+  const { identityLib, newAnonAadHaarCredentialIssuerImpl, proxy, proxyAdmin } = m.useModule(AnonAadHaarCredentialIssuerProxyModule);
 
   const anonAadHaarCredentialIssuer = m.contractAt("AnonAadHaarCredentialIssuer", proxy);
 
-  return { anonAadHaarCredentialIssuer, identityLib, proxy, proxyAdmin };
+  return { anonAadHaarCredentialIssuer, identityLib, newAnonAadHaarCredentialIssuerImpl, proxy, proxyAdmin };
 });
 
 export default AnonAadHaarCredentialIssuerModule;

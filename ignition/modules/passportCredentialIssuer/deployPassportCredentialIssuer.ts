@@ -80,15 +80,15 @@ const PassportCredentialIssuerProxyModule = buildModule("PassportCredentialIssue
     from: proxyAdminOwner,
   });
 
-  return { identityLib, proxyAdmin, proxy };
+  return { identityLib, newPassportCredentialIssuerImpl, proxyAdmin, proxy };
 });
 
 const PassportCredentialIssuerModule = buildModule("PassportCredentialIssuerModule", (m) => {
-  const { identityLib, proxy, proxyAdmin } = m.useModule(PassportCredentialIssuerProxyModule);
+  const { identityLib, newPassportCredentialIssuerImpl, proxy, proxyAdmin } = m.useModule(PassportCredentialIssuerProxyModule);
 
   const passportCredentialIssuer = m.contractAt("PassportCredentialIssuer", proxy);
 
-  return { passportCredentialIssuer, identityLib, proxy, proxyAdmin };
+  return { passportCredentialIssuer, identityLib, newPassportCredentialIssuerImpl, proxy, proxyAdmin };
 });
 
 export default PassportCredentialIssuerModule;
