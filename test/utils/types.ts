@@ -33,6 +33,7 @@ export interface BaseActors {
 export interface DeployedActors extends BaseActors {
   mockPassport: PassportData;
   passportCredentialIssuer: Contract;
+  proxyAdmin: Contract;
   credentialVerifier: CredentialVerifier;
   expirationTime: bigint;
   templateRoot: bigint;
@@ -43,6 +44,7 @@ export interface DeployedActors extends BaseActors {
 
 export interface DeployedActorsAnonAadhaar extends BaseActors {
   anonAadhaarIssuer: Contract;
+  proxyAdmin: Contract;
   anonAadhaarVerifier: ProdAnonAadhaarV1Verifier;
   expirationTime: bigint;
   templateRoot: bigint;

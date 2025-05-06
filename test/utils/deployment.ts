@@ -83,9 +83,8 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
   poseidon4Elements.waitForDeployment();
   console.log(`Poseidon4 deployed to: ${await poseidon4Elements.getAddress()}`);
 
-  const { identityLib, passportCredentialIssuer, newPassportCredentialIssuerImpl } = await ignition.deploy(
-    PassportCredentialIssuerModule,
-    {
+  const { identityLib, passportCredentialIssuer, newPassportCredentialIssuerImpl, proxyAdmin } =
+    await ignition.deploy(PassportCredentialIssuerModule, {
       parameters: {
         PassportCredentialIssuerProxyModule: {
           stateContractAddress: stContracts.state.target as string,
@@ -98,12 +97,14 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
           poseidon4ElementAddress: await poseidon4Elements.getAddress(),
           smtLibAddress: await stContracts.smtLib.getAddress(),
         },
-      }
-    },
-  );
+      },
+    });
 
   console.log("PassportCredentialIssuer deployed address:", passportCredentialIssuer.target);
-  console.log("PassportCredentialIssuer implementation address:", newPassportCredentialIssuerImpl.target);
+  console.log(
+    "PassportCredentialIssuer implementation address:",
+    newPassportCredentialIssuerImpl.target,
+  );
 
   await passportCredentialIssuer.addTransactor(await owner.getAddress());
   //await passportCredentialIssuer.addSigner(await user1.getAddress());
@@ -125,6 +126,7 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
     user2,
     mockPassport,
     passportCredentialIssuer: passportCredentialIssuer,
+    proxyAdmin,
     state: stContracts.state,
     identityLib,
     idType: stContracts.defaultIdType,
@@ -522,29 +524,34 @@ export async function deployAnonAadhaarIssuerFixtures(
   const nullifierSeed = 12345678n;
   const expirationTime = 15776640n;
 
-  const { identityLib, anonAadHaarCredentialIssuer, newAnonAadHaarCredentialIssuerImpl } = await ignition.deploy(
-    AnonAadHaarCredentialIssuerModule,
-    {
-      parameters: {
-        AnonAadHaarCredentialIssuerProxyModule: {
-          stateContractAddress: stContracts.state.target as string,
-          idType: stContracts.defaultIdType,
-          expirationTime: expirationTime,
-          templateRoot: templateRoot,
-          nullifierSeed: nullifierSeed,
-          publicKeyHashes: publicKeyHashes,
-        },
-        IdentityLibModule: {
-          poseidon3ElementAddress: await stContracts.poseidon3.getAddress(),
-          poseidon4ElementAddress: await poseidon4Elements.getAddress(),
-          smtLibAddress: await stContracts.smtLib.getAddress(),
-        },
-      }
+  const {
+    identityLib,
+    anonAadHaarCredentialIssuer,
+    newAnonAadHaarCredentialIssuerImpl,
+    proxyAdmin,
+  } = await ignition.deploy(AnonAadHaarCredentialIssuerModule, {
+    parameters: {
+      AnonAadHaarCredentialIssuerProxyModule: {
+        stateContractAddress: stContracts.state.target as string,
+        idType: stContracts.defaultIdType,
+        expirationTime: expirationTime,
+        templateRoot: templateRoot,
+        nullifierSeed: nullifierSeed,
+        publicKeyHashes: publicKeyHashes,
+      },
+      IdentityLibModule: {
+        poseidon3ElementAddress: await stContracts.poseidon3.getAddress(),
+        poseidon4ElementAddress: await poseidon4Elements.getAddress(),
+        smtLibAddress: await stContracts.smtLib.getAddress(),
+      },
     },
-  );
+  });
 
   console.log("AnonAadHaarCredentialIssuer deployed address:", anonAadHaarCredentialIssuer.target);
-  console.log("AnonAadHaarCredentialIssuer implementation address:", newAnonAadHaarCredentialIssuerImpl.target);
+  console.log(
+    "AnonAadHaarCredentialIssuer implementation address:",
+    newAnonAadHaarCredentialIssuerImpl.target,
+  );
 
   // set issuerDidHas
   const updateIssuerTx = await anonAadHaarCredentialIssuer.setIssuerDidHash(
@@ -557,6 +564,7 @@ export async function deployAnonAadhaarIssuerFixtures(
     user1,
     user2,
     anonAadhaarIssuer: anonAadHaarCredentialIssuer,
+    proxyAdmin,
     anonAadhaarVerifier: anonAadhaarVerifier,
     state: stContracts.state,
     identityLib,

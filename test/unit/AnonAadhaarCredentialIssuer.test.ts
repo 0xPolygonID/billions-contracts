@@ -76,9 +76,32 @@ describe("Unit Tests for AnonAadhaarCredentialIssuerImplV1", () => {
     });
 
     it("Should have upgraded the proxy to new AnonAadHaarCredentialIssuer", async function () {
-      const { owner, nullifierSeed, publicKeyHashes } = deployedActors;
+      const { owner, identityLib, anonAadhaarIssuer, proxyAdmin, nullifierSeed, publicKeyHashes } =
+        deployedActors;
 
-      const { anonAadHaarCredentialIssuer, newAnonAadHaarCredentialIssuerImpl } = await ignition.deploy(
+      /****************************** Upgrade calling direct to proxyAdmin ****************************/
+      const AnonAadHaarCredentialIssuerFactory = await ethers.getContractFactory(
+        "AnonAadHaarCredentialIssuer",
+        {
+          libraries: {
+            IdentityLib: identityLib.target,
+          },
+        },
+        owner,
+      );
+      const newAnonAadHaarCredentialIssuerImpl = await AnonAadHaarCredentialIssuerFactory.deploy();
+
+      const initializeData = "0x";
+      await proxyAdmin.upgradeAndCall(
+        anonAadhaarIssuer,
+        newAnonAadHaarCredentialIssuerImpl,
+        initializeData,
+      );
+      const anonAaadHaarCredentialIssuerUpdated = anonAadhaarIssuer;
+      /************************************************************************************************/
+
+      /****************************** Upgrade with ignition module ****************************/
+      /*const { anonAadHaarCredentialIssuer: anonAaadHaarCredentialIssuerUpdated, newAnonAadHaarCredentialIssuerImpl } = await ignition.deploy(
         UpgradedAnonAadHaarCredentialIssuerModule,
         {
           parameters: {
@@ -89,13 +112,20 @@ describe("Unit Tests for AnonAadhaarCredentialIssuerImplV1", () => {
             },
           },
         },
-      );
+      );*/
+      /************************************************************************************************/
 
-      expect(await anonAadHaarCredentialIssuer.connect(owner).VERSION()).to.equal("1.0.0");
+      expect(await anonAaadHaarCredentialIssuerUpdated.connect(owner).VERSION()).to.equal("1.0.0");
+      expect(await anonAaadHaarCredentialIssuerUpdated.getNullifierSeed()).to.equal(nullifierSeed);
+
+      for (const publicKeyHash of publicKeyHashes) {
+        expect(await anonAaadHaarCredentialIssuerUpdated.publicKeyHashExists(publicKeyHash)).to.equal(true);
+      }
+
       const implementationSlot =
         "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
       const implementationAddress = await ethers.provider.getStorage(
-        anonAadHaarCredentialIssuer.target,
+        anonAaadHaarCredentialIssuerUpdated.target,
         implementationSlot,
       );
       expect(ethers.zeroPadValue(implementationAddress, 32)).to.equal(

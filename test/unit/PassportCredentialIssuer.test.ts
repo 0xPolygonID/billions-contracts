@@ -217,34 +217,58 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
     });
 
     it("Should have upgraded the proxy to new PassportCredentialIssuer", async function () {
-      const { owner, passportCredentialIssuer: passportCredentialIssuerPrev } = deployedActors;
+      const { owner, identityLib, passportCredentialIssuer, proxyAdmin } = deployedActors;
 
       const imageHash = "0xc980e59163ce244bb4bb6211f48c7b46f88a4f40943e84eb99bdc41e129bd293";
-      //await passportCredentialIssuerPrev.addImageHashToWhitelist(imageHash);
+      await passportCredentialIssuer.addImageHashToWhitelist(imageHash);
 
-      //expect(await passportCredentialIssuerPrev.isWhitelistedImageHash(imageHash)).to.equal(true);
+      expect(await passportCredentialIssuer.isWhitelistedImageHash(imageHash)).to.equal(true);
 
-      const { passportCredentialIssuer, newPassportCredentialIssuerImpl } = await ignition.deploy(
-        UpgradedPassportCredentialIssuerModule,
+      /****************************** Upgrade calling direct to proxyAdmin ****************************/
+      const PassportCredentialIssuerFactory = await ethers.getContractFactory(
+        "PassportCredentialIssuer",
         {
-          parameters: {
-            IdentityLibModule: {
-              poseidon3ElementAddress: deployedActors.poseidon3.target as string,
-              poseidon4ElementAddress: deployedActors.poseidon4.target as string,
-              smtLibAddress: deployedActors.smtLib.target as string,
-            },
+          libraries: {
+            IdentityLib: identityLib.target,
           },
         },
+        owner,
       );
-      1;
-      console.log("Proxy address: ", passportCredentialIssuer.target);
-      console.log("New implementation address: ", newPassportCredentialIssuerImpl.target);
-      expect(await passportCredentialIssuer.connect(owner).VERSION()).to.equal("1.0.0");
-      //expect(await passportCredentialIssuer.isWhitelistedImageHash(imageHash)).to.equal(true);
+      const newPassportCredentialIssuerImpl = await PassportCredentialIssuerFactory.deploy();
+
+      const initializeData = "0x";
+      await proxyAdmin.upgradeAndCall(
+        passportCredentialIssuer,
+        newPassportCredentialIssuerImpl,
+        initializeData,
+      );
+      const passportCredentialIssuerUpdated = passportCredentialIssuer;
+      /************************************************************************************************/
+
+      /****************************** Upgrade with ignition module ****************************/
+      /*const {
+        passportCredentialIssuer: passportCredentialIssuerUpdated,
+        newPassportCredentialIssuerImpl,
+      } = await ignition.deploy(UpgradedPassportCredentialIssuerModule, {
+        parameters: {
+          IdentityLibModule: {
+            poseidon3ElementAddress: deployedActors.poseidon3.target as string,
+            poseidon4ElementAddress: deployedActors.poseidon4.target as string,
+            smtLibAddress: deployedActors.smtLib.target as string,
+          },
+        },
+      });*/
+      /************************************************************************************************/
+
+      expect(await passportCredentialIssuerUpdated.connect(owner).VERSION()).to.equal("1.0.0");
+      expect(await passportCredentialIssuerUpdated.isWhitelistedImageHash(imageHash)).to.equal(
+        true,
+      );
+
       const implementationSlot =
         "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
       const implementationAddress = await ethers.provider.getStorage(
-        passportCredentialIssuer.target,
+        passportCredentialIssuerUpdated.target,
         implementationSlot,
       );
       expect(ethers.zeroPadValue(implementationAddress, 32)).to.equal(
