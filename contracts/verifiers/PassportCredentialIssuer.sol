@@ -29,6 +29,10 @@ error InvalidSignerPassportSignatureProof(address signer);
 error NoCredentialCircuitForRequestId(uint256 requestId);
 error NullifierDoesNotExist(uint256 nullifier);
 error InvalidTransactor(address transactor);
+error ImageHashIsNotWhitelisted(bytes32 imageHash);
+error InvalidAttestation();
+error InvalidSignerAddress();
+error InvalidAttestationUserDataLength();
 
 /**
  * @dev Address ownership credential issuer.
@@ -183,7 +187,47 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         _updateCredentialVerifiers(credentialCircuitIds, credentialVerifierAddresses);
     }
 
-    function addSigner(address signer) public onlyTransactors {
+    function addSigner(bytes memory attestation) public onlyTransactors {
+        // TODO: in production we should pass "true" instead of "false"
+        (
+            bytes memory userData,
+            bytes32 imageHash,
+            bool validated
+        ) = _getPassportCredentialIssuerV1Storage()._attestationValidator.validateAttestation(
+                attestation,
+                false
+            );
+
+        if (!isWhitelistedImageHash(imageHash)) {
+            revert ImageHashIsNotWhitelisted(imageHash);
+        }
+
+        if (!validated) {
+            revert InvalidAttestation();
+        }
+
+        if (userData.length < 20) {
+            revert InvalidAttestationUserDataLength();
+        }
+
+        // 1. decode user data
+        address userDataDecoded;
+        assembly {
+            userDataDecoded := mload(add(userData, 20))
+        }
+
+        if (userDataDecoded == address(0)) {
+            revert InvalidSignerAddress();
+        }
+
+        // 2. add signer
+        PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
+        $._signers.add(userDataDecoded);
+        emit SignerAdded(userDataDecoded);
+    }
+
+    //TODO: remove this function in production
+    function addSignerDev(address signer) public onlyOwner {
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
         $._signers.add(signer);
         emit SignerAdded(signer);
@@ -192,7 +236,7 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
     /**
      * @notice Retrieves the signers.
      */
-    function getSigners() external view onlyTransactors returns (address[] memory) {
+    function getSigners() external view returns (address[] memory) {
         return _getPassportCredentialIssuerV1Storage()._signers.values();
     }
 

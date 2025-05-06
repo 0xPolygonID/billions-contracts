@@ -1,8 +1,7 @@
 import { expect } from "chai";
 import { deploySystemFixtures } from "../utils/deployment";
 import { DeployedActors } from "../utils/types";
-import { ethers, ignition } from "hardhat";
-import UpgradedPassportCredentialIssuerModule from "../../ignition/modules/passportCredentialIssuer/upgradePassportCredentialIssuer";
+import { ethers } from "hardhat";
 import jsonAttestationWithUserData from "../data/TEEAttestationWithUserData.json";
 import { base64ToBytes, bytesToHex } from "@0xpolygonid/js-sdk";
 import { contractsInfo } from "../../helpers/constants";
@@ -91,6 +90,42 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
   });
 
   describe("Update functions", () => {
+    it("adding imageHash to whitelisted enclave image hashes", async function () {
+      const { passportCredentialIssuer } = deployedActors;
+      await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
+      await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash2)).not.to.be.reverted;
+      expect(await passportCredentialIssuer.isWhitelistedImageHash(imageHash)).to.equal(true);
+      expect(await passportCredentialIssuer.isWhitelistedImageHash(imageHash2)).to.equal(true);
+    });
+
+    it("add signer for non whitelisted enclave imageHash", async function () {
+      const { passportCredentialIssuer, owner } = deployedActors;
+
+      await passportCredentialIssuer.addTransactor(await owner.getAddress());
+      await expect(
+        passportCredentialIssuer.addSigner(
+          `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
+        ),
+      )
+        .to.revertedWithCustomError(passportCredentialIssuer, "ImageHashIsNotWhitelisted")
+        .withArgs(imageHash);
+    }).timeout(160000);
+
+    it("add signer for whitelisted enclave imageHash", async function () {
+      const { passportCredentialIssuer, owner } = deployedActors;
+
+      await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
+      await passportCredentialIssuer.addTransactor(await owner.getAddress());
+
+      await expect(
+        passportCredentialIssuer.addSigner(
+          `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
+        ),
+      )
+        .to.emit(passportCredentialIssuer, "SignerAdded")
+        .withArgs("0xD840543405B0B835F078c59C54Fe66ddD7395C34");
+    }).timeout(160000);
+
     it("add transactor to contract", async function () {
       const { passportCredentialIssuer, owner } = deployedActors;
 
@@ -106,7 +141,11 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
     it("should not add signer if caller is not a transactor", async () => {
       const { passportCredentialIssuer, user1 } = deployedActors;
 
-      await expect(passportCredentialIssuer.connect(user1).addSigner(await user1.getAddress()))
+      await expect(
+        passportCredentialIssuer
+          .connect(user1)
+          .addSigner(`0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`),
+      )
         .to.be.revertedWithCustomError(passportCredentialIssuer, "InvalidTransactor")
         .withArgs(await user1.getAddress());
     });
@@ -214,7 +253,9 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
     it("Should be interactable via proxy", async function () {
       const { passportCredentialIssuer, owner } = deployedActors;
 
-      expect(await passportCredentialIssuer.connect(owner).VERSION()).to.equal(contractsInfo.PASSPORT_CREDENTIAL_ISSUER.version);
+      expect(await passportCredentialIssuer.connect(owner).VERSION()).to.equal(
+        contractsInfo.PASSPORT_CREDENTIAL_ISSUER.version,
+      );
     });
 
     it("Should have upgraded the proxy to new PassportCredentialIssuer", async function () {
@@ -261,7 +302,9 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       });*/
       /************************************************************************************************/
 
-      expect(await passportCredentialIssuerUpdated.connect(owner).VERSION()).to.equal(contractsInfo.PASSPORT_CREDENTIAL_ISSUER.version);
+      expect(await passportCredentialIssuerUpdated.connect(owner).VERSION()).to.equal(
+        contractsInfo.PASSPORT_CREDENTIAL_ISSUER.version,
+      );
       expect(await passportCredentialIssuerUpdated.isWhitelistedImageHash(imageHash)).to.equal(
         true,
       );

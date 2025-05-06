@@ -73,7 +73,15 @@ describe("Commitment Registration Tests", function () {
       await expect(passportCredentialIssuer.addTransactor(await owner.getAddress())).not.to.be
         .reverted;
 
-      await expect(passportCredentialIssuer.addSigner(await user1.getAddress()))
+      await expect(
+        passportCredentialIssuer.addSigner(
+          `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
+        ),
+      )
+        .to.emit(passportCredentialIssuer, "SignerAdded")
+        .withArgs("0xD840543405B0B835F078c59C54Fe66ddD7395C34");
+
+      await expect(passportCredentialIssuer.addSignerDev(await user1.getAddress()))
         .to.emit(passportCredentialIssuer, "SignerAdded")
         .withArgs(await user1.getAddress());
 
@@ -140,7 +148,15 @@ describe("Commitment Registration Tests", function () {
       await expect(passportCredentialIssuer.addTransactor(await owner.getAddress())).not.to.be
         .reverted;
 
-        await expect(passportCredentialIssuer.addSigner(await user1.getAddress()))
+      await expect(
+        passportCredentialIssuer.addSigner(
+          `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
+        ),
+      )
+        .to.emit(passportCredentialIssuer, "SignerAdded")
+        .withArgs("0xD840543405B0B835F078c59C54Fe66ddD7395C34");
+
+      await expect(passportCredentialIssuer.addSignerDev(await user1.getAddress()))
         .to.emit(passportCredentialIssuer, "SignerAdded")
         .withArgs(await user1.getAddress());
 
@@ -186,7 +202,15 @@ describe("Commitment Registration Tests", function () {
       await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
       await passportCredentialIssuer.addTransactor(await owner.getAddress());
 
-      await expect(passportCredentialIssuer.addSigner(await user1.getAddress()))
+      await expect(
+        passportCredentialIssuer.addSigner(
+          `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
+        ),
+      )
+        .to.emit(passportCredentialIssuer, "SignerAdded")
+        .withArgs("0xD840543405B0B835F078c59C54Fe66ddD7395C34");
+
+      await expect(passportCredentialIssuer.addSignerDev(await user1.getAddress()))
         .to.emit(passportCredentialIssuer, "SignerAdded")
         .withArgs(await user1.getAddress());
 
@@ -233,7 +257,9 @@ describe("Commitment Registration Tests", function () {
       await expect(passportCredentialIssuer.addTransactor(await owner.getAddress())).not.to.be
         .reverted;
 
-      await passportCredentialIssuer.addSigner(await owner.getAddress());
+      await passportCredentialIssuer.addSigner(
+        `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
+      );
 
       const signedPassportData: PassportDataSigned = {
         linkId: BigInt(credentialProof.publicSignals[2]),
