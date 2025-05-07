@@ -192,7 +192,7 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
     /**
      * @notice Retrieves the signers.
      */
-    function getSigners() external view onlyTransactors returns (address[] memory) {
+    function getSigners() external view returns (address[] memory) {
         return _getPassportCredentialIssuerV1Storage()._signers.values();
     }
 
