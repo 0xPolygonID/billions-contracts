@@ -19,6 +19,7 @@ error InvalidHashIndex(uint256 hashIndex);
 error InvalidHashValue(uint256 hashValue);
 error InvalidTemplateRoot(uint256 templateRoot, uint256 expectedTemplateRoot);
 error IssuanceDateExpired(uint256 issuanceDate);
+error IssuanceDateInFuture(uint256 issuanceDate);
 error CurrentDateExpired(uint256 currentDate);
 error NullifierAlreadyExists(uint256 nullifier);
 error LengthMismatch(uint256 length1, uint256 length2);
@@ -461,6 +462,8 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
 
         if (issuanceDate + $._expirationTime < block.timestamp)
             revert IssuanceDateExpired(issuanceDate);
+        if (issuanceDate > block.timestamp + 15 minutes)
+            revert IssuanceDateInFuture(issuanceDate);
 
         if ($._nullifiers[nullifier].isSet) revert NullifierAlreadyExists(nullifier);
     }

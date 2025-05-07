@@ -122,11 +122,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
     it("should not add signer if caller is not a transactor", async () => {
       const { passportCredentialIssuer, user1 } = deployedActors;
 
-      await expect(
-        passportCredentialIssuer
-          .connect(user1)
-          .addSigner(await user1.getAddress()),
-      )
+      await expect(passportCredentialIssuer.connect(user1).addSigner(await user1.getAddress()))
         .to.be.revertedWithCustomError(passportCredentialIssuer, "InvalidTransactor")
         .withArgs(await user1.getAddress());
     });
