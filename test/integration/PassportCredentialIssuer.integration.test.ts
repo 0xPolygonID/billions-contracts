@@ -51,6 +51,13 @@ describe("Commitment Registration Tests", function () {
       issuanceDateExpired,
     );
 
+    // Set the issuer DID hash
+    const { passportCredentialIssuer, owner } = deployedActors;
+    const passportCredentialIssuerWithOwner = passportCredentialIssuer.connect(owner);
+    const issuerDidHash = baseCredentialProof.publicSignals[6]; // Replace with the actual hash
+    const tx = await passportCredentialIssuerWithOwner.setIssuerDIDHash(issuerDidHash);
+    await tx.wait();
+
     snapshotId = await ethers.provider.send("evm_snapshot", []);
   });
 
@@ -140,7 +147,7 @@ describe("Commitment Registration Tests", function () {
       await expect(passportCredentialIssuer.addTransactor(await owner.getAddress())).not.to.be
         .reverted;
 
-        await expect(passportCredentialIssuer.addSigner(await user1.getAddress()))
+      await expect(passportCredentialIssuer.addSigner(await user1.getAddress()))
         .to.emit(passportCredentialIssuer, "SignerAdded")
         .withArgs(await user1.getAddress());
 
@@ -267,6 +274,54 @@ describe("Commitment Registration Tests", function () {
       )
         .to.revertedWithCustomError(passportCredentialIssuer, "InvalidSignerPassportSignatureProof")
         .withArgs(await user2.getAddress());
+    });
+
+    it("Should return an error for unknown issuer", async () => {
+      const { passportCredentialIssuer, user1, owner } = deployedActors;
+
+      await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
+      await expect(passportCredentialIssuer.addTransactor(await owner.getAddress())).not.to.be
+        .reverted;
+
+      await expect(passportCredentialIssuer.addSigner(await user1.getAddress()))
+        .to.emit(passportCredentialIssuer, "SignerAdded")
+        .withArgs(await user1.getAddress());
+
+      const signedPassportData: PassportDataSigned = {
+        linkId: BigInt(credentialProof.publicSignals[2]),
+        nullifier: 1n,
+      };
+
+      const crossChainProofs = await packSignedPassportData(
+        signedPassportData,
+        passportCredentialIssuer,
+        user1,
+      );
+      const metadatas = "0x";
+
+      const credentialPreparedProof = prepareProof(credentialProof.proof);
+
+      const credentialZkProof = packZKProof(
+        credentialProof.publicSignals,
+        credentialPreparedProof.pi_a,
+        credentialPreparedProof.pi_b,
+        credentialPreparedProof.pi_c,
+      );
+
+      // set incorrect issuerDidHash
+      const passportCredentialIssuerWithOwner = passportCredentialIssuer.connect(owner);
+      const tx = await passportCredentialIssuerWithOwner.setIssuerDIDHash(1);
+      await tx.wait();
+
+      const credentialRequestId =
+        await passportCredentialIssuer.credentialCircuitIdToRequestIds("credential_sha256");
+
+      await expect(
+        passportCredentialIssuer.submitZKPResponseV2(
+          [{ requestId: credentialRequestId, zkProof: credentialZkProof, data: metadatas }],
+          crossChainProofs,
+        ),
+      ).to.revertedWithCustomError(passportCredentialIssuer, "InvalidIssuerDidHash");
     });
   });
 });

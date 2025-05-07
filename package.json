@@ -17,7 +17,9 @@
     "setIssuerDID:anonAadhharCredentialIssuer:polygon:amoy": "npx hardhat run scripts/setCredentialIssuerAnonAadhaarCredentialIssuer.ts --network polygon-amoy",
     "setIssuerDID:anonAadhharCredentialIssuer:billions:test": "npx hardhat run scripts/setCredentialIssuerAnonAadhaarCredentialIssuer.ts --network billions-test",
     "upgrade:passport:issuer:billions:test": "npx hardhat ignition deploy ignition/modules/passportCredentialIssuer/upgradePassportCredentialIssuer.ts --network billions-test --verify",
-    "upgrade:anon-aadhaar:issuer:billions:test": "npx hardhat ignition deploy ignition/modules/anonAadhaarCredentialIssuer/upgradeAnonAadhaarCredentialIssuer.ts --network billions-test --verify"
+    "upgrade:anon-aadhaar:issuer:billions:test": "npx hardhat ignition deploy ignition/modules/anonAadhaarCredentialIssuer/upgradeAnonAadhaarCredentialIssuer.ts --network billions-test --verify",
+    "setIssuerDID:passport:polygon:amoy": "npx hardhat run scripts/setCredentialIssuerPassportCredentialIssuer.ts --network polygon-amoy",
+    "setIssuerDID:passport:billions:test": "npx hardhat run scripts/setCredentialIssuerPassportCredentialIssuer.ts --network billions-test"
   },
   "keywords": [],
   "author": "",

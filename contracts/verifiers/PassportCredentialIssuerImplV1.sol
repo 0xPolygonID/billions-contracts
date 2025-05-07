@@ -32,6 +32,7 @@ error InvalidAttestation();
 error InvalidSignerAddress();
 error InvalidAttestationUserDataLength();
 error InvalidTransactor(address transactor);
+error InvalidIssuerDidHash();
 
 /**
  * @dev Address ownership credential issuer.
@@ -71,6 +72,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         mapping(bytes32 imageHash => bool isApproved) _imageHashesWhitelist;
         EnumerableSet.AddressSet _transactors;
         mapping(uint256 nullifier => HashIndexHashValueNullifier hashIndexHashValue) _nullifiers;
+        uint256 _issuerDidHash;
     }
 
     struct UserData {
@@ -362,7 +364,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
                 a1,
                 b1,
                 c1,
-                [inputs1[0], inputs1[1], inputs1[2], inputs1[3], inputs1[4], inputs1[5]]
+                [inputs1[0], inputs1[1], inputs1[2], inputs1[3], inputs1[4], inputs1[5], inputs1[6]]
             );
 
         PassportSignatureProof[] memory passportSignatureProof = abi.decode(
@@ -404,6 +406,22 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         _getPassportCredentialIssuerV1Storage()._imageHashesWhitelist[imageHash] = false;
     }
 
+    /**
+     * @notice Retrieves the issuer DID hash.
+     * @return The issuer DID hash.
+     */
+    function getIssuerDIDHash() external view onlyOwner returns (uint256) {
+        return _getPassportCredentialIssuerV1Storage()._issuerDidHash;
+    }
+
+    /**
+     * @notice Updates the issuer DID hash.
+     * @param issuerDidHash The new issuer DID hash.
+     */
+    function setIssuerDIDHash(uint256 issuerDidHash) external onlyOwner {
+        _getPassportCredentialIssuerV1Storage()._issuerDidHash = issuerDidHash;
+    }
+
     function _checkTransactor() internal view {
         if (!_getPassportCredentialIssuerV1Storage()._transactors.contains(_msgSender())) {
             revert InvalidTransactor(_msgSender());
@@ -428,7 +446,8 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         uint256 templateRoot,
         uint256 linkIdCredentialProof,
         uint256 linkIdSignature,
-        uint256 nullifier
+        uint256 nullifier,
+        uint256 issuerDidHash
     ) internal view {
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
         if (hashIndex == 0) revert InvalidHashIndex(hashIndex);
@@ -463,6 +482,8 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
             revert IssuanceDateExpired(issuanceDate);
 
         if ($._nullifiers[nullifier].isSet) revert NullifierAlreadyExists(nullifier);
+
+        if ($._issuerDidHash != issuerDidHash) revert InvalidIssuerDidHash();
     }
 
     function _addHashAndTransit(uint256 hi, uint256 hv) internal {
@@ -551,6 +572,10 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
 
         uint256 nullifier = passportSignatureProof.passportCredentialMsg.nullifier;
 
+        uint256 issuerDidHash = credentialCircuitProof.pubSignals[
+            CircuitConstants.CREDENTIAL_ISSUER_DID_HASH_INDEX
+        ];
+
         _validatePublicInputs(
             hashIndex,
             hashValue,
@@ -559,7 +584,8 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
             templateRoot,
             linkIdCredentialProof,
             passportSignatureProof.passportCredentialMsg.linkId,
-            nullifier
+            nullifier,
+            issuerDidHash
         );
         _setNullifier(nullifier, hashIndex, hashValue);
         _addHashAndTransit(hashIndex, hashValue);
