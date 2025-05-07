@@ -322,5 +322,64 @@ describe("Commitment Registration Tests", function () {
         .to.be.revertedWithCustomError(passportCredentialIssuer, "IssuanceDateInFuture")
         .withArgs(Math.round(futureIssuanceDate.getTime() / 1000));
     });
+
+    it("Should not verify with passport current date in the future", async () => {
+      const { passportCredentialIssuer, user1, owner } = deployedActors;
+
+      await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
+      await expect(passportCredentialIssuer.addTransactor(await owner.getAddress())).not.to.be
+        .reverted;
+
+      await expect(passportCredentialIssuer.addSigner(await user1.getAddress()))
+        .to.emit(passportCredentialIssuer, "SignerAdded")
+        .withArgs(await user1.getAddress());
+
+      const futureCurrentDate = new Date();
+      futureCurrentDate.setDate(futureCurrentDate.getDate() + 1); // Set current date to 1 day in the future
+
+      const baseCredentialProofFutureCurrentDate = await generateCredentialProof(
+        deployedActors.mockPassport,
+        futureCurrentDate,
+      );
+
+      const signedPassportData: PassportDataSigned = {
+        linkId: BigInt(baseCredentialProofFutureCurrentDate.publicSignals[2]),
+        nullifier: 1n,
+      };
+
+      const crossChainProofs = await packSignedPassportData(
+        signedPassportData,
+        passportCredentialIssuer,
+        user1,
+      );
+      const metadatas = "0x";
+
+      const credentialPreparedProof = prepareProof(baseCredentialProofFutureCurrentDate.proof);
+
+      const credentialZkProof = packZKProof(
+        baseCredentialProofFutureCurrentDate.publicSignals,
+        credentialPreparedProof.pi_a,
+        credentialPreparedProof.pi_b,
+        credentialPreparedProof.pi_c,
+      );
+
+      const credentialRequestId =
+        await passportCredentialIssuer.credentialCircuitIdToRequestIds("credential_sha256");
+
+      await expect(
+        passportCredentialIssuer.submitZKPResponseV2(
+          [{ requestId: credentialRequestId, zkProof: credentialZkProof, data: metadatas }],
+          crossChainProofs,
+        ),
+      )
+        .to.be.revertedWithCustomError(passportCredentialIssuer, "CurrentDateInFuture")
+        .withArgs(
+          Math.floor(
+            (futureCurrentDate.getFullYear() - 2000) * 10000 +
+              (futureCurrentDate.getMonth() + 1) * 100 +
+              futureCurrentDate.getDate(),
+          ),
+        );
+    });
   });
 });

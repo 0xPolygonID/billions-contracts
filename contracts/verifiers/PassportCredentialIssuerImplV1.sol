@@ -21,6 +21,7 @@ error InvalidTemplateRoot(uint256 templateRoot, uint256 expectedTemplateRoot);
 error IssuanceDateExpired(uint256 issuanceDate);
 error IssuanceDateInFuture(uint256 issuanceDate);
 error CurrentDateExpired(uint256 currentDate);
+error CurrentDateInFuture(uint256 currentDate);
 error NullifierAlreadyExists(uint256 nullifier);
 error LengthMismatch(uint256 length1, uint256 length2);
 error NoVerifierSet();
@@ -451,13 +452,26 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
             currentDateWithFullYear = currentDate + 20000000;
         }
 
-        (uint256 year, uint256 month, uint256 day) = DateTime.timestampToDate(
-            block.timestamp - CURRENT_DATE_EXPIRATION_TIME
-        );
-        uint256 minimumExpectedCurrentDate = year * 10000 + month * 100 + day;
+        // This scopes were added to avoid stack too deep error
 
-        if (minimumExpectedCurrentDate > currentDateWithFullYear) {
-            revert CurrentDateExpired(currentDate);
+        // scope: verify if currentDate is not expired
+        {
+            (uint256 year, uint256 month, uint256 day) = DateTime.timestampToDate(
+                block.timestamp - CURRENT_DATE_EXPIRATION_TIME
+            );
+            uint256 minimumExpectedCurrentDate = year * 10000 + month * 100 + day;
+            if (minimumExpectedCurrentDate > currentDateWithFullYear) {
+                revert CurrentDateExpired(currentDate);
+            }
+        }
+
+        // scope: verify if currentDate is not in the future
+        {
+            (uint256 todayYear, uint256 todayMonth, uint256 todayDay) = DateTime.timestampToDate(block.timestamp);
+            uint256 todayYYYYMMDD = todayYear * 10000 + todayMonth * 100 + todayDay;
+            if (currentDateWithFullYear != todayYYYYMMDD) {
+                revert CurrentDateInFuture(currentDate);
+            }
         }
 
         if (issuanceDate + $._expirationTime < block.timestamp)
