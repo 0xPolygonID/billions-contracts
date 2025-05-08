@@ -2,18 +2,11 @@ import { expect } from "chai";
 import jsonAttestation from "../data/TEEAttestationWithUserData.json";
 import jsonAttestationExpired from "../data/TEEAttestationExpired.json";
 import jsonAttestationClaim from "../data/TEEAttestationClaim.json";
-import {
-  getAttestationRawBytes,
-  getChainOfCertificatesRawBytes,
-  validateAttestation,
-} from "../../helpers/validateTEE";
+import { getChainOfCertificatesRawBytes, validateAttestation } from "../../helpers/validateTEE";
 import { base64ToBytes, bytesToHex } from "@0xpolygonid/js-sdk";
-import {
-  deployCertificatesLib,
-  deployCertificatesValidator,
-  deployContractWrapper,
-  deployNitroAttestationValidator,
-} from "../utils/deployment";
+import { deployContractWrapper } from "../utils/deployment";
+import { ignition } from "hardhat";
+import { NitroAttestationValidatorModule } from "../../ignition/modules/attestationValidation/attestationLibraries";
 
 describe("Validation of TEE attestations", function () {
   let nitroAttestationValidator: any;
@@ -21,15 +14,7 @@ describe("Validation of TEE attestations", function () {
   let certificatesValidator: any;
 
   before(async function () {
-    const certificatesLib = await deployCertificatesLib();
-    certificatesValidator = await deployCertificatesValidator(certificatesLib);
-    nitroAttestationValidator = await deployNitroAttestationValidator(
-      await certificatesLib.getAddress(),
-    );
-
-    await nitroAttestationValidator.setCertificatesValidator(
-      await certificatesValidator.getAddress(),
-    );
+    ({ nitroAttestationValidator, certificatesValidator } = await ignition.deploy(NitroAttestationValidatorModule));
 
     nitroAttestationValidatorWrapper = await deployContractWrapper(
       "NitroAttestationValidatorWrapper",

@@ -5,6 +5,7 @@ import {
   TRANSPARENT_UPGRADEABLE_PROXY_BYTECODE,
 } from "../../../helpers/constants";
 import IdentityLibModule from "../identityLib/identityLib";
+import { NitroAttestationValidatorModule } from "../attestationValidation/attestationLibraries";
 
 /**
  * This is the first module that will be run. It deploys the proxy and the
@@ -45,50 +46,56 @@ export const PassportCredentialIssuerProxyFirstImplementationModule = buildModul
   },
 );
 
-const PassportCredentialIssuerProxyModule = buildModule("PassportCredentialIssuerProxyModule", (m) => {
-  const proxyAdminOwner = m.getAccount(0);
-  const { proxy, proxyAdmin } = m.useModule(PassportCredentialIssuerProxyFirstImplementationModule);
+const PassportCredentialIssuerProxyModule = buildModule(
+  "PassportCredentialIssuerProxyModule",
+  (m) => {
+    const proxyAdminOwner = m.getAccount(0);
+    const { proxy, proxyAdmin } = m.useModule(
+      PassportCredentialIssuerProxyFirstImplementationModule,
+    );
 
-  const stateContractAddress = m.getParameter("stateContractAddress");
-  const idType = m.getParameter("idType");
-  const expirationTime = m.getParameter("expirationTime");
-  const templateRoot = m.getParameter("templateRoot");
+    const stateContractAddress = m.getParameter("stateContractAddress");
+    const idType = m.getParameter("idType");
+    const expirationTime = m.getParameter("expirationTime");
+    const templateRoot = m.getParameter("templateRoot");
 
-  const { identityLib } = m.useModule(IdentityLibModule);
+    const { identityLib } = m.useModule(IdentityLibModule);
+    const { nitroAttestationValidator } = m.useModule(NitroAttestationValidatorModule);
 
-  const newPassportCredentialIssuerImpl = m.contract("PassportCredentialIssuer", [], {
-    libraries: {
-      IdentityLib: identityLib,
-    },
-  });
+    const newPassportCredentialIssuerImpl = m.contract("PassportCredentialIssuer", [], {
+      libraries: {
+        IdentityLib: identityLib,
+      },
+    });
 
-  const initializeData = m.encodeFunctionCall(
-    newPassportCredentialIssuerImpl,
-    "initialize(uint256,uint256,string[],address[],address,bytes2,address)",
-    [
-      expirationTime,
-      templateRoot,
-      [],
-      [],
-      stateContractAddress,
-      idType,
-      proxyAdminOwner,
-    ],
-  );
+    const initializeData = m.encodeFunctionCall(
+      newPassportCredentialIssuerImpl,
+      "initialize(uint256,uint256,string[],address[],address,bytes2,address,address)",
+      [expirationTime, templateRoot, [], [], stateContractAddress, idType, proxyAdminOwner, nitroAttestationValidator],
+    );
 
-  m.call(proxyAdmin, "upgradeAndCall", [proxy, newPassportCredentialIssuerImpl, initializeData], {
-    from: proxyAdminOwner,
-  });
+    m.call(proxyAdmin, "upgradeAndCall", [proxy, newPassportCredentialIssuerImpl, initializeData], {
+      from: proxyAdminOwner,
+    });
 
-  return { identityLib, newPassportCredentialIssuerImpl, proxyAdmin, proxy };
-});
+    return { identityLib, newPassportCredentialIssuerImpl, proxyAdmin, proxy };
+  },
+);
 
 const PassportCredentialIssuerModule = buildModule("PassportCredentialIssuerModule", (m) => {
-  const { identityLib, newPassportCredentialIssuerImpl, proxy, proxyAdmin } = m.useModule(PassportCredentialIssuerProxyModule);
+  const { identityLib, newPassportCredentialIssuerImpl, proxy, proxyAdmin } = m.useModule(
+    PassportCredentialIssuerProxyModule,
+  );
 
   const passportCredentialIssuer = m.contractAt("PassportCredentialIssuer", proxy);
 
-  return { passportCredentialIssuer, identityLib, newPassportCredentialIssuerImpl, proxy, proxyAdmin };
+  return {
+    passportCredentialIssuer,
+    identityLib,
+    newPassportCredentialIssuerImpl,
+    proxy,
+    proxyAdmin,
+  };
 });
 
 export default PassportCredentialIssuerModule;

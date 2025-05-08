@@ -29,6 +29,7 @@ import {
   SmtLibModule,
 } from "../../ignition/modules/identityLib/libraries";
 import AnonAadHaarCredentialIssuerModule from "../../ignition/modules/anonAadhaarCredentialIssuer/deployAnonAadhaarCredentialIssuer";
+import { CertificatesLibModule } from "../../ignition/modules/attestationValidation/attestationLibraries";
 
 export async function deploySystemFixtures(): Promise<DeployedActors> {
   let credentialVerifier: CredentialVerifier;
@@ -112,12 +113,6 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
     ["credential_sha256"],
     [credentialVerifier.target as string],
   );
-
-  const certificatesLib = await deployCertificatesLib();
-  const nitroAttestationValidator = await deployNitroAttestationValidator(
-    await certificatesLib.getAddress(),
-  );
-  await passportCredentialIssuer.setAttestationValidator(nitroAttestationValidator);
 
   return {
     credentialVerifier,
@@ -205,44 +200,9 @@ export async function deployCertificatesValidator(certificatesLib: any): Promise
   return CertificatesValidator;
 }
 
-export async function deployNitroAttestationValidator(
-  certificatesLibAddress: string,
-): Promise<Contract> {
-  const [owner] = await ethers.getSigners();
-  const NitroAttestationValidatorFactory = await ethers.getContractFactory(
-    "NitroAttestationValidator",
-    {
-      libraries: {
-        CertificatesLib: certificatesLibAddress,
-      },
-    },
-  );
-
-  const NitroAttestationValidator = await upgrades.deployProxy(
-    NitroAttestationValidatorFactory,
-    [await owner.getAddress()],
-    {
-      unsafeAllow: ["external-library-linking"],
-    },
-  );
-  await NitroAttestationValidator.waitForDeployment();
-  console.log(
-    `NitroAttestationValidator deployed to: ${await NitroAttestationValidator.getAddress()}`,
-  );
-
-  return NitroAttestationValidator;
-}
-
-export async function deployCertificatesLib(): Promise<Contract> {
-  const certificatesLib = await ethers.deployContract("CertificatesLib");
-  await certificatesLib.waitForDeployment();
-  console.log(`CertificatesLib deployed to:  ${await certificatesLib.getAddress()}`);
-
-  return certificatesLib;
-}
 
 export async function deployCertificatesLibWrapper(): Promise<Contract> {
-  const certificatesLib = await deployCertificatesLib();
+  const { certificatesLib } = await ignition.deploy(CertificatesLibModule);
   const CertificatesLibWrapperFactory = await ethers.getContractFactory("CertificatesLibWrapper", {
     libraries: {
       CertificatesLib: await certificatesLib.getAddress(),

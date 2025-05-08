@@ -173,7 +173,8 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         address[] calldata credentialVerifierAddresses,
         address stateAddress,
         bytes2 idType,
-        address owner
+        address owner,
+        IAttestationValidator validator
     ) public initializer {
         super.initialize(stateAddress, idType);
         __Ownable_init(owner);
@@ -182,6 +183,7 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         $._expirationTime = expirationTime;
         $._templateRoot = templateRoot;
         $._requestIds = 1;
+        $._attestationValidator = validator;
 
         __EIP712_init("PassportIssuerV1", DOMAIN_VERSION);
         _updateCredentialVerifiers(credentialCircuitIds, credentialVerifierAddresses);

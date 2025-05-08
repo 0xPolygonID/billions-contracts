@@ -67,6 +67,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
           [],
           state.target,
           idType,
+          await owner.getAddress(),          
           await owner.getAddress(),
         ),
       ).to.be.revertedWithCustomError(passportCredentialIssuer, "InvalidInitialization");
@@ -83,6 +84,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
           [],
           state.target,
           idType,
+          await owner.getAddress(),
           await owner.getAddress(),
         ),
       ).to.be.revertedWithCustomError(passportCredentialIssuer, "InvalidInitialization");
