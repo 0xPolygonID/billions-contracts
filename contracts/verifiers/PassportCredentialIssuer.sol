@@ -405,9 +405,7 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
      * @param imageHash The imageHash of the enclave
      * @return True if imageHash is whitelisted, otherwise returns false
      */
-    function isWhitelistedImageHash(
-        bytes32 imageHash
-    ) public view virtual returns (bool) {
+    function isWhitelistedImageHash(bytes32 imageHash) public view virtual returns (bool) {
         return _getPassportCredentialIssuerV1Storage()._imageHashesWhitelist[imageHash];
     }
 
@@ -584,7 +582,7 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
             passportSignatureProof.passportCredentialMsg.linkId,
             nullifier
         );
-         _setNullifier(nullifier, hashIndex, hashValue);
+        _setNullifier(nullifier, hashIndex, hashValue);
         _addHashAndTransit(hashIndex, hashValue);
     }
 

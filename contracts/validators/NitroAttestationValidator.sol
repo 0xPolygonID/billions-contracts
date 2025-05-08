@@ -91,7 +91,10 @@ contract NitroAttestationValidator is Ownable2StepUpgradeable, IAttestationValid
      * @dev Initialize the contract
      * @param owner Owner of the contract
      */
-    function initialize(address owner, ICertificatesValidator certificatesValidator) public initializer {
+    function initialize(
+        address owner,
+        ICertificatesValidator certificatesValidator
+    ) public initializer {
         __Ownable_init(owner);
         _getNitroAttestationValidatorStorage()._certificatesValidator = certificatesValidator;
     }
@@ -100,7 +103,9 @@ contract NitroAttestationValidator is Ownable2StepUpgradeable, IAttestationValid
      * @dev Set certificates validator
      * @param certificatesValidator - certificates validator
      */
-    function setCertificatesValidator(ICertificatesValidator certificatesValidator) external onlyOwner {
+    function setCertificatesValidator(
+        ICertificatesValidator certificatesValidator
+    ) external onlyOwner {
         _getNitroAttestationValidatorStorage()._certificatesValidator = certificatesValidator;
     }
 
