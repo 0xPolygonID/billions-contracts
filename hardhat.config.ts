@@ -73,8 +73,8 @@ const config: HardhatUserConfig = {
     "ethereum-sepolia": {
       chainId: 11155111,
       url: `${process.env.ETHEREUM_SEPOLIA_RPC_URL}`,
-      // accounts: process.env.PRIVATE_KEY ? [`0x${process.env.PRIVATE_KEY}`] : DEFAULT_ACCOUNTS,
-      ledgerAccounts: [`${process.env.LEDGER_ACCOUNT}`],
+      accounts: process.env.PRIVATE_KEY ? [`0x${process.env.PRIVATE_KEY}`] : DEFAULT_ACCOUNTS,
+      // ledgerAccounts: [`${process.env.LEDGER_ACCOUNT}`],
     },
     "zkevm-mainnet": {
       chainId: 1101,
@@ -85,8 +85,8 @@ const config: HardhatUserConfig = {
     "zkevm-cardona": {
       chainId: 2442,
       url: `${process.env.ZKEVM_CARDONA_RPC_URL}`,
-      // accounts: process.env.PRIVATE_KEY ? [`0x${process.env.PRIVATE_KEY}`] : DEFAULT_ACCOUNTS,
-      ledgerAccounts: [`${process.env.LEDGER_ACCOUNT}`],
+      accounts: process.env.PRIVATE_KEY ? [`0x${process.env.PRIVATE_KEY}`] : DEFAULT_ACCOUNTS,
+      //ledgerAccounts: [`${process.env.LEDGER_ACCOUNT}`],
     },
     "linea-mainnet": {
       chainId: 59144,
