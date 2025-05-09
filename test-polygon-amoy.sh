@@ -15,8 +15,11 @@ cast call 0xA922810FBFDd5cF64bC00918454de8cC2E747D9D "callBigModExp(bytes32,byte
 
 cast call 0xA922810FBFDd5cF64bC00918454de8cC2E747D9D "modExp(bytes,bytes,bytes)(bytes)" \
 0x03 \
-0x0f4240 \
-0x1fff \
+0x02 \
+0x05 \
+# 0x03 \
+# 0x0f4240 \
+# 0x1fff \
 --rpc-url https://rpc-amoy.polygon.technology
 
 echo "Finished test.sh"

@@ -15,8 +15,8 @@ cast call 0xf1a4866C1587dC318a93c28EE37dad6B25180650 "u512ModexpU256(bytes,bytes
 
 cast call 0xf1a4866C1587dC318a93c28EE37dad6B25180650 "modExp(bytes,bytes,bytes)(bytes)" \
 0x03 \
-0x0f4240 \
-0x1fff \
+0x02 \
+0x05 \
 --rpc-url https://billions-testnet-rpc.eu-north-2.gateway.fm
 
 echo "Finished test.sh"

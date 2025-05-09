@@ -15,8 +15,8 @@ cast call 0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9 "callBigModExp(bytes32,byte
 
 cast call 0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9 "modExp(bytes,bytes,bytes)(bytes)" \
 0x03 \
-0x0f4240 \
-0x1fff \
+0x02 \
+0x05 \
 --rpc-url http://127.0.0.1:8545
 
 echo "Finished test.sh"

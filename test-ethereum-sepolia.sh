@@ -15,8 +15,8 @@ cast call 0xc2d79E4dFBef8978ED4c489E135a40b175b11d23 "callBigModExp(bytes32,byte
 
 cast call 0xc2d79E4dFBef8978ED4c489E135a40b175b11d23 "modExp(bytes,bytes,bytes)(bytes)" \
 0x03 \
-0x0f4240 \
-0x1fff \
+0x02 \
+0x05 \
 --rpc-url https://ethereum-sepolia-rpc.publicnode.com
 
 echo "Finished test.sh"
