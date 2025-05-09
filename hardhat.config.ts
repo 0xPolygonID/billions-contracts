@@ -100,6 +100,17 @@ const config: HardhatUserConfig = {
       // accounts: process.env.PRIVATE_KEY ? [`0x${process.env.PRIVATE_KEY}`] : DEFAULT_ACCOUNTS,
       ledgerAccounts: [`${process.env.LEDGER_ACCOUNT}`],
     },
+    "xlayer-test": {
+      chainId: 195,
+      url: `${process.env.XLAYER_TEST_RPC_URL}`,
+      accounts: process.env.PRIVATE_KEY ? [`0x${process.env.PRIVATE_KEY}`] : DEFAULT_ACCOUNTS,
+    },
+    cdk: {
+      chainId: 10101,
+      url: `${process.env.CDK_RPC_URL}`,
+      accounts: process.env.PRIVATE_KEY ? [`0x${process.env.PRIVATE_KEY}`] : DEFAULT_ACCOUNTS,
+      //ledgerAccounts: [`${process.env.LEDGER_ACCOUNT}`],
+    },
     // hardhat: {
     //   chainId: 80002,
     //   forking: {
