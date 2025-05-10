@@ -237,7 +237,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         if (!$.publicKeysHashes[publicKeyHash]) {
             revert InvalidPubKeyHash();
         }
-        delete $.publicKeysHashes[publicKeyHash];
+        $.publicKeysHashes[publicKeyHash] = false;
     }
 
     function submitZKPResponseV2(
