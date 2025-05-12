@@ -475,9 +475,10 @@ async function deployState(
 
 export async function deployAnonAadhaarIssuerFixtures(
   publicKeyHashes: bigint[] = [
-    18063425702624337643644061197836918910810808173893535653269228433734128853484n, // prod (?)
+    18063425702624337643644061197836918910810808173893535653269228433734128853484n,
     15134874015316324267425466444584014077184337590635665158241104437045239495873n,
   ],
+  supportedQrVersions: bigint[] = [382n, 384n], // v2 and v4
   templateRoot: bigint = 5086122537745747254581491345739247223240245653900608092926314604019374578867n,
 ): Promise<DeployedActorsAnonAadhaar> {
   let [owner, user1, user2] = await ethers.getSigners();
@@ -523,10 +524,11 @@ export async function deployAnonAadhaarIssuerFixtures(
   const expirationTime = 15776640n;
 
   const anonAadhaarIssuerInitData = anonAadhaarIssuerImpl.interface.encodeFunctionData(
-    "initialize(uint256,uint256[],uint256,uint256,address,address,bytes2)",
+    "initialize(uint256,uint256[],uint256[],uint256,uint256,address,address,bytes2)",
     [
       nullifierSeed,
       publicKeyHashes,
+      supportedQrVersions,
       expirationTime,
       templateRoot,
       await anonAadhaarVerifier.getAddress(),

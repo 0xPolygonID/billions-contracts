@@ -22,6 +22,7 @@ error NullifierAlreadyExists();
 error NullifierDoesNotExist();
 error InvalidVerifierAddress();
 error InvalidStateContractAddress();
+error UnsupportedQrVersion(uint256 qrVersion);
 
 event IssuerDidHashUpdated(uint256 issuerDidHash);
 event TemplateRootUpdated(uint256 templateRoot);
@@ -46,6 +47,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         address anonAadhaarVerifier;
         mapping(uint256 => bool) publicKeysHashes;
         mapping(uint256 nullifier => HashIndexHashValueNullifier hashIndexHashValue) nullifiers;
+        mapping(uint256 qrVersion => bool) qrVersions;
     }
 
     struct HashIndexHashValueNullifier {
@@ -80,6 +82,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
     function initialize(
         uint256 nullifierSeed,
         uint256[] calldata publicKeysHashes,
+        uint256[] calldata qrVersions,
         uint256 expirationTime,
         uint256 templateRoot,
         address anonAadhaarVerifier, 
@@ -99,6 +102,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         $.anonAadhaarVerifier = anonAadhaarVerifier;
 
         addPublicKeyHashesBatch(publicKeysHashes);
+        addQrVersionBatch(qrVersions);
     }    
 
     /**
@@ -121,7 +125,8 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         uint256 issuanceDate,
         uint256 expirationDate,
         uint256 templateRoot,
-        uint256 issuerDidHash
+        uint256 issuerDidHash,
+        uint256 qrVersion
     ) internal view {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
         if (hashIndex == 0) revert InvalidHashIndex();
@@ -137,6 +142,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         if (expirationDate <= block.timestamp) revert ProofExpired();
         if (!$.publicKeysHashes[pubKeyHash]) revert InvalidPubKeyHash();
         if ($.nullifiers[nullifier].isSet) revert NullifierAlreadyExists();
+        if (!$.qrVersions[qrVersion]) revert UnsupportedQrVersion(qrVersion);
     }
 
     function _addHashAndTransit(uint256 hi, uint256 hv) private {
@@ -163,10 +169,11 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         uint256 hashValue = proof.pubSignals[3];
         uint256 issuanceDate = proof.pubSignals[4];
         uint256 expirationDate = proof.pubSignals[5];
-        uint256 nullifierSeed = proof.pubSignals[6];
-        uint256 signalHash = proof.pubSignals[7];
-        uint256 templateRoot = proof.pubSignals[8];
-        uint256 issuerDidHash = proof.pubSignals[9];
+        uint256 qrVersion = proof.pubSignals[6];
+        uint256 nullifierSeed = proof.pubSignals[7];
+        uint256 signalHash = proof.pubSignals[8];
+        uint256 templateRoot = proof.pubSignals[9];
+        uint256 issuerDidHash = proof.pubSignals[10];
 
         _validatePublicInputs(
             hashIndex, 
@@ -177,7 +184,8 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
             issuanceDate,
             expirationDate,
             templateRoot,
-            issuerDidHash
+            issuerDidHash,
+            qrVersion
         );
         _setNullifier(nullifier, hashIndex, hashValue);
         _addHashAndTransit(hashIndex, hashValue);
@@ -259,7 +267,8 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
                     inputs[6], 
                     inputs[7], 
                     inputs[8], 
-                    inputs[9]
+                    inputs[9],
+                    inputs[10]
                 ]
             );
 
@@ -313,5 +322,44 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
      */
     function getExpirationTime() public view returns (uint256) {
         return _getAnonAadhaarIssuerV1Storage().expirationTime;
+    }
+
+    /**
+     * @notice Adds a QR version.
+     * @param qrVersion The QR version to add.
+     */
+    function addQrVersion(uint256 qrVersion) public onlyProxy onlyOwner {
+        AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
+        $.qrVersions[qrVersion] = true;
+    }
+
+    /**
+     * @notice Adds multiple QR versions in a batch.
+     * @param qrVersions The array of QR versions to add.
+     */
+    function addQrVersionBatch(uint256[] calldata qrVersions) public onlyProxy onlyOwner {
+        AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
+        for (uint256 i = 0; i < qrVersions.length; i++) {
+            $.qrVersions[qrVersions[i]] = true;
+        }
+    }
+
+    /**
+     * @notice Removes a QR version.
+     * @param qrVersion The QR version to remove.
+     */
+    function removeQrVersion(uint256 qrVersion) public onlyProxy onlyOwner {
+        AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
+        if (!$.qrVersions[qrVersion]) revert UnsupportedQrVersion(qrVersion);
+        $.qrVersions[qrVersion] = false;
+    }
+
+    /**
+     * @notice Checks if a QR version is supported.
+     * @param qrVersion The QR version to check.
+     * @return True if the QR version is supported, false otherwise.
+     */
+    function qrVersionSupported(uint256 qrVersion) public view returns (bool) {
+        return _getAnonAadhaarIssuerV1Storage().qrVersions[qrVersion];
     }
 }
