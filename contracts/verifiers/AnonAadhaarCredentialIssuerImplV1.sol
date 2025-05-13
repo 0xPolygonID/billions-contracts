@@ -131,7 +131,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         }
         if (expirationDate <= block.timestamp) revert ProofExpired();
         if (!$.publicKeysHashes[pubKeyHash]) revert InvalidPubKeyHash();
-        if (nullifierExists(nullifier)) revert NullifierAlreadyExists();
+        if ($._nullifiersToRevocationNonce[nullifier] != 0) revert NullifierAlreadyExists();
     }
 
     function _addHashAndTransit(uint256 hi, uint256 hv) private {
@@ -144,7 +144,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         $._nullifiersToRevocationNonce[nullifier] = revocationNonce;
     }
 
-    function nullifierExists(uint256 nullifier) public view returns (bool) {
+    function nullifierExists(uint256 nullifier) external view returns (bool) {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
         return $._nullifiersToRevocationNonce[nullifier] != 0;
     }

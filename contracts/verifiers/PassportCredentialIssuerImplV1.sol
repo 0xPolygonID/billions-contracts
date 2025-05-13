@@ -338,7 +338,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         emit CredentialRevoked(nullifier, nonce);
     }
 
-    function nullifierExists(uint256 nullifier) public view returns (bool) {
+    function nullifierExists(uint256 nullifier) external view returns (bool) {
         uint64 nonce = _getPassportCredentialIssuerV1Storage()._nullifiersToRevocationNonce[nullifier];
         return nonce != 0;
     }
@@ -477,7 +477,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         if (issuanceDate + $._expirationTime < block.timestamp)
             revert IssuanceDateExpired(issuanceDate);
 
-        if (nullifierExists(nullifier)) revert NullifierAlreadyExists(nullifier);
+        if ($._nullifiersToRevocationNonce[nullifier] != 0) revert NullifierAlreadyExists(nullifier);
     }
 
     function _addHashAndTransit(uint256 hi, uint256 hv) internal {
