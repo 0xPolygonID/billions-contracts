@@ -25,8 +25,8 @@ error InvalidStateContractAddress();
 
 event IssuerDidHashUpdated(uint256 issuerDidHash);
 event TemplateRootUpdated(uint256 templateRoot);
-event NullifierCleaned(uint256 nullifier);
 event PublicKeyHashAdded(uint256 publicKeyHash);
+event CredentialRevoked(uint256 nullifier,  uint64 revocationNonce);
 
 /**
  * @dev Address ownership credential issuer.
@@ -35,7 +35,7 @@ event PublicKeyHashAdded(uint256 publicKeyHash);
 contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
     using IdentityLib for IdentityLib.Data;
 
-    string public constant VERSION = "1.0.1";
+    string public constant VERSION = "1.0.2";
 
     /// @custom:storage-location erc7201:polygonid.storage.AnonAadhaarIssuerV1
     struct AnonAadhaarIssuerV1Storage {
@@ -45,13 +45,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         uint256 issuerDidHash;
         address anonAadhaarVerifier;
         mapping(uint256 => bool) publicKeysHashes;
-        mapping(uint256 nullifier => HashIndexHashValueNullifier hashIndexHashValue) nullifiers;
-    }
-
-    struct HashIndexHashValueNullifier {
-        uint256 hashIndex;
-        uint256 hashValue;
-        bool isSet;
+        mapping(uint256 nullifier => uint64 revocationNonce) _nullifiersToRevocationNonce;
     }
 
     // check if the hash was calculated correctly
@@ -121,7 +115,8 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         uint256 issuanceDate,
         uint256 expirationDate,
         uint256 templateRoot,
-        uint256 issuerDidHash
+        uint256 issuerDidHash,
+        uint64 revocationNonce
     ) internal view {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
         if (hashIndex == 0) revert InvalidHashIndex();
@@ -136,7 +131,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         }
         if (expirationDate <= block.timestamp) revert ProofExpired();
         if (!$.publicKeysHashes[pubKeyHash]) revert InvalidPubKeyHash();
-        if ($.nullifiers[nullifier].isSet) revert NullifierAlreadyExists();
+        if (nullifierExists(nullifier)) revert NullifierAlreadyExists();
     }
 
     function _addHashAndTransit(uint256 hi, uint256 hv) private {
@@ -144,14 +139,14 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         _getIdentityBaseStorage().identity.transitState();
     }
 
-    function _setNullifier(uint256 nullifier, uint256 hi, uint256 hv) private {
+    function _setNullifier(uint256 nullifier, uint64 revocationNonce) private {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
-        $.nullifiers[nullifier] = HashIndexHashValueNullifier(hi, hv, true);
+        $._nullifiersToRevocationNonce[nullifier] = revocationNonce;
     }
 
-    function nullifierExists(uint256 nullifier) external view returns (bool) {
+    function nullifierExists(uint256 nullifier) public view returns (bool) {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
-        return $.nullifiers[nullifier].isSet;
+        return $._nullifiersToRevocationNonce[nullifier] != 0;
     }
 
     function _afterProofSubmit(
@@ -167,6 +162,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         uint256 signalHash = proof.pubSignals[7];
         uint256 templateRoot = proof.pubSignals[8];
         uint256 issuerDidHash = proof.pubSignals[9];
+        uint64 revocationNonce = uint64(proof.pubSignals[10]);
 
         _validatePublicInputs(
             hashIndex, 
@@ -177,9 +173,10 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
             issuanceDate,
             expirationDate,
             templateRoot,
-            issuerDidHash
+            issuerDidHash,
+            revocationNonce
         );
-        _setNullifier(nullifier, hashIndex, hashValue);
+        _setNullifier(nullifier, revocationNonce);
         _addHashAndTransit(hashIndex, hashValue);
     }
 
@@ -194,14 +191,16 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
     }
 
     /**
-     * @notice Cleans a nullifier.
-     * @param nullifier The nullifier to clean.
+     * @notice Revoke credential and remove nullifier.
+     * @param nullifier credential nullifier.
      */
-    function cleanNullifier(uint256 nullifier) public onlyProxy onlyOwner {
+    function revokeCredential(uint256 nullifier) external onlyProxy onlyOwner {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
-        if (!$.nullifiers[nullifier].isSet) revert NullifierDoesNotExist();
-        $.nullifiers[nullifier] = HashIndexHashValueNullifier(0, 0, false);
-        emit NullifierCleaned(nullifier);
+        uint64 nonce = $._nullifiersToRevocationNonce[nullifier];
+        if (nonce == 0) revert NullifierDoesNotExist();
+        _revokeClaimAndTransit(nonce);
+        $._nullifiersToRevocationNonce[nullifier] = 0;
+        emit CredentialRevoked(nullifier, nonce);
     }
 
     /**
@@ -259,7 +258,8 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
                     inputs[6], 
                     inputs[7], 
                     inputs[8], 
-                    inputs[9]
+                    inputs[9],
+                    inputs[10]
                 ]
             );
 
@@ -313,5 +313,10 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
      */
     function getExpirationTime() public view returns (uint256) {
         return _getAnonAadhaarIssuerV1Storage().expirationTime;
+    }
+
+    function _revokeClaimAndTransit(uint64 nonce) internal {
+        _getIdentityBaseStorage().identity.revokeClaim(nonce);
+        _getIdentityBaseStorage().identity.transitState();
     }
 }

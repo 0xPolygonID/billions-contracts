@@ -340,10 +340,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
 
     function nullifierExists(uint256 nullifier) public view returns (bool) {
         uint64 nonce = _getPassportCredentialIssuerV1Storage()._nullifiersToRevocationNonce[nullifier];
-        if (nonce == 0) {
-            return false;
-        }
-        return true;
+        return nonce != 0;
     }
 
     /// @notice Submits a ZKP response V2
