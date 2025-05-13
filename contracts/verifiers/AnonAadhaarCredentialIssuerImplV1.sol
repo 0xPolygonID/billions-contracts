@@ -26,7 +26,7 @@ error InvalidStateContractAddress();
 event IssuerDidHashUpdated(uint256 issuerDidHash);
 event TemplateRootUpdated(uint256 templateRoot);
 event PublicKeyHashAdded(uint256 publicKeyHash);
-event CredentialRevoked(uint256 nullifier,  uint64 revocationNonce);
+event CredentialRevoked(uint256 nullifier, uint64 revocationNonce);
 
 /**
  * @dev Address ownership credential issuer.
@@ -50,13 +50,13 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
 
     // check if the hash was calculated correctly
     // keccak256(abi.encode(uint256(keccak256("polygonid.storage.AnonAadhaarIssuerV1")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant AnonAadhaarIssuerV1StorageLocation = 
+    bytes32 private constant AnonAadhaarIssuerV1StorageLocation =
         0xcb4c32479afd0d9095322a3f93b16fa02cb0bf6c78456f30d0d6005caa749700;
-    
-    function _getAnonAadhaarIssuerV1Storage() 
+
+    function _getAnonAadhaarIssuerV1Storage()
         private
-        pure 
-        returns (AnonAadhaarIssuerV1Storage storage store) 
+        pure
+        returns (AnonAadhaarIssuerV1Storage storage store)
     {
         assembly {
             store.slot := AnonAadhaarIssuerV1StorageLocation
@@ -67,7 +67,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
      * @notice Constructor that disables initializers.
      * @dev Prevents direct initialization of the implementation contract.
      */
-    constructor()  {      
+    constructor() {
         _disableInitializers();
     }
 
@@ -76,7 +76,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         uint256[] calldata publicKeysHashes,
         uint256 expirationTime,
         uint256 templateRoot,
-        address anonAadhaarVerifier, 
+        address anonAadhaarVerifier,
         address _stateContractAddress,
         bytes2 idType
     ) public initializer {
@@ -93,7 +93,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         $.anonAadhaarVerifier = anonAadhaarVerifier;
 
         addPublicKeyHashesBatch(publicKeysHashes);
-    }    
+    }
 
     /**
      * @notice Updates the issuer DID hash.
@@ -165,10 +165,10 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         uint64 revocationNonce = uint64(proof.pubSignals[10]);
 
         _validatePublicInputs(
-            hashIndex, 
-            hashValue, 
-            nullifier, 
-            pubKeyHash, 
+            hashIndex,
+            hashValue,
+            nullifier,
+            pubKeyHash,
             nullifierSeed,
             issuanceDate,
             expirationDate,
@@ -207,9 +207,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
      * @notice Adds a public key hash.
      * @param publicKeyHash The public key hash to add.
      */
-    function addPublicKeyHash(
-        uint256 publicKeyHash
-    ) public onlyProxy onlyOwner {
+    function addPublicKeyHash(uint256 publicKeyHash) public onlyProxy onlyOwner {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
         $.publicKeysHashes[publicKeyHash] = true;
         emit PublicKeyHashAdded(publicKeyHash);
@@ -219,7 +217,9 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
      * @notice Adds multiple public key hashes in a batch.
      * @param publicKeysHashes The array of public key hashes to add.
      */
-    function addPublicKeyHashesBatch(uint256[] calldata publicKeysHashes) public onlyProxy onlyOwner {
+    function addPublicKeyHashesBatch(
+        uint256[] calldata publicKeysHashes
+    ) public onlyProxy onlyOwner {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
         for (uint256 i = 0; i < publicKeysHashes.length; i++) {
             $.publicKeysHashes[publicKeysHashes[i]] = true;
@@ -234,7 +234,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         if (responses.length != 1) {
             revert InvalidResponsesLength(responses.length, 1);
         }
-        
+
         (
             uint256[] memory inputs,
             uint256[2] memory a1,
@@ -242,22 +242,21 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
             uint256[2] memory c1
         ) = abi.decode(responses[0].zkProof, (uint256[], uint256[2], uint256[2][2], uint256[2]));
 
-
         IAnonAadhaarCircuitVerifier.AnonAadhaarCircuitProof
             memory groth16Proof = IAnonAadhaarCircuitVerifier.AnonAadhaarCircuitProof(
                 a1,
                 b1,
                 c1,
                 [
-                    inputs[0], 
-                    inputs[1], 
-                    inputs[2], 
-                    inputs[3], 
-                    inputs[4], 
-                    inputs[5], 
-                    inputs[6], 
-                    inputs[7], 
-                    inputs[8], 
+                    inputs[0],
+                    inputs[1],
+                    inputs[2],
+                    inputs[3],
+                    inputs[4],
+                    inputs[5],
+                    inputs[6],
+                    inputs[7],
+                    inputs[8],
                     inputs[9],
                     inputs[10]
                 ]

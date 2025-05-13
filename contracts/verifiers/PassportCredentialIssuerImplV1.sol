@@ -79,7 +79,6 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         bytes crossChainProofs;
     }
 
-
     struct PassportCredentialMessage {
         uint256 linkId;
         uint256 nullifier;
@@ -141,10 +140,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
      * @notice Emitted when a credential is revoked.
      * @param revocationNonce The revocation nonce of the revoked credential.
      */
-    event CredentialRevoked(
-        uint256 nullifier, 
-        uint64 revocationNonce
-    );
+    event CredentialRevoked(uint256 nullifier, uint64 revocationNonce);
 
     // ====================================================
     // Constructor
@@ -158,7 +154,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         _disableInitializers();
     }
 
-  /**
+    /**
      * @dev Throws if called by any account other than transactors.
      */
     modifier onlyTransactors() {
@@ -339,7 +335,9 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
     }
 
     function nullifierExists(uint256 nullifier) external view returns (bool) {
-        uint64 nonce = _getPassportCredentialIssuerV1Storage()._nullifiersToRevocationNonce[nullifier];
+        uint64 nonce = _getPassportCredentialIssuerV1Storage()._nullifiersToRevocationNonce[
+            nullifier
+        ];
         return nonce != 0;
     }
 
@@ -477,7 +475,8 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         if (issuanceDate + $._expirationTime < block.timestamp)
             revert IssuanceDateExpired(issuanceDate);
 
-        if ($._nullifiersToRevocationNonce[nullifier] != 0) revert NullifierAlreadyExists(nullifier);
+        if ($._nullifiersToRevocationNonce[nullifier] != 0)
+            revert NullifierAlreadyExists(nullifier);
     }
 
     function _addHashAndTransit(uint256 hi, uint256 hv) internal {
@@ -568,9 +567,9 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         uint256 linkIdCredentialProof = credentialCircuitProof.pubSignals[
             CircuitConstants.CREDENTIAL_LINK_ID_INDEX
         ];
-        uint64 revocationNonce = uint64(credentialCircuitProof.pubSignals[
-            CircuitConstants.CREDENTIAL_REVOCATION_NONCE_INDEX
-        ]);
+        uint64 revocationNonce = uint64(
+            credentialCircuitProof.pubSignals[CircuitConstants.CREDENTIAL_REVOCATION_NONCE_INDEX]
+        );
 
         uint256 nullifier = passportSignatureProof.passportCredentialMsg.nullifier;
 
