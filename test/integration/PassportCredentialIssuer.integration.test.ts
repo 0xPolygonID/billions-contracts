@@ -140,7 +140,7 @@ describe("Commitment Registration Tests", function () {
       await expect(passportCredentialIssuer.addTransactor(await owner.getAddress())).not.to.be
         .reverted;
 
-        await expect(passportCredentialIssuer.addSigner(await user1.getAddress()))
+      await expect(passportCredentialIssuer.addSigner(await user1.getAddress()))
         .to.emit(passportCredentialIssuer, "SignerAdded")
         .withArgs(await user1.getAddress());
 
