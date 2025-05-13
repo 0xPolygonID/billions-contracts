@@ -36,4 +36,12 @@ library CircuitConstants {
      * @notice Index to access the templateRoot in the credential circuit public signals.
      */
     uint256 constant CREDENTIAL_TEMPLATE_ROOT_INDEX = 5;
+     /**
+     * @notice Index to access the issuer in the credential circuit public signals.
+     */
+    uint256 constant CREDENTIAL_ISSUER_INDEX = 6;
+    /**
+     * @notice Index to access the revocationNonce in the credential circuit public signals.
+     */
+    uint256 constant CREDENTIAL_REVOCATION_NONCE_INDEX = 7;
 }
