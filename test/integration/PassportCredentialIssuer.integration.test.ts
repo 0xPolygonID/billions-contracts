@@ -120,7 +120,7 @@ describe("Commitment Registration Tests", function () {
         ),
       ).to.be.revertedWithCustomError(passportCredentialIssuer, "NullifierAlreadyExists");
 
-      await passportCredentialIssuer.cleanNullifier(signedPassportData.nullifier);
+      await passportCredentialIssuer.revokeCredential(signedPassportData.nullifier);
 
       expect(await passportCredentialIssuer.nullifierExists(signedPassportData.nullifier)).to.be
         .false;
