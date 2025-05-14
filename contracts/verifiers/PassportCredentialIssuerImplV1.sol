@@ -52,6 +52,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
 
     uint256 private constant DATE_20TH_CENTURY = 500000;
     uint256 private constant CURRENT_DATE_EXPIRATION_TIME = 7 days;
+    uint256 private constant MAX_EXPIRATION_TIME = 1 days;
 
     /**
      * @dev PassportCredential message data type hash
@@ -452,9 +453,8 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
             currentDateWithFullYear = currentDate + 20000000;
         }
 
-        // This scopes were added to avoid stack too deep error
-
-        // scope: verify if currentDate is not expired
+        // This scope was added to avoid stack too deep error
+        // scope: verify if currentDate is in time range
         {
             (uint256 year, uint256 month, uint256 day) = DateTime.timestampToDate(
                 block.timestamp - CURRENT_DATE_EXPIRATION_TIME
@@ -463,13 +463,11 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
             if (minimumExpectedCurrentDate > currentDateWithFullYear) {
                 revert CurrentDateExpired(currentDate);
             }
-        }
-
-        // scope: verify if currentDate is not in the future
-        {
-            (uint256 todayYear, uint256 todayMonth, uint256 todayDay) = DateTime.timestampToDate(block.timestamp);
-            uint256 todayYYYYMMDD = todayYear * 10000 + todayMonth * 100 + todayDay;
-            if (currentDateWithFullYear != todayYYYYMMDD) {
+            (uint256 futureYear, uint256 futureMonth, uint256 futureDay) = DateTime.timestampToDate(
+                block.timestamp + MAX_EXPIRATION_TIME
+            );
+            uint256 futureDate = futureYear * 10000 + futureMonth * 100 + futureDay;
+            if (currentDateWithFullYear > futureDate) {
                 revert CurrentDateInFuture(currentDate);
             }
         }

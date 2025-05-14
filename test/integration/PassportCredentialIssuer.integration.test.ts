@@ -335,7 +335,9 @@ describe("Commitment Registration Tests", function () {
         .withArgs(await user1.getAddress());
 
       const futureCurrentDate = new Date();
-      futureCurrentDate.setDate(futureCurrentDate.getDate() + 1); // Set current date to 1 day in the future
+      // Set current date to 2 day in the future
+      // The smart contracts has check: time.Now() - 7 days < currentData < time.Now() + 2 days
+      futureCurrentDate.setDate(futureCurrentDate.getDate() + 2);
 
       const baseCredentialProofFutureCurrentDate = await generateCredentialProof(
         deployedActors.mockPassport,
