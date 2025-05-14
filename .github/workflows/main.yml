@@ -1,20 +1,40 @@
 name: Tests
 on: [push, pull_request]
+
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-            token : ${{ secrets.GH_PAT }}
+      - name: Checkout code (Repo A)
+        uses: actions/checkout@v4
       
-      - name: Get node.js
+      - name: Get Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 20 # Using Node.js version 20
       
-      - name: Configure Git
-        run: git config --global url."https://${{ secrets.GH_PAT }}@github.com/".insteadOf "ssh://git@github.com/"
+      - name: Configure Git for private dependencies
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "ssh://git@github.com/"
+
+      - name: Diagnostic - Attempt shallow clone of Repo B (passport-utils)
+        run: |
+          echo "Attempting shallow clone of Repo B (passport-utils) directly to test GITHUB_TOKEN access..."
+          GIT_CLONE_OUTPUT=$(git clone --depth 1 "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/0xPolygonID/passport-utils.git" ./temp-passport-utils-clone 2>&1)
+          CLONE_EXIT_CODE=$?
+          
+          if [ ${CLONE_EXIT_CODE} -eq 0 ]; then
+            echo "SUCCESS: Direct shallow clone of Repo B (passport-utils) succeeded."
+            rm -rf ./temp-passport-utils-clone
+          else
+            echo "ERROR: Direct shallow clone of Repo B (passport-utils) failed with exit code ${CLONE_EXIT_CODE}."
+            echo "Git clone output:"
+            echo "${GIT_CLONE_OUTPUT}"
+            exit 1 
+          fi
 
       - name: Install dependencies
         run: npm ci
@@ -22,7 +42,6 @@ jobs:
       - name: Download circuits
         run: ./dl_circuits.sh
 
-      # To check if merge conflicts were resolved correctly
       - name: Validate JSON files
         run: |
           find ignition/deployments -name "*.json" -print0 | xargs -0 -n1 jq empty
