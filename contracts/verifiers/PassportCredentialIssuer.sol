@@ -313,10 +313,10 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
 
     /// @notice Verifies the passport credential.
     /// @param credentialProof Credential proof for the passport credential
-    /// @param validationSignatureProof Signature proof of the validation of the passport credential
+    /// @param passportSignatureProof Signature proof of the validation of the passport credential
     function verifyPassport(
         CredentialProof memory credentialProof,
-        bytes memory validationSignatureProof
+        bytes memory passportSignatureProof
     ) external {
         if (bytes(credentialProof.circuitId).length == 0) {
             revert NoCredentialCircuitIdFound(credentialProof.circuitId);
@@ -338,7 +338,7 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
             );
 
         PassportSignatureProof memory passportSignatureProofDecoded = abi.decode(
-            validationSignatureProof,
+            passportSignatureProof,
             (PassportSignatureProof)
         );
 
