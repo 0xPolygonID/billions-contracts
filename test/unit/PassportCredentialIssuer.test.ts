@@ -5,8 +5,9 @@ import { ethers } from "hardhat";
 import jsonAttestationWithUserData from "../data/TEEAttestationWithUserData.json";
 import { base64ToBytes, bytesToHex } from "@0xpolygonid/js-sdk";
 import { contractsInfo } from "../../helpers/constants";
+import { getChainOfCertificatesRawBytes } from "../../helpers/validateTEE";
 
-const imageHash = "0xc980e59163ce244bb4bb6211f48c7b46f88a4f40943e84eb99bdc41e129bd293";
+const imageHash = "0xededc6be756c1f502dd6be5dfd34aacdc2c59e6518c66dbf8e74a93acff58842";
 const imageHash2 = "0xb46a627218ca4511d9d55c64181dcdd465c3c44822ee1610c4fab0e7a5ba9997";
 
 describe("Unit Tests for PassportCredentialIssuer", () => {
@@ -101,7 +102,18 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
     });
 
     it("add signer for non whitelisted enclave imageHash", async function () {
-      const { passportCredentialIssuer, owner } = deployedActors;
+      const { passportCredentialIssuer, certificatesValidator, owner } = deployedActors;
+
+      const certificates = await getChainOfCertificatesRawBytes(
+        JSON.stringify(jsonAttestationWithUserData),
+      );
+  
+      for (let i = 0; i < certificates.length - 1; i++) {
+        await certificatesValidator.addCertificateVerification(
+          `0x${certificates[i]}`,
+          `0x${certificates[i + 1]}`,
+        );
+      }
 
       await passportCredentialIssuer.addTransactor(await owner.getAddress());
       await expect(
@@ -114,10 +126,21 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
     }).timeout(160000);
 
     it("add signer for whitelisted enclave imageHash", async function () {
-      const { passportCredentialIssuer, owner } = deployedActors;
+      const { passportCredentialIssuer, certificatesValidator, user1, owner } = deployedActors;
 
       await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
       await passportCredentialIssuer.addTransactor(await owner.getAddress());
+
+      const certificates = await getChainOfCertificatesRawBytes(
+        JSON.stringify(jsonAttestationWithUserData),
+      );
+  
+      for (let i = 0; i < certificates.length - 1; i++) {
+        await certificatesValidator.addCertificateVerification(
+          `0x${certificates[i]}`,
+          `0x${certificates[i + 1]}`,
+        );
+      }
 
       await expect(
         passportCredentialIssuer.addSigner(
@@ -125,7 +148,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
         ),
       )
         .to.emit(passportCredentialIssuer, "SignerAdded")
-        .withArgs("0xD840543405B0B835F078c59C54Fe66ddD7395C34");
+        .withArgs(await user1.getAddress());
     }).timeout(160000);
 
     it("add transactor to contract", async function () {

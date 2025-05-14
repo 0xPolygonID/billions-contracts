@@ -11,7 +11,9 @@ import {
 } from "../utils/packData";
 import { base64ToBytes, bytesToHex } from "@0xpolygonid/js-sdk";
 import jsonAttestationWithUserData from "../data/TEEAttestationWithUserData.json";
-const imageHash = "0xc980e59163ce244bb4bb6211f48c7b46f88a4f40943e84eb99bdc41e129bd293";
+import { getChainOfCertificatesRawBytes } from "../../helpers/validateTEE";
+
+const imageHash = "0xededc6be756c1f502dd6be5dfd34aacdc2c59e6518c66dbf8e74a93acff58842";
 
 describe("Commitment Registration Tests", function () {
   this.timeout(0);
@@ -67,21 +69,28 @@ describe("Commitment Registration Tests", function () {
 
   describe("Verify passport", async () => {
     it("Should verify passport successfully", async () => {
-      const { passportCredentialIssuer, user1, owner } = deployedActors;
+      const { passportCredentialIssuer, certificatesValidator, user1, owner } = deployedActors;
 
       await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
       await expect(passportCredentialIssuer.addTransactor(await owner.getAddress())).not.to.be
         .reverted;
+
+      const certificates = await getChainOfCertificatesRawBytes(
+        JSON.stringify(jsonAttestationWithUserData),
+      );
+
+      for (let i = 0; i < certificates.length - 1; i++) {
+        await certificatesValidator.addCertificateVerification(
+          `0x${certificates[i]}`,
+          `0x${certificates[i + 1]}`,
+        );
+      }
 
       await expect(
         passportCredentialIssuer.addSigner(
           `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
         ),
       )
-        .to.emit(passportCredentialIssuer, "SignerAdded")
-        .withArgs("0xD840543405B0B835F078c59C54Fe66ddD7395C34");
-
-      await expect(passportCredentialIssuer.addSignerDev(await user1.getAddress()))
         .to.emit(passportCredentialIssuer, "SignerAdded")
         .withArgs(await user1.getAddress());
 
@@ -142,21 +151,28 @@ describe("Commitment Registration Tests", function () {
     });
 
     it("Should not verify with passport current date expired", async () => {
-      const { passportCredentialIssuer, user1, owner } = deployedActors;
+      const { passportCredentialIssuer, certificatesValidator, user1, owner } = deployedActors;
 
       await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
       await expect(passportCredentialIssuer.addTransactor(await owner.getAddress())).not.to.be
         .reverted;
+
+      const certificates = await getChainOfCertificatesRawBytes(
+        JSON.stringify(jsonAttestationWithUserData),
+      );
+
+      for (let i = 0; i < certificates.length - 1; i++) {
+        await certificatesValidator.addCertificateVerification(
+          `0x${certificates[i]}`,
+          `0x${certificates[i + 1]}`,
+        );
+      }
 
       await expect(
         passportCredentialIssuer.addSigner(
           `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
         ),
       )
-        .to.emit(passportCredentialIssuer, "SignerAdded")
-        .withArgs("0xD840543405B0B835F078c59C54Fe66ddD7395C34");
-
-      await expect(passportCredentialIssuer.addSignerDev(await user1.getAddress()))
         .to.emit(passportCredentialIssuer, "SignerAdded")
         .withArgs(await user1.getAddress());
 
@@ -197,20 +213,27 @@ describe("Commitment Registration Tests", function () {
     });
 
     it("Should not verify with passport issuance date expired", async () => {
-      const { passportCredentialIssuer, user1, owner } = deployedActors;
+      const { passportCredentialIssuer, certificatesValidator, user1, owner } = deployedActors;
 
       await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
       await passportCredentialIssuer.addTransactor(await owner.getAddress());
+
+      const certificates = await getChainOfCertificatesRawBytes(
+        JSON.stringify(jsonAttestationWithUserData),
+      );
+
+      for (let i = 0; i < certificates.length - 1; i++) {
+        await certificatesValidator.addCertificateVerification(
+          `0x${certificates[i]}`,
+          `0x${certificates[i + 1]}`,
+        );
+      }
 
       await expect(
         passportCredentialIssuer.addSigner(
           `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
         ),
       )
-        .to.emit(passportCredentialIssuer, "SignerAdded")
-        .withArgs("0xD840543405B0B835F078c59C54Fe66ddD7395C34");
-
-      await expect(passportCredentialIssuer.addSignerDev(await user1.getAddress()))
         .to.emit(passportCredentialIssuer, "SignerAdded")
         .withArgs(await user1.getAddress());
 
@@ -251,11 +274,22 @@ describe("Commitment Registration Tests", function () {
     });
 
     it("Should not verify passport with invalid signer", async () => {
-      const { passportCredentialIssuer, user2, owner } = deployedActors;
+      const { passportCredentialIssuer, certificatesValidator, user2, owner } = deployedActors;
 
       await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
       await expect(passportCredentialIssuer.addTransactor(await owner.getAddress())).not.to.be
         .reverted;
+
+      const certificates = await getChainOfCertificatesRawBytes(
+        JSON.stringify(jsonAttestationWithUserData),
+      );
+
+      for (let i = 0; i < certificates.length - 1; i++) {
+        await certificatesValidator.addCertificateVerification(
+          `0x${certificates[i]}`,
+          `0x${certificates[i + 1]}`,
+        );
+      }
 
       await passportCredentialIssuer.addSigner(
         `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,

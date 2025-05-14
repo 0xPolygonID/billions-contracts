@@ -7,15 +7,12 @@ import {
   DeployedActorsAnonAadhaar,
   AnonAadhaarVerifier,
 } from "./types";
-import { poseidonContract } from "circomlibjs";
 // Verifier artifacts
 import CredentialVerifierArtifact from "../../artifacts/contracts/verifiers/credential/Verifier_credential_sha256.sol/Verifier_credential_sha256.json";
 import AnonAadhaarlVerifierArtifact from "../../artifacts/contracts/verifiers/anonAadhaarV1/Verifier_anon_aadhaar_v1.sol/Verifier_anon_aadhaar_v1.json";
 
-import { AnonAadHaarCredentialIssuer, PassportCredentialIssuer } from "../../typechain-types";
 import { chainIdInfoMap } from "./constants";
 import {
-  contractsInfo,
   CREATEX_FACTORY_ADDRESS,
   SIGNED_SERIALISED_TRANSACTION_GAS_LIMIT_25000000,
 } from "../../helpers/constants";
@@ -84,7 +81,7 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
   poseidon4Elements.waitForDeployment();
   console.log(`Poseidon4 deployed to: ${await poseidon4Elements.getAddress()}`);
 
-  const { identityLib, passportCredentialIssuer, newPassportCredentialIssuerImpl, proxyAdmin } =
+  const { identityLib, passportCredentialIssuer, newPassportCredentialIssuerImpl, certificatesValidator, proxyAdmin } =
     await ignition.deploy(PassportCredentialIssuerModule, {
       parameters: {
         PassportCredentialIssuerProxyModule: {
@@ -121,6 +118,7 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
     user2,
     mockPassport,
     passportCredentialIssuer: passportCredentialIssuer,
+    certificatesValidator,
     proxyAdmin,
     state: stContracts.state,
     identityLib,
@@ -178,28 +176,6 @@ export async function deployContractWrapper(contractName: string): Promise<Contr
   console.log(`${contractName} deployed to:`, await contractWrapper.getAddress());
   return contractWrapper;
 }
-
-export async function deployCertificatesValidator(certificatesLib: any): Promise<Contract> {
-  const [owner] = await ethers.getSigners();
-  const CertificatesValidatorFactory = await ethers.getContractFactory("CertificatesValidator", {
-    libraries: {
-      CertificatesLib: await certificatesLib.getAddress(),
-    },
-  });
-
-  const CertificatesValidator = await upgrades.deployProxy(
-    CertificatesValidatorFactory,
-    [await owner.getAddress()],
-    {
-      unsafeAllow: ["external-library-linking"],
-    },
-  );
-  await CertificatesValidator.waitForDeployment();
-  console.log(`CertificatesValidator deployed to: ${await CertificatesValidator.getAddress()}`);
-
-  return CertificatesValidator;
-}
-
 
 export async function deployCertificatesLibWrapper(): Promise<Contract> {
   const { certificatesLib } = await ignition.deploy(CertificatesLibModule);

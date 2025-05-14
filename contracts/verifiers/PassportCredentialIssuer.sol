@@ -190,14 +190,13 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
     }
 
     function addSigner(bytes memory attestation) public onlyTransactors {
-        // TODO: in production we should pass "true" instead of "false"
         (
             bytes memory userData,
             bytes32 imageHash,
             bool validated
         ) = _getPassportCredentialIssuerV1Storage()._attestationValidator.validateAttestation(
                 attestation,
-                false
+                true
             );
 
         if (!isWhitelistedImageHash(imageHash)) {
@@ -226,13 +225,6 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
         $._signers.add(userDataDecoded);
         emit SignerAdded(userDataDecoded);
-    }
-
-    //TODO: remove this function in production
-    function addSignerDev(address signer) public onlyOwner {
-        PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
-        $._signers.add(signer);
-        emit SignerAdded(signer);
     }
 
     /**

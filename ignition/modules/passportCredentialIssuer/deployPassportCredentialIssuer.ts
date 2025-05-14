@@ -60,7 +60,9 @@ const PassportCredentialIssuerProxyModule = buildModule(
     const templateRoot = m.getParameter("templateRoot");
 
     const { identityLib } = m.useModule(IdentityLibModule);
-    const { nitroAttestationValidator } = m.useModule(NitroAttestationValidatorModule);
+    const { nitroAttestationValidator, certificatesValidator } = m.useModule(
+      NitroAttestationValidatorModule,
+    );
 
     const newPassportCredentialIssuerImpl = m.contract("PassportCredentialIssuer", [], {
       libraries: {
@@ -71,21 +73,35 @@ const PassportCredentialIssuerProxyModule = buildModule(
     const initializeData = m.encodeFunctionCall(
       newPassportCredentialIssuerImpl,
       "initialize(uint256,uint256,string[],address[],address,bytes2,address,address)",
-      [expirationTime, templateRoot, [], [], stateContractAddress, idType, proxyAdminOwner, nitroAttestationValidator],
+      [
+        expirationTime,
+        templateRoot,
+        [],
+        [],
+        stateContractAddress,
+        idType,
+        proxyAdminOwner,
+        nitroAttestationValidator,
+      ],
     );
 
     m.call(proxyAdmin, "upgradeAndCall", [proxy, newPassportCredentialIssuerImpl, initializeData], {
       from: proxyAdminOwner,
     });
 
-    return { identityLib, newPassportCredentialIssuerImpl, proxyAdmin, proxy };
+    return {
+      identityLib,
+      newPassportCredentialIssuerImpl,
+      certificatesValidator,
+      proxyAdmin,
+      proxy,
+    };
   },
 );
 
 const PassportCredentialIssuerModule = buildModule("PassportCredentialIssuerModule", (m) => {
-  const { identityLib, newPassportCredentialIssuerImpl, proxy, proxyAdmin } = m.useModule(
-    PassportCredentialIssuerProxyModule,
-  );
+  const { identityLib, newPassportCredentialIssuerImpl, certificatesValidator, proxy, proxyAdmin } =
+    m.useModule(PassportCredentialIssuerProxyModule);
 
   const passportCredentialIssuer = m.contractAt("PassportCredentialIssuer", proxy);
 
@@ -93,6 +109,7 @@ const PassportCredentialIssuerModule = buildModule("PassportCredentialIssuerModu
     passportCredentialIssuer,
     identityLib,
     newPassportCredentialIssuerImpl,
+    certificatesValidator,
     proxy,
     proxyAdmin,
   };
