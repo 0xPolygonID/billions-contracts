@@ -5,16 +5,20 @@ import jsonAttestationClaim from "../data/TEEAttestationClaim.json";
 import { getChainOfCertificatesRawBytes, validateAttestation } from "../../helpers/validateTEE";
 import { base64ToBytes, bytesToHex } from "@0xpolygonid/js-sdk";
 import { deployContractWrapper } from "../utils/deployment";
-import { ignition } from "hardhat";
+import { ethers, ignition } from "hardhat";
 import { NitroAttestationValidatorModule } from "../../ignition/modules/attestationValidation/attestationLibraries";
 
 describe("Validation of TEE attestations", function () {
   let nitroAttestationValidator: any;
   let nitroAttestationValidatorWrapper: any;
   let certificatesValidator: any;
+  let certificatesValidatorStub: any;
+  let certificatesLib: any;
 
   before(async function () {
-    ({ nitroAttestationValidator, certificatesValidator } = await ignition.deploy(NitroAttestationValidatorModule));
+    ({ nitroAttestationValidator, certificatesValidator, certificatesLib } = await ignition.deploy(
+      NitroAttestationValidatorModule,
+    ));
 
     nitroAttestationValidatorWrapper = await deployContractWrapper(
       "NitroAttestationValidatorWrapper",
@@ -22,6 +26,16 @@ describe("Validation of TEE attestations", function () {
     await nitroAttestationValidatorWrapper.setAttestationValidator(
       await nitroAttestationValidator.getAddress(),
     );
+
+    const certificatesValidatorStubFactory = await ethers.getContractFactory(
+      "CertificatesValidatorStub",
+      {
+        libraries: {
+          CertificatesLib: await certificatesLib.getAddress(),
+        },
+      },
+    );
+    certificatesValidatorStub = await certificatesValidatorStubFactory.deploy();
   });
 
   it("Validate TEE attestation off-chain", async function () {
@@ -41,7 +55,6 @@ describe("Validation of TEE attestations", function () {
     await expect(
       nitroAttestationValidator.validateAttestation(
         `0x${bytesToHex(base64ToBytes(jsonAttestation.attestation))}`,
-        true,
       ),
     ).revertedWithCustomError(certificatesValidator, "CertificateNotVerifiedYet");
   }).timeout(160000);
@@ -61,18 +74,8 @@ describe("Validation of TEE attestations", function () {
     await expect(
       nitroAttestationValidator.validateAttestation(
         `0x${bytesToHex(base64ToBytes(jsonAttestationExpired.attestation))}`,
-        true,
       ),
     ).revertedWithCustomError(certificatesValidator, "CertificateExpired");
-  }).timeout(160000);
-
-  it("Validate TEE attestation on-chain", async function () {
-    await expect(
-      nitroAttestationValidator.validateAttestation(
-        `0x${bytesToHex(base64ToBytes(jsonAttestation.attestation))}`,
-        false,
-      ),
-    ).not.to.be.reverted;
   }).timeout(160000);
 
   it("Validate chain of certificates", async function () {
@@ -107,10 +110,22 @@ describe("Validation of TEE attestations", function () {
     expect(attestation[1][2][7]).not.to.be.equal("0xf6"); // CBOR null
   });
 
+  it("Validate TEE attestation on-chain", async function () {
+    // set certificates validator without dates validation
+    await nitroAttestationValidator.setCertificatesValidator(
+      await certificatesValidatorStub.getAddress(),
+    );
+
+    await expect(
+      nitroAttestationValidator.validateAttestation(
+        `0x${bytesToHex(base64ToBytes(jsonAttestation.attestation))}`,
+      ),
+    ).not.to.be.reverted;
+  }).timeout(160000);
+  
   it("Validate TEE attestation on-chain with user data", async function () {
     const result = await nitroAttestationValidator.validateAttestation(
       `0x${bytesToHex(base64ToBytes(jsonAttestationClaim.attestation))}`,
-      false,
     );
     expect(result[1]).to.equal(
       "0xb46a627218ca4511d9d55c64181dcdd465c3c44822ee1610c4fab0e7a5ba9997",
@@ -128,7 +143,6 @@ describe("Validation of TEE attestations", function () {
 
     await nitroAttestationValidatorWrapper.validateAttestation(
       `0x${bytesToHex(base64ToBytes(jsonAttestationClaim.attestation))}`,
-      false,
     );
   }).timeout(240000);
 });

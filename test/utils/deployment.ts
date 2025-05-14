@@ -81,22 +81,29 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
   poseidon4Elements.waitForDeployment();
   console.log(`Poseidon4 deployed to: ${await poseidon4Elements.getAddress()}`);
 
-  const { identityLib, passportCredentialIssuer, newPassportCredentialIssuerImpl, certificatesValidator, proxyAdmin } =
-    await ignition.deploy(PassportCredentialIssuerModule, {
-      parameters: {
-        PassportCredentialIssuerProxyModule: {
-          stateContractAddress: stContracts.state.target as string,
-          idType: stContracts.defaultIdType,
-          expirationTime: expirationTime,
-          templateRoot: templateRoot,
-        },
-        IdentityLibModule: {
-          poseidon3ElementAddress: await stContracts.poseidon3.getAddress(),
-          poseidon4ElementAddress: await poseidon4Elements.getAddress(),
-          smtLibAddress: await stContracts.smtLib.getAddress(),
-        },
+  const {
+    identityLib,
+    passportCredentialIssuer,
+    newPassportCredentialIssuerImpl,
+    certificatesValidator,
+    certificatesLib,
+    nitroAttestationValidator,
+    proxyAdmin,
+  } = await ignition.deploy(PassportCredentialIssuerModule, {
+    parameters: {
+      PassportCredentialIssuerProxyModule: {
+        stateContractAddress: stContracts.state.target as string,
+        idType: stContracts.defaultIdType,
+        expirationTime: expirationTime,
+        templateRoot: templateRoot,
       },
-    });
+      IdentityLibModule: {
+        poseidon3ElementAddress: await stContracts.poseidon3.getAddress(),
+        poseidon4ElementAddress: await poseidon4Elements.getAddress(),
+        smtLibAddress: await stContracts.smtLib.getAddress(),
+      },
+    },
+  });
 
   console.log("PassportCredentialIssuer deployed address:", passportCredentialIssuer.target);
   console.log(
@@ -111,6 +118,16 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
     [credentialVerifier.target as string],
   );
 
+  const certificatesValidatorStubFactory = await ethers.getContractFactory(
+    "CertificatesValidatorStub",
+    {
+      libraries: {
+        CertificatesLib: await certificatesLib.getAddress(),
+      },
+    },
+  );
+  const certificatesValidatorStub = await certificatesValidatorStubFactory.deploy();
+
   return {
     credentialVerifier,
     owner,
@@ -119,6 +136,8 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
     mockPassport,
     passportCredentialIssuer: passportCredentialIssuer,
     certificatesValidator,
+    certificatesValidatorStub,
+    nitroAttestationValidator,
     proxyAdmin,
     state: stContracts.state,
     identityLib,

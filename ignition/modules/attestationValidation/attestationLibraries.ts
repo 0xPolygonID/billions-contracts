@@ -33,6 +33,6 @@ export const NitroAttestationValidatorModule = buildModule(
 
     m.call(nitroAttestationValidator, "initialize", [owner, certificatesValidator]);
 
-    return { nitroAttestationValidator, certificatesValidator };
+    return { nitroAttestationValidator, certificatesValidator, certificatesLib };
   },
 );

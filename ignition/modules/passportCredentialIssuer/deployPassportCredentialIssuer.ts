@@ -60,7 +60,7 @@ const PassportCredentialIssuerProxyModule = buildModule(
     const templateRoot = m.getParameter("templateRoot");
 
     const { identityLib } = m.useModule(IdentityLibModule);
-    const { nitroAttestationValidator, certificatesValidator } = m.useModule(
+    const { nitroAttestationValidator, certificatesValidator, certificatesLib } = m.useModule(
       NitroAttestationValidatorModule,
     );
 
@@ -93,6 +93,8 @@ const PassportCredentialIssuerProxyModule = buildModule(
       identityLib,
       newPassportCredentialIssuerImpl,
       certificatesValidator,
+      certificatesLib,
+      nitroAttestationValidator,
       proxyAdmin,
       proxy,
     };
@@ -100,8 +102,15 @@ const PassportCredentialIssuerProxyModule = buildModule(
 );
 
 const PassportCredentialIssuerModule = buildModule("PassportCredentialIssuerModule", (m) => {
-  const { identityLib, newPassportCredentialIssuerImpl, certificatesValidator, proxy, proxyAdmin } =
-    m.useModule(PassportCredentialIssuerProxyModule);
+  const {
+    identityLib,
+    newPassportCredentialIssuerImpl,
+    certificatesValidator,
+    certificatesLib,
+    nitroAttestationValidator,
+    proxy,
+    proxyAdmin,
+  } = m.useModule(PassportCredentialIssuerProxyModule);
 
   const passportCredentialIssuer = m.contractAt("PassportCredentialIssuer", proxy);
 
@@ -110,6 +119,8 @@ const PassportCredentialIssuerModule = buildModule("PassportCredentialIssuerModu
     identityLib,
     newPassportCredentialIssuerImpl,
     certificatesValidator,
+    certificatesLib,
+    nitroAttestationValidator,
     proxy,
     proxyAdmin,
   };

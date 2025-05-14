@@ -85,8 +85,8 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
     }
 
     struct CredentialProof {
-       string circuitId;
-       bytes proof;
+        string circuitId;
+        bytes proof;
     }
 
     /**
@@ -183,14 +183,11 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
     }
 
     function addSigner(bytes memory attestation) public onlyTransactors {
-        (
-            bytes memory userData,
-            bytes32 imageHash,
-            bool validated
-        ) = _getPassportCredentialIssuerV1Storage()._attestationValidator.validateAttestation(
-                attestation,
-                true
-            );
+        PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
+
+        (bytes memory userData, bytes32 imageHash, bool validated) = $
+            ._attestationValidator
+            .validateAttestation(attestation);
 
         if (!isWhitelistedImageHash(imageHash)) {
             revert ImageHashIsNotWhitelisted(imageHash);
@@ -215,7 +212,6 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         }
 
         // 2. add signer
-        PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
         $._signers.add(userDataDecoded);
         emit SignerAdded(userDataDecoded);
     }
@@ -322,8 +318,6 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         CredentialProof memory credentialProof,
         bytes memory validationSignatureProof
     ) external {
-        PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
-
         if (bytes(credentialProof.circuitId).length == 0) {
             revert NoCredentialCircuitIdFound(credentialProof.circuitId);
         }

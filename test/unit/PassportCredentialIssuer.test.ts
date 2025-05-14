@@ -61,7 +61,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
           [],
           state.target,
           idType,
-          await owner.getAddress(),          
+          await owner.getAddress(),
           await owner.getAddress(),
         ),
       ).to.be.revertedWithCustomError(passportCredentialIssuer, "InvalidInitialization");
@@ -95,20 +95,30 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
     });
 
     it("add signer for non whitelisted enclave imageHash", async function () {
-      const { passportCredentialIssuer, certificatesValidator, owner } = deployedActors;
+      const {
+        passportCredentialIssuer,
+        certificatesValidatorStub,
+        nitroAttestationValidator,
+        owner,
+      } = deployedActors;
 
       const certificates = await getChainOfCertificatesRawBytes(
         JSON.stringify(jsonAttestationWithUserData),
       );
-  
+
+      // disable the chain of certificates validation
+      await nitroAttestationValidator.setCertificatesValidator(
+        await certificatesValidatorStub.getAddress(),
+      );
+
       for (let i = 0; i < certificates.length - 1; i++) {
-        await certificatesValidator.addCertificateVerification(
+        await certificatesValidatorStub.addCertificateVerification(
           `0x${certificates[i]}`,
           `0x${certificates[i + 1]}`,
         );
       }
-
       await passportCredentialIssuer.addTransactor(await owner.getAddress());
+
       await expect(
         passportCredentialIssuer.addSigner(
           `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
@@ -119,7 +129,13 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
     }).timeout(160000);
 
     it("add signer for whitelisted enclave imageHash", async function () {
-      const { passportCredentialIssuer, certificatesValidator, user1, owner } = deployedActors;
+      const {
+        passportCredentialIssuer,
+        certificatesValidatorStub,
+        nitroAttestationValidator,
+        user1,
+        owner,
+      } = deployedActors;
 
       await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
       await passportCredentialIssuer.addTransactor(await owner.getAddress());
@@ -127,9 +143,14 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       const certificates = await getChainOfCertificatesRawBytes(
         JSON.stringify(jsonAttestationWithUserData),
       );
-  
+
+      // disable the chain of certificates validation
+      await nitroAttestationValidator.setCertificatesValidator(
+        await certificatesValidatorStub.getAddress(),
+      );
+
       for (let i = 0; i < certificates.length - 1; i++) {
-        await certificatesValidator.addCertificateVerification(
+        await certificatesValidatorStub.addCertificateVerification(
           `0x${certificates[i]}`,
           `0x${certificates[i + 1]}`,
         );
