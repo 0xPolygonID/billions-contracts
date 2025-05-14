@@ -6,14 +6,12 @@ import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/crypt
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {IdentityLib} from "@iden3/contracts/lib/IdentityLib.sol";
 import {IdentityBase} from "@iden3/contracts/lib/IdentityBase.sol";
-import {IZKPVerifier} from "@iden3/contracts/interfaces/IZKPVerifier.sol";
 import {ICredentialCircuitVerifier} from "../interfaces/ICredentialCircuitVerifier.sol";
 import {CircuitConstants} from "../constants/CircuitConstants.sol";
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {DateTime} from "@quant-finance/solidity-datetime/contracts/DateTime.sol";
 import {IAttestationValidator} from "../interfaces/IAttestationValidator.sol";
 
-error InvalidResponsesLength(uint256 length, uint256 expectedLength);
 error InvalidLinkId(uint256 linkId1, uint256 linkId2);
 error InvalidHashIndex(uint256 hashIndex);
 error InvalidHashValue(uint256 hashValue);
@@ -26,7 +24,7 @@ error NoVerifierSet();
 error InvalidCredentialProof();
 error InvalidPassportSignatureProof();
 error InvalidSignerPassportSignatureProof(address signer);
-error NoCredentialCircuitForRequestId(uint256 requestId);
+error NoCredentialCircuitIdFound(string circuitId);
 error NullifierDoesNotExist(uint256 nullifier);
 error InvalidTransactor(address transactor);
 error ImageHashIsNotWhitelisted(bytes32 imageHash);
@@ -63,19 +61,11 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         uint256 _expirationTime;
         uint256 _templateRoot;
         mapping(string circuitId => address verifier) _credentialVerifiers;
-        mapping(uint256 requestId => string circuitId) _credentialRequestIdToCircuitId;
-        mapping(string circuitId => uint256 requestId) _credentialCircuitIdToRequestId;
-        uint256 _requestIds;
         EnumerableSet.AddressSet _signers;
         IAttestationValidator _attestationValidator;
         mapping(bytes32 imageHash => bool isApproved) _imageHashesWhitelist;
         EnumerableSet.AddressSet _transactors;
         mapping(uint256 nullifier => HashIndexHashValueNullifier hashIndexHashValue) _nullifiers;
-    }
-
-    struct UserData {
-        IZKPVerifier.ZKPResponse[] responses;
-        bytes crossChainProofs;
     }
 
     struct HashIndexHashValueNullifier {
@@ -92,6 +82,11 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
     struct PassportSignatureProof {
         PassportCredentialMessage passportCredentialMsg;
         bytes signature;
+    }
+
+    struct CredentialProof {
+       string circuitId;
+       bytes proof;
     }
 
     /**
@@ -118,9 +113,8 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
      * @notice Emitted when a credential circuit verifier is updated.
      * @param circuitId The credential circuit id.
      * @param verifier The new verifier address for the credential circuit.
-     * @param requestId The request id for the credential circuit.
      */
-    event CredentialCircuitVerifierUpdated(string circuitId, address verifier, uint256 requestId);
+    event CredentialCircuitVerifierUpdated(string circuitId, address verifier);
     /**
      * @notice Emitted when the expiration time is updated.
      * @param expirationTime The new expiration time.
@@ -182,7 +176,6 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
         $._expirationTime = expirationTime;
         $._templateRoot = templateRoot;
-        $._requestIds = 1;
         $._attestationValidator = validator;
 
         __EIP712_init("PassportIssuerV1", DOMAIN_VERSION);
@@ -310,28 +303,6 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         return _getPassportCredentialIssuerV1Storage()._credentialVerifiers[circuitId];
     }
 
-    /**
-     * @notice Retrieves credential the request id for a given circuit id.
-     * @param circuitId The circuit id identifier.
-     * @return The request id.
-     */
-    function credentialCircuitIdToRequestIds(
-        string memory circuitId
-    ) external view virtual returns (uint256) {
-        return _getPassportCredentialIssuerV1Storage()._credentialCircuitIdToRequestId[circuitId];
-    }
-
-    /**
-     * @notice Retrieves credential the circuit id for a given request id.
-     * @param requestId The request id identifier.
-     * @return The circuit id.
-     */
-    function credentialRequestIdToCircuitIds(
-        uint256 requestId
-    ) external view virtual returns (string memory) {
-        return _getPassportCredentialIssuerV1Storage()._credentialRequestIdToCircuitId[requestId];
-    }
-
     function cleanNullifier(uint256 nullifier) external onlyOwner {
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
         if (!$._nullifiers[nullifier].isSet) {
@@ -344,25 +315,17 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         return _getPassportCredentialIssuerV1Storage()._nullifiers[nullifier].isSet;
     }
 
-    /// @notice Submits a ZKP response V2
-    /// @param responses The list of responses including ZKP request ID, ZK proof and metadata
-    /// @param crossChainProofs The list of cross chain proofs from universal resolver (oracle)
-    function submitZKPResponseV2(
-        IZKPVerifier.ZKPResponse[] memory responses,
-        bytes memory crossChainProofs
+    /// @notice Verifies the passport credential.
+    /// @param credentialProof Credential proof for the passport credential
+    /// @param validationSignatureProof Signature proof of the validation of the passport credential
+    function verifyPassport(
+        CredentialProof memory credentialProof,
+        bytes memory validationSignatureProof
     ) external {
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
 
-        if (responses.length != 1) {
-            revert InvalidResponsesLength(responses.length, 1);
-        }
-        // response[0] for credential proof
-        // crossChainProofs for passport is signed data + signature
-        string memory credentialCircuitId;
-        credentialCircuitId = $._credentialRequestIdToCircuitId[responses[0].requestId];
-
-        if (bytes(credentialCircuitId).length == 0) {
-            revert NoCredentialCircuitForRequestId(responses[0].requestId);
+        if (bytes(credentialProof.circuitId).length == 0) {
+            revert NoCredentialCircuitIdFound(credentialProof.circuitId);
         }
 
         (
@@ -370,7 +333,7 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
             uint256[2] memory a1,
             uint256[2][2] memory b1,
             uint256[2] memory c1
-        ) = abi.decode(responses[0].zkProof, (uint256[], uint256[2], uint256[2][2], uint256[2]));
+        ) = abi.decode(credentialProof.proof, (uint256[], uint256[2], uint256[2][2], uint256[2]));
 
         ICredentialCircuitVerifier.CredentialCircuitProof
             memory credentialCircuitProof = ICredentialCircuitVerifier.CredentialCircuitProof(
@@ -380,15 +343,15 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
                 [inputs1[0], inputs1[1], inputs1[2], inputs1[3], inputs1[4], inputs1[5]]
             );
 
-        PassportSignatureProof[] memory passportSignatureProof = abi.decode(
-            crossChainProofs,
-            (PassportSignatureProof[])
+        PassportSignatureProof memory passportSignatureProofDecoded = abi.decode(
+            validationSignatureProof,
+            (PassportSignatureProof)
         );
 
         _verifyPassportCredential(
-            credentialCircuitId,
+            credentialProof.circuitId,
             credentialCircuitProof,
-            passportSignatureProof[0]
+            passportSignatureProofDecoded
         );
     }
 
@@ -589,15 +552,7 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         for (uint256 i = 0; i < circuitIds.length; i++) {
             $._credentialVerifiers[circuitIds[i]] = verifierAddresses[i];
 
-            uint256 requestId = $._credentialCircuitIdToRequestId[circuitIds[i]];
-            if (requestId == 0) {
-                requestId = $._requestIds;
-                $._credentialCircuitIdToRequestId[circuitIds[i]] = requestId;
-                $._credentialRequestIdToCircuitId[requestId] = circuitIds[i];
-                $._requestIds++;
-            }
-
-            emit CredentialCircuitVerifierUpdated(circuitIds[i], verifierAddresses[i], requestId);
+            emit CredentialCircuitVerifierUpdated(circuitIds[i], verifierAddresses[i]);
         }
     }
 }

@@ -37,13 +37,6 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       expect(await passportCredentialIssuer.credentialVerifiers(credentialCircuitId)).to.equal(
         credentialVerifier.target,
       );
-
-      expect(
-        await passportCredentialIssuer.credentialCircuitIdToRequestIds(credentialCircuitId),
-      ).to.equal(1);
-      expect(await passportCredentialIssuer.credentialRequestIdToCircuitIds(1)).to.equal(
-        credentialCircuitId,
-      );
     });
 
     it("should not allow direct initialization of PassportCredentialIssuer implementation", async () => {
@@ -220,8 +213,6 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       const credentialCircuitIds = ["1", "2"];
       const newVerifierAddresses = [await user1.getAddress(), await user1.getAddress()];
 
-      const lastRequestId = 1;
-
       await expect(
         passportCredentialIssuer.updateCredentialVerifiers(
           credentialCircuitIds,
@@ -229,20 +220,14 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
         ),
       )
         .to.emit(passportCredentialIssuer, "CredentialCircuitVerifierUpdated")
-        .withArgs(credentialCircuitIds[0], newVerifierAddresses[0], lastRequestId + 1)
+        .withArgs(credentialCircuitIds[0], newVerifierAddresses[0])
         .to.emit(passportCredentialIssuer, "CredentialCircuitVerifierUpdated")
-        .withArgs(credentialCircuitIds[1], newVerifierAddresses[1], lastRequestId + 2);
+        .withArgs(credentialCircuitIds[1], newVerifierAddresses[1]);
 
       for (let i = 0; i < credentialCircuitIds.length; i++) {
         expect(
           await passportCredentialIssuer.credentialVerifiers(credentialCircuitIds[i]),
         ).to.equal(newVerifierAddresses[i]);
-        expect(
-          await passportCredentialIssuer.credentialCircuitIdToRequestIds(credentialCircuitIds[i]),
-        ).to.equal(lastRequestId + i + 1);
-        expect(
-          await passportCredentialIssuer.credentialRequestIdToCircuitIds(lastRequestId + i + 1),
-        ).to.equal(credentialCircuitIds[i]);
       }
     });
 

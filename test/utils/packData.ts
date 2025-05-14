@@ -38,9 +38,9 @@ export async function packSignedPassportData(
         "uint256 linkId," +
         "uint256 nullifier) passportCredentialMsg," +
         "bytes signature," +
-        ")[]",
+        ")",
     ],
-    [[{ passportCredentialMsg: passportDataSigned, signature }]],
+    [{ passportCredentialMsg: passportDataSigned, signature }],
   );
 }
 
