@@ -440,8 +440,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         uint256 templateRoot,
         uint256 linkIdCredentialProof,
         uint256 linkIdSignature,
-        uint256 nullifier,
-        uint64 revocationNonce
+        uint256 nullifier
     ) internal view {
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
         if (hashIndex == 0) revert InvalidHashIndex(hashIndex);
@@ -581,8 +580,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
             templateRoot,
             linkIdCredentialProof,
             passportSignatureProof.passportCredentialMsg.linkId,
-            nullifier,
-            revocationNonce
+            nullifier
         );
         _setNullifier(nullifier, revocationNonce);
         _addHashAndTransit(hashIndex, hashValue);

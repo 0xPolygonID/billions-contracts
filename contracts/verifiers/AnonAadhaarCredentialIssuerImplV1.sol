@@ -115,8 +115,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         uint256 issuanceDate,
         uint256 expirationDate,
         uint256 templateRoot,
-        uint256 issuerDidHash,
-        uint64 revocationNonce
+        uint256 issuerDidHash
     ) internal view {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
         if (hashIndex == 0) revert InvalidHashIndex();
@@ -162,7 +161,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         uint256 signalHash = proof.pubSignals[7];
         uint256 templateRoot = proof.pubSignals[8];
         uint256 issuerDidHash = proof.pubSignals[9];
-        uint64 revocationNonce = uint64(proof.pubSignals[10]);
+        uint64 revocationNonce = uint64(proof.pubSignals[11]);
 
         _validatePublicInputs(
             hashIndex,
@@ -173,8 +172,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
             issuanceDate,
             expirationDate,
             templateRoot,
-            issuerDidHash,
-            revocationNonce
+            issuerDidHash
         );
         _setNullifier(nullifier, revocationNonce);
         _addHashAndTransit(hashIndex, hashValue);
@@ -258,7 +256,8 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
                     inputs[7],
                     inputs[8],
                     inputs[9],
-                    inputs[10]
+                    inputs[10],
+                    inputs[11]
                 ]
             );
 
