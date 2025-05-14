@@ -35,7 +35,7 @@ event PublicKeyHashAdded(uint256 publicKeyHash);
 contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
     using IdentityLib for IdentityLib.Data;
 
-    string public constant VERSION = "1.0.1";
+    string public constant VERSION = "1.0.2";
 
     /// @custom:storage-location erc7201:polygonid.storage.AnonAadhaarIssuerV1
     struct AnonAadhaarIssuerV1Storage {
@@ -226,6 +226,18 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
             $.publicKeysHashes[publicKeysHashes[i]] = true;
             emit PublicKeyHashAdded(publicKeysHashes[i]);
         }
+    }
+
+    /**
+     * @notice Removes a public key hash.
+     * @param publicKeyHash The public key hash to remove.
+     */
+    function removePublicKeyHash(uint256 publicKeyHash) public onlyProxy onlyOwner {
+        AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
+        if (!$.publicKeysHashes[publicKeyHash]) {
+            revert InvalidPubKeyHash();
+        }
+        $.publicKeysHashes[publicKeyHash] = false;
     }
 
     function submitZKPResponseV2(
