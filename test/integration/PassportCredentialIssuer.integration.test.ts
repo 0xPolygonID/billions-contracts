@@ -336,7 +336,6 @@ describe("Commitment Registration Tests", function () {
 
       const futureCurrentDate = new Date();
       // Set current date to 2 day in the future
-      // The smart contracts has check: time.Now() - 7 days < currentData < time.Now() + 2 days
       futureCurrentDate.setDate(futureCurrentDate.getDate() + 2);
 
       const baseCredentialProofFutureCurrentDate = await generateCredentialProof(
