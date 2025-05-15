@@ -40,4 +40,8 @@ library CircuitConstants {
      * @notice Index to access the issuerDidHash in the credential circuit public signals.
      */
     uint256 constant CREDENTIAL_ISSUER_DID_HASH_INDEX = 6;
+    /**
+     * @notice Index to access the revocationNonce in the credential circuit public signals.
+     */
+    uint256 constant CREDENTIAL_REVOCATION_NONCE_INDEX = 7;
 }

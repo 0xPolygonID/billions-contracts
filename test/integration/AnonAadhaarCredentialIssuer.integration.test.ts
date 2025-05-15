@@ -65,7 +65,7 @@ describe("Anon aadhaar credential issuer", function () {
 
       expect(await anonAadhaarIssuer.nullifierExists(anonAadhaarProof.pub_signals[1])).to.be
       .true;
-      await anonAadhaarIssuer.cleanNullifier(anonAadhaarProof.pub_signals[1]);
+      await anonAadhaarIssuer.revokeCredential(anonAadhaarProof.pub_signals[1]);
 
       await expect(
         anonAadhaarIssuer.submitZKPResponseV2(

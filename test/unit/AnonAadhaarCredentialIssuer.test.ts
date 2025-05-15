@@ -20,7 +20,7 @@ describe("Unit Tests for AnonAadhaarCredentialIssuerImplV1", () => {
   describe("Initialization", () => {
     it("should initialize AnonAadhaarCredentialIssuerImplV1 with correct parameters", async () => {
       const { anonAadhaarIssuer, templateRoot, expirationTime, nullifierSeed } = deployedActors;
-      expect(await anonAadhaarIssuer.VERSION()).to.equal("1.0.1");
+      expect(await anonAadhaarIssuer.VERSION()).to.equal("1.0.2");
       // Check initial state
       expect(await anonAadhaarIssuer.getExpirationTime()).to.equal(expirationTime);
       expect(await anonAadhaarIssuer.getTemplateRoot()).to.equal(templateRoot);
