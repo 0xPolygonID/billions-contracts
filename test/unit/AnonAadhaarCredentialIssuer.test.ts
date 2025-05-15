@@ -65,6 +65,49 @@ describe("Unit Tests for AnonAadhaarCredentialIssuerImplV1", () => {
       expect(await anonAadhaarIssuer.publicKeyHashExists(publicKeyHash1)).to.equal(true);
       expect(await anonAadhaarIssuer.publicKeyHashExists(publicKeyHash2)).to.equal(true);
     });
+
+    it("should add a QR version", async () => {
+      const { anonAadhaarIssuer } = deployedActors;
+      const qrVersion = 1;
+
+      await anonAadhaarIssuer.addQrVersion(qrVersion);
+
+      const exists = await anonAadhaarIssuer.qrVersionSupported(qrVersion);
+      expect(exists).to.be.true;
+    });
+
+    it("should add multiple QR versions in a batch", async () => {
+      const { anonAadhaarIssuer } = deployedActors;
+      const qrVersions = [1, 2, 3];
+
+      await anonAadhaarIssuer.addQrVersionBatch(qrVersions);
+
+      for (const qrVersion of qrVersions) {
+        const exists = await anonAadhaarIssuer.qrVersionSupported(qrVersion);
+        expect(exists).to.be.true;
+      }
+    });
+
+    it("should remove a QR version", async () => {
+      const { anonAadhaarIssuer } = deployedActors;
+      const qrVersion = 1;
+
+      await anonAadhaarIssuer.addQrVersion(qrVersion);
+      await anonAadhaarIssuer.removeQrVersion(qrVersion);
+
+      const exists = await anonAadhaarIssuer.qrVersionSupported(qrVersion);
+      expect(exists).to.be.false;
+    });
+
+    it("should revert when removing a non-existent QR version", async () => {
+      const { anonAadhaarIssuer } = deployedActors;
+      const qrVersion = 1;
+
+      await expect(anonAadhaarIssuer.removeQrVersion(qrVersion)).to.be.revertedWithCustomError(
+        anonAadhaarIssuer,
+        "UnsupportedQrVersion",
+      );
+    });
   });
 
   describe("Upgradeabilitiy", () => {

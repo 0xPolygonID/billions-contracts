@@ -9,8 +9,6 @@ import {
   PassportDataSigned,
   prepareProof,
 } from "../utils/packData";
-import { base64ToBytes, bytesToHex } from "@0xpolygonid/js-sdk";
-import jsonAttestationWithUserData from "../data/TEEAttestationWithUserData.json";
 const imageHash = "0xc980e59163ce244bb4bb6211f48c7b46f88a4f40943e84eb99bdc41e129bd293";
 
 describe("Commitment Registration Tests", function () {
@@ -26,6 +24,7 @@ describe("Commitment Registration Tests", function () {
   let credentialProofIssuanceDateExpired: any;
   let currentDateExpiredFormatted: number;
   let issuanceDateExpired: Date;
+  let credentialProofRevocationNonceZero: any;
 
   before(async () => {
     deployedActors = await deploySystemFixtures();
@@ -51,6 +50,21 @@ describe("Commitment Registration Tests", function () {
       issuanceDateExpired,
     );
 
+    // revocation nonce zero
+    credentialProofRevocationNonceZero = await generateCredentialProof(
+      deployedActors.mockPassport,
+      new Date(),
+      new Date(),
+      0,
+    );
+
+    // Set the issuer DID hash
+    const { passportCredentialIssuer, owner } = deployedActors;
+    const passportCredentialIssuerWithOwner = passportCredentialIssuer.connect(owner);
+    const issuerDidHash = baseCredentialProof.publicSignals[6]; // Replace with the actual hash
+    const tx = await passportCredentialIssuerWithOwner.setIssuerDIDHash(issuerDidHash);
+    await tx.wait();
+
     snapshotId = await ethers.provider.send("evm_snapshot", []);
   });
 
@@ -58,6 +72,7 @@ describe("Commitment Registration Tests", function () {
     credentialProof = structuredClone(baseCredentialProof);
     credentialProofCurrentDateExpired = structuredClone(baseCredentialProofCurrentDateExpired);
     credentialProofIssuanceDateExpired = structuredClone(baseCredentialProofIssuanceDateExpired);
+    credentialProofRevocationNonceZero = structuredClone(credentialProofRevocationNonceZero);
   });
 
   afterEach(async () => {
@@ -120,7 +135,7 @@ describe("Commitment Registration Tests", function () {
         ),
       ).to.be.revertedWithCustomError(passportCredentialIssuer, "NullifierAlreadyExists");
 
-      await passportCredentialIssuer.cleanNullifier(signedPassportData.nullifier);
+      await passportCredentialIssuer.revokeCredential(signedPassportData.nullifier);
 
       expect(await passportCredentialIssuer.nullifierExists(signedPassportData.nullifier)).to.be
         .false;
@@ -381,6 +396,100 @@ describe("Commitment Registration Tests", function () {
               futureCurrentDate.getDate(),
           ),
         );
+    });
+
+    it("Should return an error for unknown issuer", async () => {
+      const { passportCredentialIssuer, user1, owner } = deployedActors;
+
+      await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
+      await expect(passportCredentialIssuer.addTransactor(await owner.getAddress())).not.to.be
+        .reverted;
+
+      await expect(passportCredentialIssuer.addSigner(await user1.getAddress()))
+        .to.emit(passportCredentialIssuer, "SignerAdded")
+        .withArgs(await user1.getAddress());
+
+      const signedPassportData: PassportDataSigned = {
+        linkId: BigInt(credentialProof.publicSignals[2]),
+        nullifier: 1n,
+      };
+
+      const crossChainProofs = await packSignedPassportData(
+        signedPassportData,
+        passportCredentialIssuer,
+        user1,
+      );
+      const metadatas = "0x";
+
+      const credentialPreparedProof = prepareProof(credentialProof.proof);
+
+      const credentialZkProof = packZKProof(
+        credentialProof.publicSignals,
+        credentialPreparedProof.pi_a,
+        credentialPreparedProof.pi_b,
+        credentialPreparedProof.pi_c,
+      );
+
+      // set incorrect issuerDidHash
+      const passportCredentialIssuerWithOwner = passportCredentialIssuer.connect(owner);
+      const tx = await passportCredentialIssuerWithOwner.setIssuerDIDHash(1);
+      await tx.wait();
+
+      const credentialRequestId =
+        await passportCredentialIssuer.credentialCircuitIdToRequestIds("credential_sha256");
+
+      await expect(
+        passportCredentialIssuer.submitZKPResponseV2(
+          [{ requestId: credentialRequestId, zkProof: credentialZkProof, data: metadatas }],
+          crossChainProofs,
+        ),
+      ).to.revertedWithCustomError(passportCredentialIssuer, "InvalidIssuerDidHash");
+    });
+
+    it("Should error if revocation nonce is 0", async () => {
+      const { passportCredentialIssuer, user1, owner } = deployedActors;
+
+      await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
+      await passportCredentialIssuer.addTransactor(await owner.getAddress());
+
+      await expect(passportCredentialIssuer.addSigner(await user1.getAddress()))
+        .to.emit(passportCredentialIssuer, "SignerAdded")
+        .withArgs(await user1.getAddress());
+
+      const signedPassportData: PassportDataSigned = {
+        linkId: BigInt(credentialProofRevocationNonceZero.publicSignals[2]),
+        nullifier: 1n,
+      };
+
+      const crossChainProofs = await packSignedPassportData(
+        signedPassportData,
+        passportCredentialIssuer,
+        user1,
+      );
+      const metadatas = "0x";
+
+      const credentialPreparedProof = prepareProof(credentialProofRevocationNonceZero.proof);
+
+      const credentialZkProof = packZKProof(
+        credentialProofRevocationNonceZero.publicSignals,
+        credentialPreparedProof.pi_a,
+        credentialPreparedProof.pi_b,
+        credentialPreparedProof.pi_c,
+      );
+
+      const credentialRequestId =
+        await passportCredentialIssuer.credentialCircuitIdToRequestIds("credential_sha256");
+
+      expect(await passportCredentialIssuer.nullifierExists(signedPassportData.nullifier)).to.be
+        .false;
+      await expect(
+        passportCredentialIssuer.submitZKPResponseV2(
+          [{ requestId: credentialRequestId, zkProof: credentialZkProof, data: metadatas }],
+          crossChainProofs,
+        ),
+      )
+        .to.be.revertedWithCustomError(passportCredentialIssuer, "InvalidRevocationNonce")
+        .withArgs(0);
     });
   });
 });

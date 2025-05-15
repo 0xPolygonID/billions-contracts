@@ -12,7 +12,7 @@ import {ProxyRoot} from "../upgradeable/ProxyRoot.sol";
 contract AnonAadhaarCredentialIssuer is ProxyRoot {
     /**
      * @notice Creates a new instance of the AnonAadhaarCredentialIssuer proxy.
-     * @param _logic The address of the initial implementation 
+     * @param _logic The address of the initial implementation
      * contract that contains the passport credential issuer logic.
      * @param _data The initialization data passed to the implementation during deployment.
      */

@@ -22,11 +22,13 @@ error NullifierAlreadyExists();
 error NullifierDoesNotExist();
 error InvalidVerifierAddress();
 error InvalidStateContractAddress();
+error UnsupportedQrVersion(uint256 qrVersion);
+error InvalidRevocationNonce(uint64 revocationNonce);
 
 event IssuerDidHashUpdated(uint256 issuerDidHash);
 event TemplateRootUpdated(uint256 templateRoot);
-event NullifierCleaned(uint256 nullifier);
 event PublicKeyHashAdded(uint256 publicKeyHash);
+event CredentialRevoked(uint256 nullifier, uint64 revocationNonce);
 
 /**
  * @dev Address ownership credential issuer.
@@ -45,24 +47,19 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         uint256 issuerDidHash;
         address anonAadhaarVerifier;
         mapping(uint256 => bool) publicKeysHashes;
-        mapping(uint256 nullifier => HashIndexHashValueNullifier hashIndexHashValue) nullifiers;
-    }
-
-    struct HashIndexHashValueNullifier {
-        uint256 hashIndex;
-        uint256 hashValue;
-        bool isSet;
+        mapping(uint256 nullifier => uint64 revocationNonce) _nullifiersToRevocationNonce;
+        mapping(uint256 qrVersion => bool) qrVersions;
     }
 
     // check if the hash was calculated correctly
     // keccak256(abi.encode(uint256(keccak256("polygonid.storage.AnonAadhaarIssuerV1")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant AnonAadhaarIssuerV1StorageLocation = 
+    bytes32 private constant AnonAadhaarIssuerV1StorageLocation =
         0xcb4c32479afd0d9095322a3f93b16fa02cb0bf6c78456f30d0d6005caa749700;
-    
-    function _getAnonAadhaarIssuerV1Storage() 
+
+    function _getAnonAadhaarIssuerV1Storage()
         private
-        pure 
-        returns (AnonAadhaarIssuerV1Storage storage store) 
+        pure
+        returns (AnonAadhaarIssuerV1Storage storage store)
     {
         assembly {
             store.slot := AnonAadhaarIssuerV1StorageLocation
@@ -73,16 +70,17 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
      * @notice Constructor that disables initializers.
      * @dev Prevents direct initialization of the implementation contract.
      */
-    constructor()  {      
+    constructor() {
         _disableInitializers();
     }
 
     function initialize(
         uint256 nullifierSeed,
         uint256[] calldata publicKeysHashes,
+        uint256[] calldata qrVersions,
         uint256 expirationTime,
         uint256 templateRoot,
-        address anonAadhaarVerifier, 
+        address anonAadhaarVerifier,
         address _stateContractAddress,
         bytes2 idType
     ) public initializer {
@@ -99,7 +97,8 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         $.anonAadhaarVerifier = anonAadhaarVerifier;
 
         addPublicKeyHashesBatch(publicKeysHashes);
-    }    
+        addQrVersionBatch(qrVersions);
+    }
 
     /**
      * @notice Updates the issuer DID hash.
@@ -121,7 +120,8 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         uint256 issuanceDate,
         uint256 expirationDate,
         uint256 templateRoot,
-        uint256 issuerDidHash
+        uint256 issuerDidHash,
+        uint256 qrVersion
     ) internal view {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
         if (hashIndex == 0) revert InvalidHashIndex();
@@ -136,7 +136,8 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         }
         if (expirationDate <= block.timestamp) revert ProofExpired();
         if (!$.publicKeysHashes[pubKeyHash]) revert InvalidPubKeyHash();
-        if ($.nullifiers[nullifier].isSet) revert NullifierAlreadyExists();
+        if (!$.qrVersions[qrVersion]) revert UnsupportedQrVersion(qrVersion);
+        if ($._nullifiersToRevocationNonce[nullifier] != 0) revert NullifierAlreadyExists();
     }
 
     function _addHashAndTransit(uint256 hi, uint256 hv) private {
@@ -144,14 +145,15 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         _getIdentityBaseStorage().identity.transitState();
     }
 
-    function _setNullifier(uint256 nullifier, uint256 hi, uint256 hv) private {
+    function _setNullifier(uint256 nullifier, uint64 revocationNonce) private {
+        if (revocationNonce == 0) revert InvalidRevocationNonce(revocationNonce);
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
-        $.nullifiers[nullifier] = HashIndexHashValueNullifier(hi, hv, true);
+        $._nullifiersToRevocationNonce[nullifier] = revocationNonce;
     }
 
     function nullifierExists(uint256 nullifier) external view returns (bool) {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
-        return $.nullifiers[nullifier].isSet;
+        return $._nullifiersToRevocationNonce[nullifier] != 0;
     }
 
     function _afterProofSubmit(
@@ -163,23 +165,26 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         uint256 hashValue = proof.pubSignals[3];
         uint256 issuanceDate = proof.pubSignals[4];
         uint256 expirationDate = proof.pubSignals[5];
-        uint256 nullifierSeed = proof.pubSignals[6];
-        uint256 signalHash = proof.pubSignals[7];
-        uint256 templateRoot = proof.pubSignals[8];
-        uint256 issuerDidHash = proof.pubSignals[9];
+        uint256 qrVersion = proof.pubSignals[6];
+        uint256 nullifierSeed = proof.pubSignals[7];
+        uint256 signalHash = proof.pubSignals[8];
+        uint256 templateRoot = proof.pubSignals[9];
+        uint256 issuerDidHash = proof.pubSignals[10];
+        uint64 revocationNonce = uint64(proof.pubSignals[11]);
 
         _validatePublicInputs(
-            hashIndex, 
-            hashValue, 
-            nullifier, 
-            pubKeyHash, 
+            hashIndex,
+            hashValue,
+            nullifier,
+            pubKeyHash,
             nullifierSeed,
             issuanceDate,
             expirationDate,
             templateRoot,
-            issuerDidHash
+            issuerDidHash,
+            qrVersion
         );
-        _setNullifier(nullifier, hashIndex, hashValue);
+        _setNullifier(nullifier, revocationNonce);
         _addHashAndTransit(hashIndex, hashValue);
     }
 
@@ -194,23 +199,23 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
     }
 
     /**
-     * @notice Cleans a nullifier.
-     * @param nullifier The nullifier to clean.
+     * @notice Revoke credential and remove nullifier.
+     * @param nullifier credential nullifier.
      */
-    function cleanNullifier(uint256 nullifier) public onlyProxy onlyOwner {
+    function revokeCredential(uint256 nullifier) external onlyProxy onlyOwner {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
-        if (!$.nullifiers[nullifier].isSet) revert NullifierDoesNotExist();
-        $.nullifiers[nullifier] = HashIndexHashValueNullifier(0, 0, false);
-        emit NullifierCleaned(nullifier);
+        uint64 nonce = $._nullifiersToRevocationNonce[nullifier];
+        if (nonce == 0) revert NullifierDoesNotExist();
+        _revokeClaimAndTransit(nonce);
+        $._nullifiersToRevocationNonce[nullifier] = 0;
+        emit CredentialRevoked(nullifier, nonce);
     }
 
     /**
      * @notice Adds a public key hash.
      * @param publicKeyHash The public key hash to add.
      */
-    function addPublicKeyHash(
-        uint256 publicKeyHash
-    ) public onlyProxy onlyOwner {
+    function addPublicKeyHash(uint256 publicKeyHash) public onlyProxy onlyOwner {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
         $.publicKeysHashes[publicKeyHash] = true;
         emit PublicKeyHashAdded(publicKeyHash);
@@ -220,7 +225,9 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
      * @notice Adds multiple public key hashes in a batch.
      * @param publicKeysHashes The array of public key hashes to add.
      */
-    function addPublicKeyHashesBatch(uint256[] calldata publicKeysHashes) public onlyProxy onlyOwner {
+    function addPublicKeyHashesBatch(
+        uint256[] calldata publicKeysHashes
+    ) public onlyProxy onlyOwner {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
         for (uint256 i = 0; i < publicKeysHashes.length; i++) {
             $.publicKeysHashes[publicKeysHashes[i]] = true;
@@ -247,7 +254,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         if (responses.length != 1) {
             revert InvalidResponsesLength(responses.length, 1);
         }
-        
+
         (
             uint256[] memory inputs,
             uint256[2] memory a1,
@@ -255,23 +262,24 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
             uint256[2] memory c1
         ) = abi.decode(responses[0].zkProof, (uint256[], uint256[2], uint256[2][2], uint256[2]));
 
-
         IAnonAadhaarCircuitVerifier.AnonAadhaarCircuitProof
             memory groth16Proof = IAnonAadhaarCircuitVerifier.AnonAadhaarCircuitProof(
                 a1,
                 b1,
                 c1,
                 [
-                    inputs[0], 
-                    inputs[1], 
-                    inputs[2], 
-                    inputs[3], 
-                    inputs[4], 
-                    inputs[5], 
-                    inputs[6], 
-                    inputs[7], 
-                    inputs[8], 
-                    inputs[9]
+                    inputs[0],
+                    inputs[1],
+                    inputs[2],
+                    inputs[3],
+                    inputs[4],
+                    inputs[5],
+                    inputs[6],
+                    inputs[7],
+                    inputs[8],
+                    inputs[9],
+                    inputs[10],
+                    inputs[11]
                 ]
             );
 
@@ -325,5 +333,53 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
      */
     function getExpirationTime() public view returns (uint256) {
         return _getAnonAadhaarIssuerV1Storage().expirationTime;
+    }
+
+    /**
+     * @notice Adds a QR version.
+     * @param qrVersion The QR version to add.
+     */
+    function addQrVersion(uint256 qrVersion) public onlyProxy onlyOwner {
+        AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
+        $.qrVersions[qrVersion] = true;
+    }
+
+    /**
+     * @notice Adds multiple QR versions in a batch.
+     * @param qrVersions The array of QR versions to add.
+     */
+    function addQrVersionBatch(uint256[] calldata qrVersions) public onlyProxy onlyOwner {
+        AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
+        for (uint256 i = 0; i < qrVersions.length; i++) {
+            $.qrVersions[qrVersions[i]] = true;
+        }
+    }
+
+    /**
+     * @notice Removes a QR version.
+     * @param qrVersion The QR version to remove.
+     */
+    function removeQrVersion(uint256 qrVersion) public onlyProxy onlyOwner {
+        AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
+        if (!$.qrVersions[qrVersion]) revert UnsupportedQrVersion(qrVersion);
+        $.qrVersions[qrVersion] = false;
+    }
+
+    /**
+     * @notice Checks if a QR version is supported.
+     * @param qrVersion The QR version to check.
+     * @return True if the QR version is supported, false otherwise.
+     */
+    function qrVersionSupported(uint256 qrVersion) public view returns (bool) {
+        return _getAnonAadhaarIssuerV1Storage().qrVersions[qrVersion];
+    }
+
+    /**
+     * @notice Revokes a claim and transit the state.
+     * @param nonce The nonce of the claim to revoke.
+     */
+    function _revokeClaimAndTransit(uint64 nonce) internal {
+        _getIdentityBaseStorage().identity.revokeClaim(nonce);
+        _getIdentityBaseStorage().identity.transitState();
     }
 }

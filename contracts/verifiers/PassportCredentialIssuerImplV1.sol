@@ -23,6 +23,7 @@ error IssuanceDateInFuture(uint256 issuanceDate);
 error CurrentDateExpired(uint256 currentDate);
 error CurrentDateInFuture(uint256 currentDate);
 error NullifierAlreadyExists(uint256 nullifier);
+error NullifierDoesNotExist(uint256 nullifier);
 error LengthMismatch(uint256 length1, uint256 length2);
 error NoVerifierSet();
 error InvalidCredentialProof();
@@ -34,6 +35,8 @@ error InvalidAttestation();
 error InvalidSignerAddress();
 error InvalidAttestationUserDataLength();
 error InvalidTransactor(address transactor);
+error InvalidIssuerDidHash();
+error InvalidRevocationNonce(uint64 revocationNonce);
 
 /**
  * @dev Address ownership credential issuer.
@@ -71,18 +74,13 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         IAttestationValidator _attestationValidator;
         mapping(bytes32 imageHash => bool isApproved) _imageHashesWhitelist;
         EnumerableSet.AddressSet _transactors;
-        mapping(uint256 nullifier => HashIndexHashValueNullifier hashIndexHashValue) _nullifiers;
+        mapping(uint256 nullifier => uint64 revocationNonce) _nullifiersToRevocationNonce;
+        uint256 _issuerDidHash;
     }
 
     struct UserData {
         IZKPVerifier.ZKPResponse[] responses;
         bytes crossChainProofs;
-    }
-
-    struct HashIndexHashValueNullifier {
-        uint256 hashIndex;
-        uint256 hashValue;
-        bool isSet;
     }
 
     struct PassportCredentialMessage {
@@ -98,7 +96,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
     /**
      * @dev Version of the contract
      */
-    string public constant VERSION = "1.0.6";
+    string public constant VERSION = "1.0.7";
 
     // check if the hash was calculated correctly
     // keccak256(abi.encode(uint256(keccak256("polygonid.storage.PassportCredentialIssuerV1")) - 1)) & ~bytes32(uint256(0xff))
@@ -143,6 +141,11 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
      */
     event TransactorAdded(address transactor);
     /**
+     * @notice Emitted when a credential is revoked.
+     * @param revocationNonce The revocation nonce of the revoked credential.
+     */
+    event CredentialRevoked(uint256 nullifier, uint64 revocationNonce);
+    /**
      * @notice Emitted when the max future time is updated.
      * @param maxFutureTime The new max future time.
      */
@@ -160,7 +163,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         _disableInitializers();
     }
 
-  /**
+    /**
      * @dev Throws if called by any account other than transactors.
      */
     modifier onlyTransactors() {
@@ -344,14 +347,26 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         return _getPassportCredentialIssuerV1Storage()._credentialRequestIdToCircuitId[requestId];
     }
 
-    function cleanNullifier(uint256 nullifier) external onlyOwner {
+    /**
+     * @notice Revoke credential and remove nullifier.
+     * @param nullifier credential nullifier.
+     */
+    function revokeCredential(uint256 nullifier) external onlyOwner {
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
-        require($._nullifiers[nullifier].isSet, "Nullifier does not exist");
-        $._nullifiers[nullifier] = HashIndexHashValueNullifier(0, 0, false);
+        uint64 nonce = $._nullifiersToRevocationNonce[nullifier];
+        if (nonce == 0) {
+            revert NullifierDoesNotExist(nullifier);
+        }
+        _revokeClaimAndTransit(nonce);
+        $._nullifiersToRevocationNonce[nullifier] = 0;
+        emit CredentialRevoked(nullifier, nonce);
     }
 
     function nullifierExists(uint256 nullifier) external view returns (bool) {
-        return _getPassportCredentialIssuerV1Storage()._nullifiers[nullifier].isSet;
+        uint64 nonce = _getPassportCredentialIssuerV1Storage()._nullifiersToRevocationNonce[
+            nullifier
+        ];
+        return nonce != 0;
     }
 
     /// @notice Submits a ZKP response V2
@@ -387,7 +402,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
                 a1,
                 b1,
                 c1,
-                [inputs1[0], inputs1[1], inputs1[2], inputs1[3], inputs1[4], inputs1[5]]
+                [inputs1[0], inputs1[1], inputs1[2], inputs1[3], inputs1[4], inputs1[5], inputs1[6], inputs1[7]]
             );
 
         PassportSignatureProof[] memory passportSignatureProof = abi.decode(
@@ -429,6 +444,22 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         _getPassportCredentialIssuerV1Storage()._imageHashesWhitelist[imageHash] = false;
     }
 
+    /**
+     * @notice Retrieves the issuer DID hash.
+     * @return The issuer DID hash.
+     */
+    function getIssuerDIDHash() external view onlyOwner returns (uint256) {
+        return _getPassportCredentialIssuerV1Storage()._issuerDidHash;
+    }
+
+    /**
+     * @notice Updates the issuer DID hash.
+     * @param issuerDidHash The new issuer DID hash.
+     */
+    function setIssuerDIDHash(uint256 issuerDidHash) external onlyOwner {
+        _getPassportCredentialIssuerV1Storage()._issuerDidHash = issuerDidHash;
+    }
+
     function _checkTransactor() internal view {
         if (!_getPassportCredentialIssuerV1Storage()._transactors.contains(_msgSender())) {
             revert InvalidTransactor(_msgSender());
@@ -453,7 +484,8 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         uint256 templateRoot,
         uint256 linkIdCredentialProof,
         uint256 linkIdSignature,
-        uint256 nullifier
+        uint256 nullifier,
+        uint256 issuerDidHash
     ) internal view {
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
         if (hashIndex == 0) revert InvalidHashIndex(hashIndex);
@@ -499,7 +531,10 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         if (issuanceDate > block.timestamp + $._maxFutureTime)
             revert IssuanceDateInFuture(issuanceDate);
 
-        if ($._nullifiers[nullifier].isSet) revert NullifierAlreadyExists(nullifier);
+        if ($._issuerDidHash != issuerDidHash) revert InvalidIssuerDidHash();
+
+        if ($._nullifiersToRevocationNonce[nullifier] != 0)
+            revert NullifierAlreadyExists(nullifier);
     }
 
     function _addHashAndTransit(uint256 hi, uint256 hv) internal {
@@ -507,9 +542,15 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         _getIdentityBaseStorage().identity.transitState();
     }
 
-    function _setNullifier(uint256 nullifier, uint256 hi, uint256 hv) internal {
+    function _revokeClaimAndTransit(uint64 nonce) internal {
+        _getIdentityBaseStorage().identity.revokeClaim(nonce);
+        _getIdentityBaseStorage().identity.transitState();
+    }
+
+    function _setNullifier(uint256 nullifier, uint64 revocationNonce) internal {
+        if (revocationNonce == 0) revert InvalidRevocationNonce(revocationNonce);
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
-        $._nullifiers[nullifier] = HashIndexHashValueNullifier(hi, hv, true);
+        $._nullifiersToRevocationNonce[nullifier] = revocationNonce;
     }
 
     function _verifyCredentialProof(
@@ -561,44 +602,53 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         return (err == ECDSA.RecoverError.NoError, recovered);
     }
 
+    struct ProofInputs {
+        uint256 hashIndex;
+        uint256 hashValue;
+        uint256 issuanceDate;
+        uint256 currentDate;
+        uint256 templateRoot;
+        uint256 linkIdCredentialProof;
+        uint64 revocationNonce;
+        uint256 issuerDidHash;
+    }
+
+    function _extractProofInputs(
+        ICredentialCircuitVerifier.CredentialCircuitProof memory credentialCircuitProof
+    ) internal pure returns (ProofInputs memory) {
+        return ProofInputs({
+            hashIndex: credentialCircuitProof.pubSignals[CircuitConstants.CREDENTIAL_HASH_INDEX_INDEX],
+            hashValue: credentialCircuitProof.pubSignals[CircuitConstants.CREDENTIAL_HASH_VALUE_INDEX],
+            issuanceDate: credentialCircuitProof.pubSignals[CircuitConstants.CREDENTIAL_ISSUANCE_DATE_INDEX],
+            currentDate: credentialCircuitProof.pubSignals[CircuitConstants.CREDENTIAL_CURRENT_DATE_INDEX],
+            templateRoot: credentialCircuitProof.pubSignals[CircuitConstants.CREDENTIAL_TEMPLATE_ROOT_INDEX],
+            linkIdCredentialProof: credentialCircuitProof.pubSignals[CircuitConstants.CREDENTIAL_LINK_ID_INDEX],
+            revocationNonce: uint64(
+                credentialCircuitProof.pubSignals[CircuitConstants.CREDENTIAL_REVOCATION_NONCE_INDEX]
+            ),
+            issuerDidHash: credentialCircuitProof.pubSignals[CircuitConstants.CREDENTIAL_ISSUER_DID_HASH_INDEX]
+        });
+    }
+
     function _afterProofsSubmit(
         ICredentialCircuitVerifier.CredentialCircuitProof memory credentialCircuitProof,
         PassportSignatureProof memory passportSignatureProof
     ) internal {
-        // credential proof
-
-        uint256 hashIndex = credentialCircuitProof.pubSignals[
-            CircuitConstants.CREDENTIAL_HASH_INDEX_INDEX
-        ];
-        uint256 hashValue = credentialCircuitProof.pubSignals[
-            CircuitConstants.CREDENTIAL_HASH_VALUE_INDEX
-        ];
-        uint256 issuanceDate = credentialCircuitProof.pubSignals[
-            CircuitConstants.CREDENTIAL_ISSUANCE_DATE_INDEX
-        ];
-        uint256 currentDate = credentialCircuitProof.pubSignals[
-            CircuitConstants.CREDENTIAL_CURRENT_DATE_INDEX
-        ];
-        uint256 templateRoot = credentialCircuitProof.pubSignals[
-            CircuitConstants.CREDENTIAL_TEMPLATE_ROOT_INDEX
-        ];
-        uint256 linkIdCredentialProof = credentialCircuitProof.pubSignals[
-            CircuitConstants.CREDENTIAL_LINK_ID_INDEX
-        ];
+        ProofInputs memory inputs = _extractProofInputs(credentialCircuitProof);
 
         uint256 nullifier = passportSignatureProof.passportCredentialMsg.nullifier;
-
         _validatePublicInputs(
-            hashIndex,
-            hashValue,
-            issuanceDate,
-            currentDate,
-            templateRoot,
-            linkIdCredentialProof,
+            inputs.hashIndex,
+            inputs.hashValue,
+            inputs.issuanceDate,
+            inputs.currentDate,
+            inputs.templateRoot,
+            inputs.linkIdCredentialProof,
             passportSignatureProof.passportCredentialMsg.linkId,
-            nullifier
+            nullifier,
+            inputs.issuerDidHash
         );
-        _setNullifier(nullifier, hashIndex, hashValue);
-        _addHashAndTransit(hashIndex, hashValue);
+        _setNullifier(nullifier, inputs.revocationNonce);
+        _addHashAndTransit(inputs.hashIndex, inputs.hashValue);
     }
 }

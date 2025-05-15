@@ -253,6 +253,16 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
       await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash2)).not.to.be.reverted;
     });
+
+    it("should update the issuer DID hash", async () => {
+      const { passportCredentialIssuer } = deployedActors;
+      const newIssuerDidHash = 123456789;
+
+      await passportCredentialIssuer.setIssuerDIDHash(newIssuerDidHash);
+
+      const updatedIssuerDidHash = await passportCredentialIssuer.getIssuerDIDHash();
+      expect(updatedIssuerDidHash).to.equal(newIssuerDidHash);
+    });
   });
 
   describe("View functions", () => {
@@ -283,6 +293,12 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       await expect(
         passportCredentialIssuerImpl.credentialVerifiers(credentialCircuitId),
       ).to.be.revertedWithCustomError(passportCredentialIssuerImpl, "UUPSUnauthorizedCallContext");
+    });
+
+    it("should return the correct issuer DID hash", async () => {
+      const { passportCredentialIssuer } = deployedActors;
+      const issuerDidHash = await passportCredentialIssuer.getIssuerDIDHash();
+      expect(issuerDidHash).to.equal(0); // Default value should be 0
     });
   });
 
