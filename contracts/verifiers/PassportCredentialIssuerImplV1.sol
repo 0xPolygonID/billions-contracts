@@ -61,7 +61,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
     struct PassportCredentialIssuerV1Storage {
         uint256 _expirationTime;
         uint256 _templateRoot;
-        uint256 _maxExpirationTime;
+        uint256 _maxFutureTime;
         uint256 __gap;
         mapping(string circuitId => address verifier) _credentialVerifiers;
         mapping(uint256 requestId => string circuitId) _credentialRequestIdToCircuitId;
@@ -143,10 +143,10 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
      */
     event TransactorAdded(address transactor);
     /**
-     * @notice Emitted when the max expiration time is updated.
-     * @param maxExpirationTime The new max expiration time.
+     * @notice Emitted when the max future time is updated.
+     * @param maxFutureTime The new max future time.
      */
-    event MaxExpirationTimeUpdated(uint256 maxExpirationTime);
+    event MaxFutureTimeUpdated(uint256 maxFutureTime);
 
     // ====================================================
     // Constructor
@@ -186,7 +186,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
 
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
         $._expirationTime = expirationTime;
-        $._maxExpirationTime = maxExpirationTime;
+        $._maxFutureTime = maxExpirationTime;
         $._templateRoot = templateRoot;
         $._requestIds = 1;
 
@@ -259,20 +259,20 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
     }
 
     /**
-     * @notice Retrieves the max expiration time.
-     * @return The max expiration time.
+     * @notice Retrieves the max future time.
+     * @return The max future time.
      */
-    function getMaxExpirationTime() external view virtual onlyProxy returns (uint256) {
-        return _getPassportCredentialIssuerV1Storage()._maxExpirationTime;
+    function getMaxFutureTime() external view virtual onlyProxy returns (uint256) {
+        return _getPassportCredentialIssuerV1Storage()._maxFutureTime;
     }
 
     /**
-     * @notice Sets the max expiration time.
-     * @param maxExpirationTime The new max expiration time.
+     * @notice Sets the max future time.
+     * @param maxFutureTime The new max future time.
      */
-    function setMaxExpirationTime(uint256 maxExpirationTime) external onlyProxy onlyOwner {
-        _getPassportCredentialIssuerV1Storage()._maxExpirationTime = maxExpirationTime;
-        emit MaxExpirationTimeUpdated(maxExpirationTime);
+    function setMaxFutureTime(uint256 maxFutureTime) external onlyProxy onlyOwner {
+        _getPassportCredentialIssuerV1Storage()._maxFutureTime = maxFutureTime;
+        emit MaxFutureTimeUpdated(maxFutureTime);
     }
 
     /**
@@ -486,7 +486,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
                 revert CurrentDateExpired(currentDate);
             }
             (uint256 futureYear, uint256 futureMonth, uint256 futureDay) = DateTime.timestampToDate(
-                block.timestamp + $._maxExpirationTime
+                block.timestamp + $._maxFutureTime
             );
             uint256 futureDate = futureYear * 10000 + futureMonth * 100 + futureDay;
             if (currentDateWithFullYear > futureDate) {
@@ -496,7 +496,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
 
         if (issuanceDate + $._expirationTime < block.timestamp)
             revert IssuanceDateExpired(issuanceDate);
-        if (issuanceDate > block.timestamp + $._maxExpirationTime)
+        if (issuanceDate > block.timestamp + $._maxFutureTime)
             revert IssuanceDateInFuture(issuanceDate);
 
         if ($._nullifiers[nullifier].isSet) revert NullifierAlreadyExists(nullifier);
