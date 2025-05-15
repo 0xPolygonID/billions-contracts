@@ -140,7 +140,7 @@ describe("Commitment Registration Tests", function () {
       await expect(passportCredentialIssuer.addTransactor(await owner.getAddress())).not.to.be
         .reverted;
 
-        await expect(passportCredentialIssuer.addSigner(await user1.getAddress()))
+      await expect(passportCredentialIssuer.addSigner(await user1.getAddress()))
         .to.emit(passportCredentialIssuer, "SignerAdded")
         .withArgs(await user1.getAddress());
 
@@ -267,6 +267,120 @@ describe("Commitment Registration Tests", function () {
       )
         .to.revertedWithCustomError(passportCredentialIssuer, "InvalidSignerPassportSignatureProof")
         .withArgs(await user2.getAddress());
+    });
+
+    it("Should not verify with passport issuance date in the future", async () => {
+      const { passportCredentialIssuer, user1, owner } = deployedActors;
+
+      await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
+      await expect(passportCredentialIssuer.addTransactor(await owner.getAddress())).not.to.be
+        .reverted;
+
+      await expect(passportCredentialIssuer.addSigner(await user1.getAddress()))
+        .to.emit(passportCredentialIssuer, "SignerAdded")
+        .withArgs(await user1.getAddress());
+
+      const futureIssuanceDate = new Date();
+      futureIssuanceDate.setMinutes(futureIssuanceDate.getMinutes() + 20); // Set issuance date 20 minutes in the future
+
+      const baseCredentialProofFutureIssuance = await generateCredentialProof(
+        deployedActors.mockPassport,
+        new Date(),
+        futureIssuanceDate,
+      );
+
+      const signedPassportData: PassportDataSigned = {
+        linkId: BigInt(baseCredentialProofFutureIssuance.publicSignals[2]),
+        nullifier: 1n,
+      };
+
+      const crossChainProofs = await packSignedPassportData(
+        signedPassportData,
+        passportCredentialIssuer,
+        user1,
+      );
+      const metadatas = "0x";
+
+      const credentialPreparedProof = prepareProof(baseCredentialProofFutureIssuance.proof);
+
+      const credentialZkProof = packZKProof(
+        baseCredentialProofFutureIssuance.publicSignals,
+        credentialPreparedProof.pi_a,
+        credentialPreparedProof.pi_b,
+        credentialPreparedProof.pi_c,
+      );
+
+      const credentialRequestId =
+        await passportCredentialIssuer.credentialCircuitIdToRequestIds("credential_sha256");
+
+      await expect(
+        passportCredentialIssuer.submitZKPResponseV2(
+          [{ requestId: credentialRequestId, zkProof: credentialZkProof, data: metadatas }],
+          crossChainProofs,
+        ),
+      )
+        .to.be.revertedWithCustomError(passportCredentialIssuer, "IssuanceDateInFuture")
+        .withArgs(Math.round(futureIssuanceDate.getTime() / 1000));
+    });
+
+    it("Should not verify with passport current date in the future", async () => {
+      const { passportCredentialIssuer, user1, owner } = deployedActors;
+
+      await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
+      await expect(passportCredentialIssuer.addTransactor(await owner.getAddress())).not.to.be
+        .reverted;
+
+      await expect(passportCredentialIssuer.addSigner(await user1.getAddress()))
+        .to.emit(passportCredentialIssuer, "SignerAdded")
+        .withArgs(await user1.getAddress());
+
+      const futureCurrentDate = new Date();
+      // Set current date to 2 day in the future
+      futureCurrentDate.setDate(futureCurrentDate.getDate() + 2);
+
+      const baseCredentialProofFutureCurrentDate = await generateCredentialProof(
+        deployedActors.mockPassport,
+        futureCurrentDate,
+      );
+
+      const signedPassportData: PassportDataSigned = {
+        linkId: BigInt(baseCredentialProofFutureCurrentDate.publicSignals[2]),
+        nullifier: 1n,
+      };
+
+      const crossChainProofs = await packSignedPassportData(
+        signedPassportData,
+        passportCredentialIssuer,
+        user1,
+      );
+      const metadatas = "0x";
+
+      const credentialPreparedProof = prepareProof(baseCredentialProofFutureCurrentDate.proof);
+
+      const credentialZkProof = packZKProof(
+        baseCredentialProofFutureCurrentDate.publicSignals,
+        credentialPreparedProof.pi_a,
+        credentialPreparedProof.pi_b,
+        credentialPreparedProof.pi_c,
+      );
+
+      const credentialRequestId =
+        await passportCredentialIssuer.credentialCircuitIdToRequestIds("credential_sha256");
+
+      await expect(
+        passportCredentialIssuer.submitZKPResponseV2(
+          [{ requestId: credentialRequestId, zkProof: credentialZkProof, data: metadatas }],
+          crossChainProofs,
+        ),
+      )
+        .to.be.revertedWithCustomError(passportCredentialIssuer, "CurrentDateInFuture")
+        .withArgs(
+          Math.floor(
+            (futureCurrentDate.getFullYear() - 2000) * 10000 +
+              (futureCurrentDate.getMonth() + 1) * 100 +
+              futureCurrentDate.getDate(),
+          ),
+        );
     });
   });
 });

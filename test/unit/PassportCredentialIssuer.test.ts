@@ -59,7 +59,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       const passportCredentialIssuerImpl = await PassportCredentialIssuerImplFactory.deploy();
 
       await expect(
-        passportCredentialIssuerImpl.initializeIssuer(0, 0, [], [], state.target, idType),
+        passportCredentialIssuerImpl.initializeIssuer(0, 0, 0, [], [], state.target, idType),
       ).to.be.revertedWithCustomError(passportCredentialIssuerImpl, "InvalidInitialization");
     });
 
@@ -80,7 +80,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
 
       let initializeData = passportCredentialIssuerImpl.interface.encodeFunctionData(
         "initializeIssuer",
-        [0, 0, ["1"], [], state.target, idType],
+        [0, 0, 0, ["1"], [], state.target, idType],
       );
       const passportCredentialIssuerProxyFactory = await ethers.getContractFactory(
         "PassportCredentialIssuer",
@@ -101,7 +101,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       const { passportCredentialIssuer, state, idType } = deployedActors;
 
       await expect(
-        passportCredentialIssuer.initializeIssuer(0, 0, [], [], state.target, idType),
+        passportCredentialIssuer.initializeIssuer(0, 0, 0, [], [], state.target, idType),
       ).to.be.revertedWithCustomError(passportCredentialIssuer, "InvalidInitialization");
     });
   });
@@ -122,11 +122,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
     it("should not add signer if caller is not a transactor", async () => {
       const { passportCredentialIssuer, user1 } = deployedActors;
 
-      await expect(
-        passportCredentialIssuer
-          .connect(user1)
-          .addSigner(await user1.getAddress()),
-      )
+      await expect(passportCredentialIssuer.connect(user1).addSigner(await user1.getAddress()))
         .to.be.revertedWithCustomError(passportCredentialIssuer, "InvalidTransactor")
         .withArgs(await user1.getAddress());
     });
