@@ -28,13 +28,13 @@ export default buildModule("UpgradeAnonAadhaarCredentialIssuer", (m) => {
     libraries: {
       IdentityLib: identityLib,
     },
-    id: "AnonAadhaarCredentialIssuerImplV1_v1_0_1", // Update the version as needed
+    id: "AnonAadhaarCredentialIssuerImplV1_v1_0_2", // Update the version as needed
   });
 
   const passportCredentialIssuerProxy = m.contractAt(
     "AnonAadhaarCredentialIssuerImplV1",
     passportCredentialIssuerProxyAddress,
-    { id: "AnonAadhaarCredentialIssuer_v1_0_1" },
+    { id: "AnonAadhaarCredentialIssuer_v1_0_2" },
   );
 
   m.call(passportCredentialIssuerProxy, "upgradeToAndCall", [

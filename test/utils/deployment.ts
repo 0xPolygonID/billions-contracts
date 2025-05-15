@@ -87,12 +87,14 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
   await passportCredentialIssuerImpl.waitForDeployment();
 
   const expirationTime = BigInt(60 * 60 * 24 * 7); // 1 week
+  const maxExpirationTime = BigInt(15 * 60); // 15 minutes
   const templateRoot = BigInt(
     "20928513831198457326281890226858421791230183718399181538736627412475062693938",
   );
   const passportCredentialIssuerInitData =
     passportCredentialIssuerImpl.interface.encodeFunctionData("initializeIssuer", [
       expirationTime,
+      maxExpirationTime,
       templateRoot,
       ["credential_sha256"],
       [credentialVerifier.target],

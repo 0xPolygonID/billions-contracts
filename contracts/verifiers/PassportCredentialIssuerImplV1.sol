@@ -19,7 +19,9 @@ error InvalidHashIndex(uint256 hashIndex);
 error InvalidHashValue(uint256 hashValue);
 error InvalidTemplateRoot(uint256 templateRoot, uint256 expectedTemplateRoot);
 error IssuanceDateExpired(uint256 issuanceDate);
+error IssuanceDateInFuture(uint256 issuanceDate);
 error CurrentDateExpired(uint256 currentDate);
+error CurrentDateInFuture(uint256 currentDate);
 error NullifierAlreadyExists(uint256 nullifier);
 error NullifierDoesNotExist(uint256 nullifier);
 error LengthMismatch(uint256 length1, uint256 length2);
@@ -52,8 +54,6 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
     string public constant DOMAIN_VERSION = "1.0.0";
 
     uint256 private constant DATE_20TH_CENTURY = 500000;
-    uint256 private constant CURRENT_DATE_EXPIRATION_TIME = 7 days;
-
     /**
      * @dev PassportCredential message data type hash
      */
@@ -64,6 +64,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
     struct PassportCredentialIssuerV1Storage {
         uint256 _expirationTime;
         uint256 _templateRoot;
+        uint256 _maxFutureTime;
         uint256 __gap;
         mapping(string circuitId => address verifier) _credentialVerifiers;
         mapping(uint256 requestId => string circuitId) _credentialRequestIdToCircuitId;
@@ -144,6 +145,11 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
      * @param revocationNonce The revocation nonce of the revoked credential.
      */
     event CredentialRevoked(uint256 nullifier, uint64 revocationNonce);
+    /**
+     * @notice Emitted when the max future time is updated.
+     * @param maxFutureTime The new max future time.
+     */
+    event MaxFutureTimeUpdated(uint256 maxFutureTime);
 
     // ====================================================
     // Constructor
@@ -171,6 +177,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
 
     function initializeIssuer(
         uint256 expirationTime,
+        uint256 maxExpirationTime,
         uint256 templateRoot,
         string[] calldata credentialCircuitIds,
         address[] calldata credentialVerifierAddresses,
@@ -182,6 +189,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
 
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
         $._expirationTime = expirationTime;
+        $._maxFutureTime = maxExpirationTime;
         $._templateRoot = templateRoot;
         $._requestIds = 1;
 
@@ -251,6 +259,23 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
     function setTemplateRoot(uint256 templateRoot) external onlyProxy onlyOwner {
         _getPassportCredentialIssuerV1Storage()._templateRoot = templateRoot;
         emit TemplateRootUpdated(templateRoot);
+    }
+
+    /**
+     * @notice Retrieves the max future time.
+     * @return The max future time.
+     */
+    function getMaxFutureTime() external view virtual onlyProxy returns (uint256) {
+        return _getPassportCredentialIssuerV1Storage()._maxFutureTime;
+    }
+
+    /**
+     * @notice Sets the max future time.
+     * @param maxFutureTime The new max future time.
+     */
+    function setMaxFutureTime(uint256 maxFutureTime) external onlyProxy onlyOwner {
+        _getPassportCredentialIssuerV1Storage()._maxFutureTime = maxFutureTime;
+        emit MaxFutureTimeUpdated(maxFutureTime);
     }
 
     /**
@@ -482,17 +507,29 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
             currentDateWithFullYear = currentDate + 20000000;
         }
 
-        (uint256 year, uint256 month, uint256 day) = DateTime.timestampToDate(
-            block.timestamp - CURRENT_DATE_EXPIRATION_TIME
-        );
-        uint256 minimumExpectedCurrentDate = year * 10000 + month * 100 + day;
-
-        if (minimumExpectedCurrentDate > currentDateWithFullYear) {
-            revert CurrentDateExpired(currentDate);
+        // This scope was added to avoid stack too deep error
+        // scope: verify if currentDate is in time range
+        {
+            (uint256 year, uint256 month, uint256 day) = DateTime.timestampToDate(
+                block.timestamp - $._expirationTime
+            );
+            uint256 minimumExpectedCurrentDate = year * 10000 + month * 100 + day;
+            if (minimumExpectedCurrentDate > currentDateWithFullYear) {
+                revert CurrentDateExpired(currentDate);
+            }
+            (uint256 futureYear, uint256 futureMonth, uint256 futureDay) = DateTime.timestampToDate(
+                block.timestamp + $._maxFutureTime
+            );
+            uint256 futureDate = futureYear * 10000 + futureMonth * 100 + futureDay;
+            if (currentDateWithFullYear > futureDate) {
+                revert CurrentDateInFuture(currentDate);
+            }
         }
 
         if (issuanceDate + $._expirationTime < block.timestamp)
             revert IssuanceDateExpired(issuanceDate);
+        if (issuanceDate > block.timestamp + $._maxFutureTime)
+            revert IssuanceDateInFuture(issuanceDate);
 
         if ($._issuerDidHash != issuerDidHash) revert InvalidIssuerDidHash();
 

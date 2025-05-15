@@ -235,6 +235,18 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
         }
     }
 
+    /**
+     * @notice Removes a public key hash.
+     * @param publicKeyHash The public key hash to remove.
+     */
+    function removePublicKeyHash(uint256 publicKeyHash) public onlyProxy onlyOwner {
+        AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
+        if (!$.publicKeysHashes[publicKeyHash]) {
+            revert InvalidPubKeyHash();
+        }
+        $.publicKeysHashes[publicKeyHash] = false;
+    }
+
     function submitZKPResponseV2(
         IZKPVerifier.ZKPResponse[] memory responses,
         bytes memory crossChainProofs
