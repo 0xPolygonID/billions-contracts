@@ -563,52 +563,53 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
         return (err == ECDSA.RecoverError.NoError, recovered);
     }
 
+    struct ProofInputs {
+        uint256 hashIndex;
+        uint256 hashValue;
+        uint256 issuanceDate;
+        uint256 currentDate;
+        uint256 templateRoot;
+        uint256 linkIdCredentialProof;
+        uint64 revocationNonce;
+        uint256 issuerDidHash;
+    }
+
+    function _extractProofInputs(
+        ICredentialCircuitVerifier.CredentialCircuitProof memory credentialCircuitProof
+    ) internal pure returns (ProofInputs memory) {
+        return ProofInputs({
+            hashIndex: credentialCircuitProof.pubSignals[CircuitConstants.CREDENTIAL_HASH_INDEX_INDEX],
+            hashValue: credentialCircuitProof.pubSignals[CircuitConstants.CREDENTIAL_HASH_VALUE_INDEX],
+            issuanceDate: credentialCircuitProof.pubSignals[CircuitConstants.CREDENTIAL_ISSUANCE_DATE_INDEX],
+            currentDate: credentialCircuitProof.pubSignals[CircuitConstants.CREDENTIAL_CURRENT_DATE_INDEX],
+            templateRoot: credentialCircuitProof.pubSignals[CircuitConstants.CREDENTIAL_TEMPLATE_ROOT_INDEX],
+            linkIdCredentialProof: credentialCircuitProof.pubSignals[CircuitConstants.CREDENTIAL_LINK_ID_INDEX],
+            revocationNonce: uint64(
+                credentialCircuitProof.pubSignals[CircuitConstants.CREDENTIAL_REVOCATION_NONCE_INDEX]
+            ),
+            issuerDidHash: credentialCircuitProof.pubSignals[CircuitConstants.CREDENTIAL_ISSUER_DID_HASH_INDEX]
+        });
+    }
+
     function _afterProofsSubmit(
         ICredentialCircuitVerifier.CredentialCircuitProof memory credentialCircuitProof,
         PassportSignatureProof memory passportSignatureProof
     ) internal {
-        // credential proof
-
-        uint256 hashIndex = credentialCircuitProof.pubSignals[
-            CircuitConstants.CREDENTIAL_HASH_INDEX_INDEX
-        ];
-        uint256 hashValue = credentialCircuitProof.pubSignals[
-            CircuitConstants.CREDENTIAL_HASH_VALUE_INDEX
-        ];
-        uint256 issuanceDate = credentialCircuitProof.pubSignals[
-            CircuitConstants.CREDENTIAL_ISSUANCE_DATE_INDEX
-        ];
-        uint256 currentDate = credentialCircuitProof.pubSignals[
-            CircuitConstants.CREDENTIAL_CURRENT_DATE_INDEX
-        ];
-        uint256 templateRoot = credentialCircuitProof.pubSignals[
-            CircuitConstants.CREDENTIAL_TEMPLATE_ROOT_INDEX
-        ];
-        uint256 linkIdCredentialProof = credentialCircuitProof.pubSignals[
-            CircuitConstants.CREDENTIAL_LINK_ID_INDEX
-        ];
-        uint64 revocationNonce = uint64(
-            credentialCircuitProof.pubSignals[CircuitConstants.CREDENTIAL_REVOCATION_NONCE_INDEX]
-        );
+        ProofInputs memory inputs = _extractProofInputs(credentialCircuitProof);
 
         uint256 nullifier = passportSignatureProof.passportCredentialMsg.nullifier;
-
-        uint256 issuerDidHash = credentialCircuitProof.pubSignals[
-            CircuitConstants.CREDENTIAL_ISSUER_DID_HASH_INDEX
-        ];
-
         _validatePublicInputs(
-            hashIndex,
-            hashValue,
-            issuanceDate,
-            currentDate,
-            templateRoot,
-            linkIdCredentialProof,
+            inputs.hashIndex,
+            inputs.hashValue,
+            inputs.issuanceDate,
+            inputs.currentDate,
+            inputs.templateRoot,
+            inputs.linkIdCredentialProof,
             passportSignatureProof.passportCredentialMsg.linkId,
             nullifier,
-            issuerDidHash
+            inputs.issuerDidHash
         );
-        _setNullifier(nullifier, revocationNonce);
-        _addHashAndTransit(hashIndex, hashValue);
+        _setNullifier(nullifier, inputs.revocationNonce);
+        _addHashAndTransit(inputs.hashIndex, inputs.hashValue);
     }
 }
