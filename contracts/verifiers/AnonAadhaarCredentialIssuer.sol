@@ -56,13 +56,13 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
 
     // check if the hash was calculated correctly
     // keccak256(abi.encode(uint256(keccak256("polygonid.storage.AnonAadhaarIssuerV1")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant AnonAadhaarIssuerV1StorageLocation = 
+    bytes32 private constant AnonAadhaarIssuerV1StorageLocation =
         0xcb4c32479afd0d9095322a3f93b16fa02cb0bf6c78456f30d0d6005caa749700;
-    
-    function _getAnonAadhaarIssuerV1Storage() 
+
+    function _getAnonAadhaarIssuerV1Storage()
         private
-        pure 
-        returns (AnonAadhaarIssuerV1Storage storage store) 
+        pure
+        returns (AnonAadhaarIssuerV1Storage storage store)
     {
         assembly {
             store.slot := AnonAadhaarIssuerV1StorageLocation
@@ -73,7 +73,7 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
      * @notice Constructor that disables initializers.
      * @dev Prevents direct initialization of the implementation contract.
      */
-    constructor()  {      
+    constructor() {
         _disableInitializers();
     }
 
@@ -82,7 +82,7 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
         uint256[] calldata publicKeysHashes,
         uint256 expirationTime,
         uint256 templateRoot,
-        address anonAadhaarVerifier, 
+        address anonAadhaarVerifier,
         address _stateContractAddress,
         bytes2 idType,
         address owner
@@ -170,10 +170,10 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
         uint256 issuerDidHash = proof.pubSignals[9];
 
         _validatePublicInputs(
-            hashIndex, 
-            hashValue, 
-            nullifier, 
-            pubKeyHash, 
+            hashIndex,
+            hashValue,
+            nullifier,
+            pubKeyHash,
             nullifierSeed,
             issuanceDate,
             expirationDate,
@@ -209,9 +209,7 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
      * @notice Adds a public key hash.
      * @param publicKeyHash The public key hash to add.
      */
-    function addPublicKeyHash(
-        uint256 publicKeyHash
-    ) public onlyOwner {
+    function addPublicKeyHash(uint256 publicKeyHash) public onlyOwner {
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
         $.publicKeysHashes[publicKeyHash] = true;
         emit PublicKeyHashAdded(publicKeyHash);
@@ -240,7 +238,7 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
         if (responses.length != 1) {
             revert InvalidResponsesLength(responses.length, 1);
         }
-        
+
         (
             uint256[] memory inputs,
             uint256[2] memory a1,
@@ -248,22 +246,21 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
             uint256[2] memory c1
         ) = abi.decode(responses[0].zkProof, (uint256[], uint256[2], uint256[2][2], uint256[2]));
 
-
         IAnonAadhaarCircuitVerifier.AnonAadhaarCircuitProof
             memory groth16Proof = IAnonAadhaarCircuitVerifier.AnonAadhaarCircuitProof(
                 a1,
                 b1,
                 c1,
                 [
-                    inputs[0], 
-                    inputs[1], 
-                    inputs[2], 
-                    inputs[3], 
-                    inputs[4], 
-                    inputs[5], 
-                    inputs[6], 
-                    inputs[7], 
-                    inputs[8], 
+                    inputs[0],
+                    inputs[1],
+                    inputs[2],
+                    inputs[3],
+                    inputs[4],
+                    inputs[5],
+                    inputs[6],
+                    inputs[7],
+                    inputs[8],
                     inputs[9]
                 ]
             );

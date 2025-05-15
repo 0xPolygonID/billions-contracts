@@ -17,9 +17,9 @@ describe("Test certificatesLib", function () {
 
   it("Parse certificate", async function () {
     const result = await certificatesLibWrapper.parseCertificate(certificateSubject);
-    expect(result[0]).to.equal(2110455735643949053598097832217058602n);
-    expect(result[1]).to.equal(1745788199n);
-    expect(result[2]).to.equal(1745799002n);
+    expect(result[0]).to.equal(2112245290912713911765263782571690178n);
+    expect(result[1]).to.equal(1747208383n);
+    expect(result[2]).to.equal(1747219186n);
   });
 
   it("Parse certificate minimal", async function () {

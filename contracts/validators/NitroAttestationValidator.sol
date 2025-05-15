@@ -91,27 +91,31 @@ contract NitroAttestationValidator is Ownable2StepUpgradeable, IAttestationValid
      * @dev Initialize the contract
      * @param owner Owner of the contract
      */
-    function initialize(address owner) public initializer {
+    function initialize(
+        address owner,
+        ICertificatesValidator certificatesValidator
+    ) public initializer {
         __Ownable_init(owner);
+        _getNitroAttestationValidatorStorage()._certificatesValidator = certificatesValidator;
     }
 
     /**
      * @dev Set certificates validator
-     * @param validator - certificates validator
+     * @param certificatesValidator - certificates validator
      */
-    function setCertificatesValidator(ICertificatesValidator validator) external onlyOwner {
-        _getNitroAttestationValidatorStorage()._certificatesValidator = validator;
+    function setCertificatesValidator(
+        ICertificatesValidator certificatesValidator
+    ) external onlyOwner {
+        _getNitroAttestationValidatorStorage()._certificatesValidator = certificatesValidator;
     }
 
     /**
      * @dev Validate the attestation signature
      * @param attestation The attestation bytes data
-     * @param checkCertificatesValidation indicates wether to check expiration for the certificates
      * @return User data bytes and a boolean indicating if the attestation is valid
      */
     function validateAttestation(
-        bytes calldata attestation,
-        bool checkCertificatesValidation
+        bytes calldata attestation
     ) external view returns (bytes memory, bytes32, bool) {
         // The steps for verifying a signature are (https://www.rfc-editor.org/rfc/rfc8152#section-4.4):
 
@@ -124,8 +128,7 @@ contract NitroAttestationValidator is Ownable2StepUpgradeable, IAttestationValid
                 attestationObj.value.protectedHeader,
                 attestationObj.value.payload,
                 attestationObj.value.rawPayload,
-                attestationObj.value.signature,
-                checkCertificatesValidation
+                attestationObj.value.signature
             );
     }
 
@@ -150,8 +153,7 @@ contract NitroAttestationValidator is Ownable2StepUpgradeable, IAttestationValid
         bytes memory protectedHeader,
         Payload memory payload,
         bytes memory rawPayload,
-        bytes memory signature,
-        bool checkCertificatesValidation
+        bytes memory signature
     ) private view returns (bytes memory, bytes32, bool) {
         // 2. Create the value ToBeSigned by encoding the Sig_structure to a byte string,
         // using the encoding described in Section 14 https://www.rfc-editor.org/rfc/rfc8152#section-14.
@@ -164,11 +166,9 @@ contract NitroAttestationValidator is Ownable2StepUpgradeable, IAttestationValid
             certificates[payload.cabundle.length - (i + 1) + 1] = payload.cabundle[i];
         }
 
-        if (checkCertificatesValidation) {
-            _getNitroAttestationValidatorStorage()
-                ._certificatesValidator
-                .validateChainOfCertificates(certificates);
-        }
+        _getNitroAttestationValidatorStorage()._certificatesValidator.validateChainOfCertificates(
+            certificates
+        );
 
         CertificatesLib.Certificate memory parsedCertificate = CertificatesLib.parseCertificate(
             payload.certificate

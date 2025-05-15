@@ -41,12 +41,10 @@ interface IAttestationValidator {
     /**
      * @dev Validates the attestation
      * @param attestation bytes for the attestation
-     * @param checkCertificatesValidation indicates wether to check expiration for the credential
      * @return User data fields and a boolean indicating if the attestation is valid
      */
     function validateAttestation(
-        bytes calldata attestation,
-        bool checkCertificatesValidation
+        bytes calldata attestation
     ) external returns (bytes memory, bytes32 imageHash, bool);
 
     /**

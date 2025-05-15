@@ -7,15 +7,12 @@ import {
   DeployedActorsAnonAadhaar,
   AnonAadhaarVerifier,
 } from "./types";
-import { poseidonContract } from "circomlibjs";
 // Verifier artifacts
 import CredentialVerifierArtifact from "../../artifacts/contracts/verifiers/credential/Verifier_credential_sha256.sol/Verifier_credential_sha256.json";
 import AnonAadhaarlVerifierArtifact from "../../artifacts/contracts/verifiers/anonAadhaarV1/Verifier_anon_aadhaar_v1.sol/Verifier_anon_aadhaar_v1.json";
 
-import { AnonAadHaarCredentialIssuer, PassportCredentialIssuer } from "../../typechain-types";
 import { chainIdInfoMap } from "./constants";
 import {
-  contractsInfo,
   CREATEX_FACTORY_ADDRESS,
   SIGNED_SERIALISED_TRANSACTION_GAS_LIMIT_25000000,
 } from "../../helpers/constants";
@@ -29,6 +26,7 @@ import {
   SmtLibModule,
 } from "../../ignition/modules/identityLib/libraries";
 import AnonAadHaarCredentialIssuerModule from "../../ignition/modules/anonAadhaarCredentialIssuer/deployAnonAadhaarCredentialIssuer";
+import { CertificatesLibModule } from "../../ignition/modules/attestationValidation/attestationLibraries";
 
 export async function deploySystemFixtures(): Promise<DeployedActors> {
   let credentialVerifier: CredentialVerifier;
@@ -83,22 +81,29 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
   poseidon4Elements.waitForDeployment();
   console.log(`Poseidon4 deployed to: ${await poseidon4Elements.getAddress()}`);
 
-  const { identityLib, passportCredentialIssuer, newPassportCredentialIssuerImpl, proxyAdmin } =
-    await ignition.deploy(PassportCredentialIssuerModule, {
-      parameters: {
-        PassportCredentialIssuerProxyModule: {
-          stateContractAddress: stContracts.state.target as string,
-          idType: stContracts.defaultIdType,
-          expirationTime: expirationTime,
-          templateRoot: templateRoot,
-        },
-        IdentityLibModule: {
-          poseidon3ElementAddress: await stContracts.poseidon3.getAddress(),
-          poseidon4ElementAddress: await poseidon4Elements.getAddress(),
-          smtLibAddress: await stContracts.smtLib.getAddress(),
-        },
+  const {
+    identityLib,
+    passportCredentialIssuer,
+    newPassportCredentialIssuerImpl,
+    certificatesValidator,
+    certificatesLib,
+    nitroAttestationValidator,
+    proxyAdmin,
+  } = await ignition.deploy(PassportCredentialIssuerModule, {
+    parameters: {
+      PassportCredentialIssuerProxyModule: {
+        stateContractAddress: stContracts.state.target as string,
+        idType: stContracts.defaultIdType,
+        expirationTime: expirationTime,
+        templateRoot: templateRoot,
       },
-    });
+      IdentityLibModule: {
+        poseidon3ElementAddress: await stContracts.poseidon3.getAddress(),
+        poseidon4ElementAddress: await poseidon4Elements.getAddress(),
+        smtLibAddress: await stContracts.smtLib.getAddress(),
+      },
+    },
+  });
 
   console.log("PassportCredentialIssuer deployed address:", passportCredentialIssuer.target);
   console.log(
@@ -113,11 +118,15 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
     [credentialVerifier.target as string],
   );
 
-  const certificatesLib = await deployCertificatesLib();
-  const nitroAttestationValidator = await deployNitroAttestationValidator(
-    await certificatesLib.getAddress(),
+  const certificatesValidatorStubFactory = await ethers.getContractFactory(
+    "CertificatesValidatorStub",
+    {
+      libraries: {
+        CertificatesLib: await certificatesLib.getAddress(),
+      },
+    },
   );
-  await passportCredentialIssuer.setAttestationValidator(nitroAttestationValidator);
+  const certificatesValidatorStub = await certificatesValidatorStubFactory.deploy();
 
   return {
     credentialVerifier,
@@ -126,6 +135,9 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
     user2,
     mockPassport,
     passportCredentialIssuer: passportCredentialIssuer,
+    certificatesValidator,
+    certificatesValidatorStub,
+    nitroAttestationValidator,
     proxyAdmin,
     state: stContracts.state,
     identityLib,
@@ -184,65 +196,8 @@ export async function deployContractWrapper(contractName: string): Promise<Contr
   return contractWrapper;
 }
 
-export async function deployCertificatesValidator(certificatesLib: any): Promise<Contract> {
-  const [owner] = await ethers.getSigners();
-  const CertificatesValidatorFactory = await ethers.getContractFactory("CertificatesValidator", {
-    libraries: {
-      CertificatesLib: await certificatesLib.getAddress(),
-    },
-  });
-
-  const CertificatesValidator = await upgrades.deployProxy(
-    CertificatesValidatorFactory,
-    [await owner.getAddress()],
-    {
-      unsafeAllow: ["external-library-linking"],
-    },
-  );
-  await CertificatesValidator.waitForDeployment();
-  console.log(`CertificatesValidator deployed to: ${await CertificatesValidator.getAddress()}`);
-
-  return CertificatesValidator;
-}
-
-export async function deployNitroAttestationValidator(
-  certificatesLibAddress: string,
-): Promise<Contract> {
-  const [owner] = await ethers.getSigners();
-  const NitroAttestationValidatorFactory = await ethers.getContractFactory(
-    "NitroAttestationValidator",
-    {
-      libraries: {
-        CertificatesLib: certificatesLibAddress,
-      },
-    },
-  );
-
-  const NitroAttestationValidator = await upgrades.deployProxy(
-    NitroAttestationValidatorFactory,
-    [await owner.getAddress()],
-    {
-      unsafeAllow: ["external-library-linking"],
-    },
-  );
-  await NitroAttestationValidator.waitForDeployment();
-  console.log(
-    `NitroAttestationValidator deployed to: ${await NitroAttestationValidator.getAddress()}`,
-  );
-
-  return NitroAttestationValidator;
-}
-
-export async function deployCertificatesLib(): Promise<Contract> {
-  const certificatesLib = await ethers.deployContract("CertificatesLib");
-  await certificatesLib.waitForDeployment();
-  console.log(`CertificatesLib deployed to:  ${await certificatesLib.getAddress()}`);
-
-  return certificatesLib;
-}
-
 export async function deployCertificatesLibWrapper(): Promise<Contract> {
-  const certificatesLib = await deployCertificatesLib();
+  const { certificatesLib } = await ignition.deploy(CertificatesLibModule);
   const CertificatesLibWrapperFactory = await ethers.getContractFactory("CertificatesLibWrapper", {
     libraries: {
       CertificatesLib: await certificatesLib.getAddress(),

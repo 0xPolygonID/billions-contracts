@@ -33,6 +33,9 @@ export interface BaseActors {
 export interface DeployedActors extends BaseActors {
   mockPassport: PassportData;
   passportCredentialIssuer: Contract;
+  certificatesValidator: Contract;
+  certificatesValidatorStub: Contract;
+  nitroAttestationValidator: Contract;
   proxyAdmin: Contract;
   credentialVerifier: CredentialVerifier;
   expirationTime: bigint;

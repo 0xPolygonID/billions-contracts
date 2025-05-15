@@ -11,7 +11,9 @@ import {
 } from "../utils/packData";
 import { base64ToBytes, bytesToHex } from "@0xpolygonid/js-sdk";
 import jsonAttestationWithUserData from "../data/TEEAttestationWithUserData.json";
-const imageHash = "0xc980e59163ce244bb4bb6211f48c7b46f88a4f40943e84eb99bdc41e129bd293";
+import { getChainOfCertificatesRawBytes } from "../../helpers/validateTEE";
+
+const imageHash = "0xededc6be756c1f502dd6be5dfd34aacdc2c59e6518c66dbf8e74a93acff58842";
 
 describe("Commitment Registration Tests", function () {
   this.timeout(0);
@@ -67,13 +69,39 @@ describe("Commitment Registration Tests", function () {
 
   describe("Verify passport", async () => {
     it("Should verify passport successfully", async () => {
-      const { passportCredentialIssuer, user1, owner } = deployedActors;
+      const {
+        passportCredentialIssuer,
+        certificatesValidatorStub,
+        nitroAttestationValidator,
+        user1,
+        owner,
+      } = deployedActors;
 
       await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
       await expect(passportCredentialIssuer.addTransactor(await owner.getAddress())).not.to.be
         .reverted;
 
-      await expect(passportCredentialIssuer.addSigner(await user1.getAddress()))
+      const certificates = await getChainOfCertificatesRawBytes(
+        JSON.stringify(jsonAttestationWithUserData),
+      );
+
+      // disable the chain of certificates validation
+      await nitroAttestationValidator.setCertificatesValidator(
+        await certificatesValidatorStub.getAddress(),
+      );
+
+      for (let i = 0; i < certificates.length - 1; i++) {
+        await certificatesValidatorStub.addCertificateVerification(
+          `0x${certificates[i]}`,
+          `0x${certificates[i + 1]}`,
+        );
+      }
+
+      await expect(
+        passportCredentialIssuer.addSigner(
+          `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
+        ),
+      )
         .to.emit(passportCredentialIssuer, "SignerAdded")
         .withArgs(await user1.getAddress());
 
@@ -82,12 +110,11 @@ describe("Commitment Registration Tests", function () {
         nullifier: 1n,
       };
 
-      const crossChainProofs = await packSignedPassportData(
+      const passportSignatureProof = await packSignedPassportData(
         signedPassportData,
         passportCredentialIssuer,
         user1,
       );
-      const metadatas = "0x";
 
       const credentialPreparedProof = prepareProof(credentialProof.proof);
 
@@ -98,15 +125,12 @@ describe("Commitment Registration Tests", function () {
         credentialPreparedProof.pi_c,
       );
 
-      const credentialRequestId =
-        await passportCredentialIssuer.credentialCircuitIdToRequestIds("credential_sha256");
-
       expect(await passportCredentialIssuer.nullifierExists(signedPassportData.nullifier)).to.be
         .false;
       await expect(
-        passportCredentialIssuer.submitZKPResponseV2(
-          [{ requestId: credentialRequestId, zkProof: credentialZkProof, data: metadatas }],
-          crossChainProofs,
+        passportCredentialIssuer.verifyPassport(
+          { circuitId: "credential_sha256", proof: credentialZkProof },
+          passportSignatureProof,
         ),
       ).not.to.be.reverted;
       expect(await passportCredentialIssuer.nullifierExists(signedPassportData.nullifier)).to.be
@@ -114,9 +138,9 @@ describe("Commitment Registration Tests", function () {
 
       // Check nullifier
       await expect(
-        passportCredentialIssuer.submitZKPResponseV2(
-          [{ requestId: credentialRequestId, zkProof: credentialZkProof, data: metadatas }],
-          crossChainProofs,
+        passportCredentialIssuer.verifyPassport(
+          { circuitId: "credential_sha256", proof: credentialZkProof },
+          passportSignatureProof,
         ),
       ).to.be.revertedWithCustomError(passportCredentialIssuer, "NullifierAlreadyExists");
 
@@ -126,21 +150,47 @@ describe("Commitment Registration Tests", function () {
         .false;
 
       await expect(
-        passportCredentialIssuer.submitZKPResponseV2(
-          [{ requestId: credentialRequestId, zkProof: credentialZkProof, data: metadatas }],
-          crossChainProofs,
+        passportCredentialIssuer.verifyPassport(
+          { circuitId: "credential_sha256", proof: credentialZkProof },
+          passportSignatureProof,
         ),
       ).to.be.revertedWith("Identity trees haven't changed");
     });
 
     it("Should not verify with passport current date expired", async () => {
-      const { passportCredentialIssuer, user1, owner } = deployedActors;
+      const {
+        passportCredentialIssuer,
+        certificatesValidatorStub,
+        nitroAttestationValidator,
+        user1,
+        owner,
+      } = deployedActors;
 
       await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
       await expect(passportCredentialIssuer.addTransactor(await owner.getAddress())).not.to.be
         .reverted;
 
-        await expect(passportCredentialIssuer.addSigner(await user1.getAddress()))
+      const certificates = await getChainOfCertificatesRawBytes(
+        JSON.stringify(jsonAttestationWithUserData),
+      );
+
+      // disable the chain of certificates validation
+      await nitroAttestationValidator.setCertificatesValidator(
+        await certificatesValidatorStub.getAddress(),
+      );
+
+      for (let i = 0; i < certificates.length - 1; i++) {
+        await certificatesValidatorStub.addCertificateVerification(
+          `0x${certificates[i]}`,
+          `0x${certificates[i + 1]}`,
+        );
+      }
+
+      await expect(
+        passportCredentialIssuer.addSigner(
+          `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
+        ),
+      )
         .to.emit(passportCredentialIssuer, "SignerAdded")
         .withArgs(await user1.getAddress());
 
@@ -149,12 +199,11 @@ describe("Commitment Registration Tests", function () {
         nullifier: 1n,
       };
 
-      const crossChainProofs = await packSignedPassportData(
+      const passportSignatureProof = await packSignedPassportData(
         signedPassportData,
         passportCredentialIssuer,
         user1,
       );
-      const metadatas = "0x";
 
       const credentialPreparedProof = prepareProof(credentialProofCurrentDateExpired.proof);
 
@@ -165,15 +214,12 @@ describe("Commitment Registration Tests", function () {
         credentialPreparedProof.pi_c,
       );
 
-      const credentialRequestId =
-        await passportCredentialIssuer.credentialCircuitIdToRequestIds("credential_sha256");
-
       expect(await passportCredentialIssuer.nullifierExists(signedPassportData.nullifier)).to.be
         .false;
       await expect(
-        passportCredentialIssuer.submitZKPResponseV2(
-          [{ requestId: credentialRequestId, zkProof: credentialZkProof, data: metadatas }],
-          crossChainProofs,
+        passportCredentialIssuer.verifyPassport(
+          { circuitId: "credential_sha256", proof: credentialZkProof },
+          passportSignatureProof,
         ),
       )
         .to.be.revertedWithCustomError(passportCredentialIssuer, "CurrentDateExpired")
@@ -181,12 +227,38 @@ describe("Commitment Registration Tests", function () {
     });
 
     it("Should not verify with passport issuance date expired", async () => {
-      const { passportCredentialIssuer, user1, owner } = deployedActors;
+      const {
+        passportCredentialIssuer,
+        certificatesValidatorStub,
+        nitroAttestationValidator,
+        user1,
+        owner,
+      } = deployedActors;
 
       await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
       await passportCredentialIssuer.addTransactor(await owner.getAddress());
 
-      await expect(passportCredentialIssuer.addSigner(await user1.getAddress()))
+      const certificates = await getChainOfCertificatesRawBytes(
+        JSON.stringify(jsonAttestationWithUserData),
+      );
+
+      // disable the chain of certificates validation
+      await nitroAttestationValidator.setCertificatesValidator(
+        await certificatesValidatorStub.getAddress(),
+      );
+
+      for (let i = 0; i < certificates.length - 1; i++) {
+        await certificatesValidatorStub.addCertificateVerification(
+          `0x${certificates[i]}`,
+          `0x${certificates[i + 1]}`,
+        );
+      }
+
+      await expect(
+        passportCredentialIssuer.addSigner(
+          `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
+        ),
+      )
         .to.emit(passportCredentialIssuer, "SignerAdded")
         .withArgs(await user1.getAddress());
 
@@ -195,7 +267,7 @@ describe("Commitment Registration Tests", function () {
         nullifier: 1n,
       };
 
-      const crossChainProofs = await packSignedPassportData(
+      const passportSignatureProof = await packSignedPassportData(
         signedPassportData,
         passportCredentialIssuer,
         user1,
@@ -211,15 +283,12 @@ describe("Commitment Registration Tests", function () {
         credentialPreparedProof.pi_c,
       );
 
-      const credentialRequestId =
-        await passportCredentialIssuer.credentialCircuitIdToRequestIds("credential_sha256");
-
       expect(await passportCredentialIssuer.nullifierExists(signedPassportData.nullifier)).to.be
         .false;
       await expect(
-        passportCredentialIssuer.submitZKPResponseV2(
-          [{ requestId: credentialRequestId, zkProof: credentialZkProof, data: metadatas }],
-          crossChainProofs,
+        passportCredentialIssuer.verifyPassport(
+          { circuitId: "credential_sha256", proof: credentialZkProof },
+          passportSignatureProof,
         ),
       )
         .to.be.revertedWithCustomError(passportCredentialIssuer, "IssuanceDateExpired")
@@ -227,25 +296,48 @@ describe("Commitment Registration Tests", function () {
     });
 
     it("Should not verify passport with invalid signer", async () => {
-      const { passportCredentialIssuer, user2, owner } = deployedActors;
+      const {
+        passportCredentialIssuer,
+        certificatesValidatorStub,
+        nitroAttestationValidator,
+        user2,
+        owner,
+      } = deployedActors;
 
       await expect(passportCredentialIssuer.addImageHashToWhitelist(imageHash)).not.to.be.reverted;
       await expect(passportCredentialIssuer.addTransactor(await owner.getAddress())).not.to.be
         .reverted;
 
-      await passportCredentialIssuer.addSigner(await owner.getAddress());
+      const certificates = await getChainOfCertificatesRawBytes(
+        JSON.stringify(jsonAttestationWithUserData),
+      );
+
+      // disable the chain of certificates validation
+      await nitroAttestationValidator.setCertificatesValidator(
+        await certificatesValidatorStub.getAddress(),
+      );
+
+      for (let i = 0; i < certificates.length - 1; i++) {
+        await certificatesValidatorStub.addCertificateVerification(
+          `0x${certificates[i]}`,
+          `0x${certificates[i + 1]}`,
+        );
+      }
+
+      await passportCredentialIssuer.addSigner(
+        `0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`,
+      );
 
       const signedPassportData: PassportDataSigned = {
         linkId: BigInt(credentialProof.publicSignals[2]),
         nullifier: 1n,
       };
 
-      const crossChainProofs = await packSignedPassportData(
+      const passportSignatureProof = await packSignedPassportData(
         signedPassportData,
         passportCredentialIssuer,
         user2,
       );
-      const metadatas = "0x";
 
       const credentialPreparedProof = prepareProof(credentialProof.proof);
 
@@ -256,13 +348,10 @@ describe("Commitment Registration Tests", function () {
         credentialPreparedProof.pi_c,
       );
 
-      const credentialRequestId =
-        await passportCredentialIssuer.credentialCircuitIdToRequestIds("credential_sha256");
-
       await expect(
-        passportCredentialIssuer.submitZKPResponseV2(
-          [{ requestId: credentialRequestId, zkProof: credentialZkProof, data: metadatas }],
-          crossChainProofs,
+        passportCredentialIssuer.verifyPassport(
+          { circuitId: "credential_sha256", proof: credentialZkProof },
+          passportSignatureProof,
         ),
       )
         .to.revertedWithCustomError(passportCredentialIssuer, "InvalidSignerPassportSignatureProof")
