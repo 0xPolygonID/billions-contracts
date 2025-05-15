@@ -23,6 +23,7 @@ error NullifierDoesNotExist();
 error InvalidVerifierAddress();
 error InvalidStateContractAddress();
 error UnsupportedQrVersion(uint256 qrVersion);
+error InvalidRevocationNonce(uint64 revocationNonce);
 
 event IssuerDidHashUpdated(uint256 issuerDidHash);
 event TemplateRootUpdated(uint256 templateRoot);
@@ -145,6 +146,7 @@ contract AnonAadhaarCredentialIssuerImplV1 is IdentityBase, ImplRoot {
     }
 
     function _setNullifier(uint256 nullifier, uint64 revocationNonce) private {
+        if (revocationNonce == 0) revert InvalidRevocationNonce(revocationNonce);
         AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
         $._nullifiersToRevocationNonce[nullifier] = revocationNonce;
     }

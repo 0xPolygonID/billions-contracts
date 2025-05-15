@@ -34,6 +34,7 @@ error InvalidSignerAddress();
 error InvalidAttestationUserDataLength();
 error InvalidTransactor(address transactor);
 error InvalidIssuerDidHash();
+error InvalidRevocationNonce(uint64 revocationNonce);
 
 /**
  * @dev Address ownership credential issuer.
@@ -376,7 +377,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
                 a1,
                 b1,
                 c1,
-                [inputs1[0], inputs1[1], inputs1[2], inputs1[3], inputs1[4], inputs1[5], inputs1[6]]
+                [inputs1[0], inputs1[1], inputs1[2], inputs1[3], inputs1[4], inputs1[5], inputs1[6], inputs1[7]]
             );
 
         PassportSignatureProof[] memory passportSignatureProof = abi.decode(
@@ -510,6 +511,7 @@ contract PassportCredentialIssuerImplV1 is IdentityBase, EIP712Upgradeable, Impl
     }
 
     function _setNullifier(uint256 nullifier, uint64 revocationNonce) internal {
+        if (revocationNonce == 0) revert InvalidRevocationNonce(revocationNonce);
         PassportCredentialIssuerV1Storage storage $ = _getPassportCredentialIssuerV1Storage();
         $._nullifiersToRevocationNonce[nullifier] = revocationNonce;
     }

@@ -18,7 +18,7 @@ interface ICredentialCircuitVerifier {
         uint256[2] a;
         uint256[2][2] b;
         uint256[2] c;
-        uint256[7] pubSignals;
+        uint256[8] pubSignals;
     }
 
     /**
@@ -34,6 +34,6 @@ interface ICredentialCircuitVerifier {
         uint256[2] calldata a,
         uint256[2][2] calldata b,
         uint256[2] calldata c,
-        uint256[7] calldata pubSignals
+        uint256[8] calldata pubSignals
     ) external view returns (bool isValid);
 }
