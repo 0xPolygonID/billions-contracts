@@ -11,7 +11,7 @@ const productionPublicKeyHash =
   18063425702624337643644061197836918910810808173893535653269228433734128853484n;
 const developmentPublicKeyHash =
   15134874015316324267425466444584014077184337590635665158241104437045239495873n;
-  
+
 /**
  * This is the first module that will be run. It deploys the proxy and the
  * proxy admin, and returns them so that they can be used by other modules.
@@ -62,9 +62,10 @@ const AnonAadHaarCredentialIssuerProxyModule = buildModule(
     const stateContractAddress = m.getParameter("stateContractAddress");
     const idType = m.getParameter("idType");
     const expirationTime = m.getParameter("expirationTime");
-    const templateRoot = m.getParameter("templateRoot");    
+    const templateRoot = m.getParameter("templateRoot");
     const nullifierSeed = m.getParameter("nullifierSeed");
     const publicKeyHashes = m.getParameter("publicKeyHashes");
+    const supportedQrVersions = m.getParameter("supportedQrVersions");
 
     const { identityLib } = m.useModule(IdentityLibModule);
 
@@ -78,15 +79,15 @@ const AnonAadHaarCredentialIssuerProxyModule = buildModule(
 
     const initializeData = m.encodeFunctionCall(
       newAnonAadHaarCredentialIssuerImpl,
-      "initialize(uint256,uint256[],uint256,uint256,address,address,bytes2,address)",
+      "initializeIssuer",
       [
         nullifierSeed,
         publicKeyHashes,
+        supportedQrVersions,
         expirationTime,
         templateRoot,
         anonAadhaarVerifier,
-        stateContractAddress,
-        idType,
+        [stateContractAddress, idType],
         proxyAdminOwner,
       ],
     );
@@ -105,11 +106,19 @@ const AnonAadHaarCredentialIssuerProxyModule = buildModule(
 );
 
 const AnonAadHaarCredentialIssuerModule = buildModule("AnonAadHaarCredentialIssuerModule", (m) => {
-  const { identityLib, newAnonAadHaarCredentialIssuerImpl, proxy, proxyAdmin } = m.useModule(AnonAadHaarCredentialIssuerProxyModule);
+  const { identityLib, newAnonAadHaarCredentialIssuerImpl, proxy, proxyAdmin } = m.useModule(
+    AnonAadHaarCredentialIssuerProxyModule,
+  );
 
   const anonAadHaarCredentialIssuer = m.contractAt("AnonAadHaarCredentialIssuer", proxy);
 
-  return { anonAadHaarCredentialIssuer, identityLib, newAnonAadHaarCredentialIssuerImpl, proxy, proxyAdmin };
+  return {
+    anonAadHaarCredentialIssuer,
+    identityLib,
+    newAnonAadHaarCredentialIssuerImpl,
+    proxy,
+    proxyAdmin,
+  };
 });
 
 export default AnonAadHaarCredentialIssuerModule;

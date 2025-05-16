@@ -43,7 +43,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       const { owner, state, idType, identityLib } = deployedActors;
 
       const PassportCredentialIssuerFactory = await ethers.getContractFactory(
-        "PassportCredentialIssuer",
+        contractsInfo.PASSPORT_CREDENTIAL_ISSUER.name,
         {
           libraries: {
             IdentityLib: identityLib.target,
@@ -54,13 +54,13 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       const passportCredentialIssuer = await PassportCredentialIssuerFactory.deploy();
 
       await expect(
-        passportCredentialIssuer.initialize(
+        passportCredentialIssuer.initializeIssuer(
+          0,
           0,
           0,
           [],
           [],
-          state.target,
-          idType,
+          [state.target, idType],
           await owner.getAddress(),
           await owner.getAddress(),
         ),
@@ -71,13 +71,13 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       const { passportCredentialIssuer, state, idType, owner } = deployedActors;
 
       await expect(
-        passportCredentialIssuer.initialize(
+        passportCredentialIssuer.initializeIssuer(
+          0,
           0,
           0,
           [],
           [],
-          state.target,
-          idType,
+          [state.target, idType],
           await owner.getAddress(),
           await owner.getAddress(),
         ),
@@ -299,7 +299,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
 
       /****************************** Upgrade calling direct to proxyAdmin ****************************/
       const PassportCredentialIssuerFactory = await ethers.getContractFactory(
-        "PassportCredentialIssuer",
+        contractsInfo.PASSPORT_CREDENTIAL_ISSUER.name,
         {
           libraries: {
             IdentityLib: identityLib.target,

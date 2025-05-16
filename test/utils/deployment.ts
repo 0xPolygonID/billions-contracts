@@ -73,6 +73,7 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
   const stContracts = await deployStateWithLibraries();
 
   const expirationTime = BigInt(60 * 60 * 24 * 7); // 1 week
+  const maxFutureTime = BigInt(15 * 60); // 15 minutes
   const templateRoot = BigInt(
     "20928513831198457326281890226858421791230183718399181538736627412475062693938",
   );
@@ -95,6 +96,7 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
         stateContractAddress: stContracts.state.target as string,
         idType: stContracts.defaultIdType,
         expirationTime: expirationTime,
+        maxFutureTime: maxFutureTime,
         templateRoot: templateRoot,
       },
       IdentityLibModule: {
@@ -143,6 +145,7 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
     identityLib,
     idType: stContracts.defaultIdType,
     expirationTime,
+    maxFutureTime,
     templateRoot,
     poseidon3: stContracts.poseidon3,
     poseidon4: poseidon4Elements,
@@ -444,9 +447,10 @@ async function deployState(
 
 export async function deployAnonAadhaarIssuerFixtures(
   publicKeyHashes: bigint[] = [
-    18063425702624337643644061197836918910810808173893535653269228433734128853484n, // prod (?)
+    18063425702624337643644061197836918910810808173893535653269228433734128853484n,
     15134874015316324267425466444584014077184337590635665158241104437045239495873n,
   ],
+  supportedQrVersions: bigint[] = [382n, 384n], // v2 and v4
   templateRoot: bigint = 5086122537745747254581491345739247223240245653900608092926314604019374578867n,
 ): Promise<DeployedActorsAnonAadhaar> {
   let [owner, user1, user2] = await ethers.getSigners();
@@ -493,6 +497,7 @@ export async function deployAnonAadhaarIssuerFixtures(
         templateRoot: templateRoot,
         nullifierSeed: nullifierSeed,
         publicKeyHashes: publicKeyHashes,
+        supportedQrVersions: supportedQrVersions,
       },
       IdentityLibModule: {
         poseidon3ElementAddress: await stContracts.poseidon3.getAddress(),
@@ -528,6 +533,7 @@ export async function deployAnonAadhaarIssuerFixtures(
     templateRoot,
     nullifierSeed,
     publicKeyHashes,
+    supportedQrVersions,
     poseidon3: stContracts.poseidon3,
     poseidon4: poseidon4Elements,
     smtLib: stContracts.smtLib,

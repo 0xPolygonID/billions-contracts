@@ -19,7 +19,7 @@ interface IAnonAadhaarCircuitVerifier {
         uint256[2] a;
         uint256[2][2] b;
         uint256[2] c;
-        uint256[10] pubSignals;
+        uint256[12] pubSignals;
     }
 
     /**
@@ -35,6 +35,6 @@ interface IAnonAadhaarCircuitVerifier {
         uint256[2] calldata a,
         uint256[2][2] calldata b,
         uint256[2] calldata c,
-        uint256[10] calldata pubSignals
+        uint256[12] calldata pubSignals
     ) external view returns (bool isValid);
 }

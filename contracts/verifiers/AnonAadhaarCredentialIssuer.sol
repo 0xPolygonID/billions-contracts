@@ -22,11 +22,13 @@ error NullifierAlreadyExists();
 error NullifierDoesNotExist();
 error InvalidVerifierAddress();
 error InvalidStateContractAddress();
+error UnsupportedQrVersion(uint256 qrVersion);
+error InvalidRevocationNonce(uint64 revocationNonce);
 
 event IssuerDidHashUpdated(uint256 issuerDidHash);
 event TemplateRootUpdated(uint256 templateRoot);
-event NullifierCleaned(uint256 nullifier);
 event PublicKeyHashAdded(uint256 publicKeyHash);
+event CredentialRevoked(uint256 nullifier, uint64 revocationNonce);
 
 /**
  * @dev Address ownership credential issuer.
@@ -37,35 +39,35 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
 
     string public constant VERSION = "1.0.0";
 
-    /// @custom:storage-location erc7201:polygonid.storage.AnonAadhaarIssuerV1
-    struct AnonAadhaarIssuerV1Storage {
+    struct StateInfo {
+        address stateAddress;
+        bytes2 idType;
+    }
+
+    /// @custom:storage-location erc7201:polygonid.storage.AnonAadHaarCredentialIssuer
+    struct AnonAadHaarCredentialIssuerStorage {
         uint256 nullifierSeed;
         uint256 expirationTime;
         uint256 templateRoot;
         uint256 issuerDidHash;
         address anonAadhaarVerifier;
         mapping(uint256 => bool) publicKeysHashes;
-        mapping(uint256 nullifier => HashIndexHashValueNullifier hashIndexHashValue) nullifiers;
-    }
-
-    struct HashIndexHashValueNullifier {
-        uint256 hashIndex;
-        uint256 hashValue;
-        bool isSet;
+        mapping(uint256 nullifier => uint64 revocationNonce) _nullifiersToRevocationNonce;
+        mapping(uint256 qrVersion => bool) qrVersions;
     }
 
     // check if the hash was calculated correctly
-    // keccak256(abi.encode(uint256(keccak256("polygonid.storage.AnonAadhaarIssuerV1")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant AnonAadhaarIssuerV1StorageLocation =
-        0xcb4c32479afd0d9095322a3f93b16fa02cb0bf6c78456f30d0d6005caa749700;
+    // keccak256(abi.encode(uint256(keccak256("polygonid.storage.AnonAadHaarCredentialIssuer")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant AnonAadHaarCredentialIssuerStorageLocation =
+        0xd7b67dfa0b696efff184817a0c9ee230163dea5764902b4907e6bf55ee464700;
 
-    function _getAnonAadhaarIssuerV1Storage()
+    function _getAnonAadHaarCredentialIssuerStorage()
         private
         pure
-        returns (AnonAadhaarIssuerV1Storage storage store)
+        returns (AnonAadHaarCredentialIssuerStorage storage store)
     {
         assembly {
-            store.slot := AnonAadhaarIssuerV1StorageLocation
+            store.slot := AnonAadHaarCredentialIssuerStorageLocation
         }
     }
 
@@ -77,29 +79,35 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
         _disableInitializers();
     }
 
-    function initialize(
+    function initializeIssuer(
         uint256 nullifierSeed,
         uint256[] calldata publicKeysHashes,
+        uint256[] calldata qrVersions,
         uint256 expirationTime,
         uint256 templateRoot,
         address anonAadhaarVerifier,
-        address _stateContractAddress,
-        bytes2 idType,
+        StateInfo calldata stateInfo,
         address owner
-    ) public initializer {
-        if (anonAadhaarVerifier == address(0)) revert InvalidVerifierAddress();
-        if (_stateContractAddress == address(0)) revert InvalidStateContractAddress();
+    ) public initializer {        
+        if (anonAadhaarVerifier == address(0)) revert InvalidVerifierAddress();        
+        if (stateInfo.stateAddress == address(0)) revert InvalidStateContractAddress();
 
-        super.initialize(_stateContractAddress, idType);
+        super.initialize(stateInfo.stateAddress, stateInfo.idType);
         __Ownable_init(owner);
-
-        AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
+        
+        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
         $.nullifierSeed = nullifierSeed;
         $.expirationTime = expirationTime;
         $.templateRoot = templateRoot;
         $.anonAadhaarVerifier = anonAadhaarVerifier;
-
+        
         _addPublicKeyHashesBatch(publicKeysHashes);
+        _addQrVersionBatch(qrVersions);
+    }
+
+    function _setNullifierSeed(uint256 nullifierSeed) internal {
+        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
+        $.nullifierSeed = nullifierSeed;
     }
 
     /**
@@ -107,81 +115,14 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
      * @param issuerDidHash The new issuer DID hash.
      */
     function setIssuerDidHash(uint256 issuerDidHash) public onlyOwner {
-        AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
+        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
         $.issuerDidHash = issuerDidHash;
         emit IssuerDidHashUpdated(issuerDidHash);
     }
 
-    // solhint-disable-next-line code-complexity
-    function _validatePublicInputs(
-        uint256 hashIndex,
-        uint256 hashValue,
-        uint256 nullifier,
-        uint256 pubKeyHash,
-        uint256 nullifierSeed,
-        uint256 issuanceDate,
-        uint256 expirationDate,
-        uint256 templateRoot,
-        uint256 issuerDidHash
-    ) internal view {
-        AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
-        if (hashIndex == 0) revert InvalidHashIndex();
-        if (hashValue == 0) revert InvalidHashValue();
-        if (nullifierSeed != $.nullifierSeed) revert InvalidNullifierSeed();
-        if (templateRoot != $.templateRoot) revert InvalidTemplateRoot();
-        if (issuerDidHash != $.issuerDidHash) revert InvalidIssuerDidHash();
-
-        uint256 expectedExpiration = issuanceDate + $.expirationTime;
-        if (expirationDate != expectedExpiration) {
-            revert InvalidExpirationDate(expectedExpiration, expirationDate);
-        }
-        if (expirationDate <= block.timestamp) revert ProofExpired();
-        if (!$.publicKeysHashes[pubKeyHash]) revert InvalidPubKeyHash();
-        if ($.nullifiers[nullifier].isSet) revert NullifierAlreadyExists();
-    }
-
-    function _addHashAndTransit(uint256 hi, uint256 hv) private {
-        _getIdentityBaseStorage().identity.addClaimHash(hi, hv);
-        _getIdentityBaseStorage().identity.transitState();
-    }
-
-    function _setNullifier(uint256 nullifier, uint256 hi, uint256 hv) private {
-        AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
-        $.nullifiers[nullifier] = HashIndexHashValueNullifier(hi, hv, true);
-    }
-
     function nullifierExists(uint256 nullifier) external view returns (bool) {
-        AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
-        return $.nullifiers[nullifier].isSet;
-    }
-
-    function _afterProofSubmit(
-        IAnonAadhaarCircuitVerifier.AnonAadhaarCircuitProof memory proof
-    ) internal {
-        uint256 pubKeyHash = proof.pubSignals[0];
-        uint256 nullifier = proof.pubSignals[1];
-        uint256 hashIndex = proof.pubSignals[2];
-        uint256 hashValue = proof.pubSignals[3];
-        uint256 issuanceDate = proof.pubSignals[4];
-        uint256 expirationDate = proof.pubSignals[5];
-        uint256 nullifierSeed = proof.pubSignals[6];
-        uint256 signalHash = proof.pubSignals[7];
-        uint256 templateRoot = proof.pubSignals[8];
-        uint256 issuerDidHash = proof.pubSignals[9];
-
-        _validatePublicInputs(
-            hashIndex,
-            hashValue,
-            nullifier,
-            pubKeyHash,
-            nullifierSeed,
-            issuanceDate,
-            expirationDate,
-            templateRoot,
-            issuerDidHash
-        );
-        _setNullifier(nullifier, hashIndex, hashValue);
-        _addHashAndTransit(hashIndex, hashValue);
+        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
+        return $._nullifiersToRevocationNonce[nullifier] != 0;
     }
 
     /**
@@ -189,20 +130,22 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
      * @param templateRoot The new template root.
      */
     function setTemplateRoot(uint256 templateRoot) public onlyOwner {
-        AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
+        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
         $.templateRoot = templateRoot;
         emit TemplateRootUpdated(templateRoot);
     }
 
     /**
-     * @notice Cleans a nullifier.
-     * @param nullifier The nullifier to clean.
+     * @notice Revoke credential and remove nullifier.
+     * @param nullifier credential nullifier.
      */
-    function cleanNullifier(uint256 nullifier) public onlyOwner {
-        AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
-        if (!$.nullifiers[nullifier].isSet) revert NullifierDoesNotExist();
-        $.nullifiers[nullifier] = HashIndexHashValueNullifier(0, 0, false);
-        emit NullifierCleaned(nullifier);
+    function revokeCredential(uint256 nullifier) external onlyOwner {
+        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
+        uint64 nonce = $._nullifiersToRevocationNonce[nullifier];
+        if (nonce == 0) revert NullifierDoesNotExist();
+        _revokeClaimAndTransit(nonce);
+        $._nullifiersToRevocationNonce[nullifier] = 0;
+        emit CredentialRevoked(nullifier, nonce);
     }
 
     /**
@@ -210,10 +153,10 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
      * @param publicKeyHash The public key hash to add.
      */
     function addPublicKeyHash(uint256 publicKeyHash) public onlyOwner {
-        AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
+        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
         $.publicKeysHashes[publicKeyHash] = true;
         emit PublicKeyHashAdded(publicKeyHash);
-    }
+    }    
 
     /**
      * @notice Adds multiple public key hashes in a batch.
@@ -223,12 +166,16 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
         _addPublicKeyHashesBatch(publicKeysHashes);
     }
 
-    function _addPublicKeyHashesBatch(uint256[] calldata publicKeysHashes) internal {
-        AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
-        for (uint256 i = 0; i < publicKeysHashes.length; i++) {
-            $.publicKeysHashes[publicKeysHashes[i]] = true;
-            emit PublicKeyHashAdded(publicKeysHashes[i]);
+    /**
+     * @notice Removes a public key hash.
+     * @param publicKeyHash The public key hash to remove.
+     */
+    function removePublicKeyHash(uint256 publicKeyHash) public onlyOwner {
+        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
+        if (!$.publicKeysHashes[publicKeyHash]) {
+            revert InvalidPubKeyHash();
         }
+        $.publicKeysHashes[publicKeyHash] = false;
     }
 
     function submitZKPResponseV2(
@@ -261,11 +208,13 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
                     inputs[6],
                     inputs[7],
                     inputs[8],
-                    inputs[9]
+                    inputs[9],
+                    inputs[10],
+                    inputs[11]
                 ]
             );
 
-        AnonAadhaarIssuerV1Storage storage $ = _getAnonAadhaarIssuerV1Storage();
+        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
         address verifier = $.anonAadhaarVerifier;
         if (verifier == address(0)) {
             revert NoVerifierSet();
@@ -289,7 +238,7 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
      * @return The nullifier seed.
      */
     function getNullifierSeed() public view returns (uint256) {
-        return _getAnonAadhaarIssuerV1Storage().nullifierSeed;
+        return _getAnonAadHaarCredentialIssuerStorage().nullifierSeed;
     }
 
     /**
@@ -298,7 +247,7 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
      * @return True if the public key hash exists, false otherwise.
      */
     function publicKeyHashExists(uint256 publicKeyHash) public view returns (bool) {
-        return _getAnonAadhaarIssuerV1Storage().publicKeysHashes[publicKeyHash];
+        return _getAnonAadHaarCredentialIssuerStorage().publicKeysHashes[publicKeyHash];
     }
 
     /**
@@ -306,7 +255,7 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
      * @return The template root.
      */
     function getTemplateRoot() public view returns (uint256) {
-        return _getAnonAadhaarIssuerV1Storage().templateRoot;
+        return _getAnonAadHaarCredentialIssuerStorage().templateRoot;
     }
 
     /**
@@ -314,6 +263,139 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
      * @return The expiration time.
      */
     function getExpirationTime() public view returns (uint256) {
-        return _getAnonAadhaarIssuerV1Storage().expirationTime;
+        return _getAnonAadHaarCredentialIssuerStorage().expirationTime;
+    }
+
+    /**
+     * @notice Adds a QR version.
+     * @param qrVersion The QR version to add.
+     */
+    function addQrVersion(uint256 qrVersion) public onlyOwner {
+        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
+        $.qrVersions[qrVersion] = true;
+    }
+
+    /**
+     * @notice Adds multiple QR versions in a batch.
+     * @param qrVersions The array of QR versions to add.
+     */
+    function addQrVersionBatch(uint256[] calldata qrVersions) public onlyOwner {
+        _addQrVersionBatch(qrVersions);
+    }
+
+    /**
+     * @notice Removes a QR version.
+     * @param qrVersion The QR version to remove.
+     */
+    function removeQrVersion(uint256 qrVersion) public onlyOwner {
+        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
+        if (!$.qrVersions[qrVersion]) revert UnsupportedQrVersion(qrVersion);
+        $.qrVersions[qrVersion] = false;
+    }
+
+    /**
+     * @notice Checks if a QR version is supported.
+     * @param qrVersion The QR version to check.
+     * @return True if the QR version is supported, false otherwise.
+     */
+    function qrVersionSupported(uint256 qrVersion) public view returns (bool) {
+        return _getAnonAadHaarCredentialIssuerStorage().qrVersions[qrVersion];
+    }
+
+    /**
+     * @notice Revokes a claim and transit the state.
+     * @param nonce The nonce of the claim to revoke.
+     */
+    function _revokeClaimAndTransit(uint64 nonce) internal {
+        _getIdentityBaseStorage().identity.revokeClaim(nonce);
+        _getIdentityBaseStorage().identity.transitState();
+    }
+
+    function _addPublicKeyHashesBatch(uint256[] calldata publicKeysHashes) internal {
+        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
+        for (uint256 i = 0; i < publicKeysHashes.length; i++) {
+            $.publicKeysHashes[publicKeysHashes[i]] = true;
+            emit PublicKeyHashAdded(publicKeysHashes[i]);
+        }
+    }
+
+    function _afterProofSubmit(
+        IAnonAadhaarCircuitVerifier.AnonAadhaarCircuitProof memory proof
+    ) internal {
+        uint256 pubKeyHash = proof.pubSignals[0];
+        uint256 nullifier = proof.pubSignals[1];
+        uint256 hashIndex = proof.pubSignals[2];
+        uint256 hashValue = proof.pubSignals[3];
+        uint256 issuanceDate = proof.pubSignals[4];
+        uint256 expirationDate = proof.pubSignals[5];
+        uint256 qrVersion = proof.pubSignals[6];
+        uint256 nullifierSeed = proof.pubSignals[7];
+        uint256 signalHash = proof.pubSignals[8];
+        uint256 templateRoot = proof.pubSignals[9];
+        uint256 issuerDidHash = proof.pubSignals[10];
+        uint64 revocationNonce = uint64(proof.pubSignals[11]);
+
+        _validatePublicInputs(
+            hashIndex,
+            hashValue,
+            nullifier,
+            pubKeyHash,
+            nullifierSeed,
+            issuanceDate,
+            expirationDate,
+            templateRoot,
+            issuerDidHash,
+            qrVersion
+        );
+        _setNullifier(nullifier, revocationNonce);
+        _addHashAndTransit(hashIndex, hashValue);
+    }
+
+    // solhint-disable-next-line code-complexity
+    function _validatePublicInputs(
+        uint256 hashIndex,
+        uint256 hashValue,
+        uint256 nullifier,
+        uint256 pubKeyHash,
+        uint256 nullifierSeed,
+        uint256 issuanceDate,
+        uint256 expirationDate,
+        uint256 templateRoot,
+        uint256 issuerDidHash,
+        uint256 qrVersion
+    ) internal view {
+        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
+        if (hashIndex == 0) revert InvalidHashIndex();
+        if (hashValue == 0) revert InvalidHashValue();
+        if (nullifierSeed != $.nullifierSeed) revert InvalidNullifierSeed();
+        if (templateRoot != $.templateRoot) revert InvalidTemplateRoot();
+        if (issuerDidHash != $.issuerDidHash) revert InvalidIssuerDidHash();
+
+        uint256 expectedExpiration = issuanceDate + $.expirationTime;
+        if (expirationDate != expectedExpiration) {
+            revert InvalidExpirationDate(expectedExpiration, expirationDate);
+        }
+        if (expirationDate <= block.timestamp) revert ProofExpired();
+        if (!$.publicKeysHashes[pubKeyHash]) revert InvalidPubKeyHash();
+        if (!$.qrVersions[qrVersion]) revert UnsupportedQrVersion(qrVersion);
+        if ($._nullifiersToRevocationNonce[nullifier] != 0) revert NullifierAlreadyExists();
+    }
+
+    function _addHashAndTransit(uint256 hi, uint256 hv) internal {
+        _getIdentityBaseStorage().identity.addClaimHash(hi, hv);
+        _getIdentityBaseStorage().identity.transitState();
+    }
+
+    function _setNullifier(uint256 nullifier, uint64 revocationNonce) private {
+        if (revocationNonce == 0) revert InvalidRevocationNonce(revocationNonce);
+        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
+        $._nullifiersToRevocationNonce[nullifier] = revocationNonce;
+    }
+
+    function _addQrVersionBatch(uint256[] calldata qrVersions) internal {
+        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
+        for (uint256 i = 0; i < qrVersions.length; i++) {
+            $.qrVersions[qrVersions[i]] = true;
+        }
     }
 }

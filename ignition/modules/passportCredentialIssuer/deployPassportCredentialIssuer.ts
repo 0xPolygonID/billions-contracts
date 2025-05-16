@@ -57,6 +57,7 @@ const PassportCredentialIssuerProxyModule = buildModule(
     const stateContractAddress = m.getParameter("stateContractAddress");
     const idType = m.getParameter("idType");
     const expirationTime = m.getParameter("expirationTime");
+    const maxFutureTime = m.getParameter("maxFutureTime");
     const templateRoot = m.getParameter("templateRoot");
 
     const { identityLib } = m.useModule(IdentityLibModule);
@@ -72,14 +73,14 @@ const PassportCredentialIssuerProxyModule = buildModule(
 
     const initializeData = m.encodeFunctionCall(
       newPassportCredentialIssuerImpl,
-      "initialize(uint256,uint256,string[],address[],address,bytes2,address,address)",
+      "initializeIssuer",
       [
         expirationTime,
+        maxFutureTime,
         templateRoot,
         [],
         [],
-        stateContractAddress,
-        idType,
+        [stateContractAddress, idType],
         proxyAdminOwner,
         nitroAttestationValidator,
       ],

@@ -39,6 +39,7 @@ export interface DeployedActors extends BaseActors {
   proxyAdmin: Contract;
   credentialVerifier: CredentialVerifier;
   expirationTime: bigint;
+  maxFutureTime: bigint;
   templateRoot: bigint;
   poseidon3: any;
   poseidon4: any;
@@ -53,6 +54,7 @@ export interface DeployedActorsAnonAadhaar extends BaseActors {
   templateRoot: bigint;
   nullifierSeed: bigint;
   publicKeyHashes: bigint[];
+  supportedQrVersions: bigint[];
   poseidon3: any;
   poseidon4: any;
   smtLib: any;
