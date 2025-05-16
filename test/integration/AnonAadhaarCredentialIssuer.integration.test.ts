@@ -45,8 +45,8 @@ describe("Anon aadhaar credential issuer", function () {
       expect(await anonAadhaarIssuer.nullifierExists(anonAadhaarProof.pub_signals[1])).to.be.false;
 
       expect(
-        await anonAadhaarIssuer.submitZKPResponseV2(
-          [{ requestId: 0, zkProof: credentialZkProof, data: metadatas }],
+        await anonAadhaarIssuer.verifyAadhaar(
+          { circuitId: "anon_aadhaar_v1", proof: credentialZkProof },
           "0x",
         ),
       ).not.to.be.reverted;
@@ -57,8 +57,8 @@ describe("Anon aadhaar credential issuer", function () {
 
       // Check nullifier
       await expect(
-        anonAadhaarIssuer.submitZKPResponseV2(
-          [{ requestId: 0, zkProof: credentialZkProof, data: metadatas }],
+        anonAadhaarIssuer.verifyAadhaar(
+          { circuitId: "anon_aadhaar_v1", proof: credentialZkProof },
           "0x",
         ),
       ).to.be.revertedWithCustomError(anonAadhaarIssuer, "NullifierAlreadyExists");
@@ -67,8 +67,8 @@ describe("Anon aadhaar credential issuer", function () {
       await anonAadhaarIssuer.revokeCredential(anonAadhaarProof.pub_signals[1]);
 
       await expect(
-        anonAadhaarIssuer.submitZKPResponseV2(
-          [{ requestId: 0, zkProof: credentialZkProof, data: metadatas }],
+        anonAadhaarIssuer.verifyAadhaar(
+          { circuitId: "anon_aadhaar_v1", proof: credentialZkProof },
           "0x",
         ),
       ).to.be.revertedWith("Identity trees haven't changed");

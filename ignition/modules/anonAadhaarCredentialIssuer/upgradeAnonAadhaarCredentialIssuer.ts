@@ -1,18 +1,18 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
-import { AnonAadHaarCredentialIssuerProxyFirstImplementationModule } from "./deployAnonAadhaarCredentialIssuer";
+import { AnonAadhaarCredentialIssuerProxyFirstImplementationModule } from "./deployAnonAadhaarCredentialIssuer";
 import IdentityLibModule from "../identityLib/identityLib";
 
-const UpgradeAnonAadHaarCredentialIssuerModule = buildModule(
-  "UpgradeAnonAadHaarCredentialIssuerModuleV1_0_1",
+const UpgradeAnonAadhaarCredentialIssuerModule = buildModule(
+  "UpgradeAnonAadhaarCredentialIssuerModuleV1_0_1",
   (m) => {
     const proxyAdminOwner = m.getAccount(0);
     const { proxy, proxyAdmin } = m.useModule(
-      AnonAadHaarCredentialIssuerProxyFirstImplementationModule,
+      AnonAadhaarCredentialIssuerProxyFirstImplementationModule,
     );
 
     const { identityLib } = m.useModule(IdentityLibModule);
 
-    const newAnonAadHaarCredentialIssuerImpl = m.contract("AnonAadHaarCredentialIssuer", [], {
+    const newAnonAadhaarCredentialIssuerImpl = m.contract("AnonAadhaarCredentialIssuer", [], {
       libraries: {
         IdentityLib: identityLib,
       },
@@ -24,29 +24,29 @@ const UpgradeAnonAadHaarCredentialIssuerModule = buildModule(
     m.call(
       proxyAdmin,
       "upgradeAndCall",
-      [proxy, newAnonAadHaarCredentialIssuerImpl, initializeData],
+      [proxy, newAnonAadhaarCredentialIssuerImpl, initializeData],
       {
         from: proxyAdminOwner,
       },
     );
 
     return {
-      newAnonAadHaarCredentialIssuerImpl,
+      newAnonAadhaarCredentialIssuerImpl,
       proxyAdmin,
       proxy,
     };
   },
 );
 
-const UpgradedAnonAadHaarCredentialIssuerModule = buildModule(
-  "UpgradedAnonAadHaarCredentialIssuerModule",
+const UpgradedAnonAadhaarCredentialIssuerModule = buildModule(
+  "UpgradedAnonAadhaarCredentialIssuerModule",
   (m) => {
-    const { newAnonAadHaarCredentialIssuerImpl, proxy, proxyAdmin } = m.useModule(UpgradeAnonAadHaarCredentialIssuerModule);
+    const { newAnonAadhaarCredentialIssuerImpl, proxy, proxyAdmin } = m.useModule(UpgradeAnonAadhaarCredentialIssuerModule);
 
-    const anonAadHaarCredentialIssuer = m.contractAt("AnonAadHaarCredentialIssuer", proxy);
+    const anonAadhaarCredentialIssuer = m.contractAt("AnonAadhaarCredentialIssuer", proxy);
 
-    return { anonAadHaarCredentialIssuer, newAnonAadHaarCredentialIssuerImpl, proxy, proxyAdmin };
+    return { anonAadhaarCredentialIssuer, newAnonAadhaarCredentialIssuerImpl, proxy, proxyAdmin };
   },
 );
 
-export default UpgradedAnonAadHaarCredentialIssuerModule;
+export default UpgradedAnonAadhaarCredentialIssuerModule;

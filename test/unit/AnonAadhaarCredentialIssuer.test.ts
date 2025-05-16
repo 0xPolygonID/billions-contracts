@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { deployAnonAadhaarIssuerFixtures } from "../utils/deployment";
 import { DeployedActorsAnonAadhaar } from "../utils/types";
 import { ethers, ignition } from "hardhat";
-import UpgradedAnonAadHaarCredentialIssuerModule from "../../ignition/modules/anonAadhaarCredentialIssuer/upgradeAnonAadhaarCredentialIssuer";
+import UpgradedAnonAadhaarCredentialIssuerModule from "../../ignition/modules/anonAadhaarCredentialIssuer/upgradeAnonAadhaarCredentialIssuer";
 import { contractsInfo } from "../../helpers/constants";
 
 describe("Unit Tests for AnonAadhaarCredentialIssuerImplV1", () => {
@@ -22,7 +22,9 @@ describe("Unit Tests for AnonAadhaarCredentialIssuerImplV1", () => {
   describe("Initialization", () => {
     it("should initialize AnonAadhaarCredentialIssuer with correct parameters", async () => {
       const { anonAadhaarIssuer, templateRoot, expirationTime, nullifierSeed } = deployedActors;
-      expect(await anonAadhaarIssuer.VERSION()).to.equal(contractsInfo.ANONAADHAAR_CREDENTIAL_ISSUER.version);
+      expect(await anonAadhaarIssuer.VERSION()).to.equal(
+        contractsInfo.ANONAADHAAR_CREDENTIAL_ISSUER.version,
+      );
       // Check initial state
       expect(await anonAadhaarIssuer.getExpirationTime()).to.equal(expirationTime);
       expect(await anonAadhaarIssuer.getTemplateRoot()).to.equal(templateRoot);
@@ -110,22 +112,44 @@ describe("Unit Tests for AnonAadhaarCredentialIssuerImplV1", () => {
         "UnsupportedQrVersion",
       );
     });
+
+    it("should update anonAadhaar verifier", async () => {
+      const { anonAadhaarIssuer, user1 } = deployedActors;
+      const anonAadhaarCircuitIds = ["1", "2"];
+      const newVerifierAddresses = [await user1.getAddress(), await user1.getAddress()];
+
+      await expect(
+        anonAadhaarIssuer.updateAnonAadhaarVerifiers(anonAadhaarCircuitIds, newVerifierAddresses),
+      )
+        .to.emit(anonAadhaarIssuer, "AnonAadhaarCircuitVerifierUpdated")
+        .withArgs(anonAadhaarCircuitIds[0], newVerifierAddresses[0])
+        .to.emit(anonAadhaarIssuer, "AnonAadhaarCircuitVerifierUpdated")
+        .withArgs(anonAadhaarCircuitIds[1], newVerifierAddresses[1]);
+
+      for (let i = 0; i < anonAadhaarCircuitIds.length; i++) {
+        expect(await anonAadhaarIssuer.anonAadhaarVerifiers(anonAadhaarCircuitIds[i])).to.equal(
+          newVerifierAddresses[i],
+        );
+      }
+    });
   });
 
   describe("Upgradeability", () => {
     it("Should be interactable via proxy", async function () {
       const { anonAadhaarIssuer, owner } = deployedActors;
 
-      expect(await anonAadhaarIssuer.connect(owner).VERSION()).to.equal(contractsInfo.ANONAADHAAR_CREDENTIAL_ISSUER.version);
+      expect(await anonAadhaarIssuer.connect(owner).VERSION()).to.equal(
+        contractsInfo.ANONAADHAAR_CREDENTIAL_ISSUER.version,
+      );
     });
 
-    it("Should have upgraded the proxy to new AnonAadHaarCredentialIssuer", async function () {
+    it("Should have upgraded the proxy to new AnonAadhaarCredentialIssuer", async function () {
       const { owner, identityLib, anonAadhaarIssuer, proxyAdmin, nullifierSeed, publicKeyHashes } =
         deployedActors;
 
       /****************************** Upgrade calling direct to proxyAdmin ****************************/
-      const AnonAadHaarCredentialIssuerFactory = await ethers.getContractFactory(
-        "AnonAadHaarCredentialIssuer",
+      const AnonAadhaarCredentialIssuerFactory = await ethers.getContractFactory(
+        "AnonAadhaarCredentialIssuer",
         {
           libraries: {
             IdentityLib: identityLib.target,
@@ -133,20 +157,20 @@ describe("Unit Tests for AnonAadhaarCredentialIssuerImplV1", () => {
         },
         owner,
       );
-      const newAnonAadHaarCredentialIssuerImpl = await AnonAadHaarCredentialIssuerFactory.deploy();
+      const newAnonAadhaarCredentialIssuerImpl = await AnonAadhaarCredentialIssuerFactory.deploy();
 
       const initializeData = "0x";
       await proxyAdmin.upgradeAndCall(
         anonAadhaarIssuer,
-        newAnonAadHaarCredentialIssuerImpl,
+        newAnonAadhaarCredentialIssuerImpl,
         initializeData,
       );
       const anonAaadHaarCredentialIssuerUpdated = anonAadhaarIssuer;
       /************************************************************************************************/
 
       /****************************** Upgrade with ignition module ****************************/
-      /*const { anonAadHaarCredentialIssuer: anonAaadHaarCredentialIssuerUpdated, newAnonAadHaarCredentialIssuerImpl } = await ignition.deploy(
-        UpgradedAnonAadHaarCredentialIssuerModule,
+      /*const { anonAadhaarCredentialIssuer: anonAaadHaarCredentialIssuerUpdated, newAnonAadhaarCredentialIssuerImpl } = await ignition.deploy(
+        UpgradedAnonAadhaarCredentialIssuerModule,
         {
           parameters: {
             IdentityLibModule: {
@@ -159,11 +183,15 @@ describe("Unit Tests for AnonAadhaarCredentialIssuerImplV1", () => {
       );*/
       /************************************************************************************************/
 
-      expect(await anonAaadHaarCredentialIssuerUpdated.connect(owner).VERSION()).to.equal(contractsInfo.ANONAADHAAR_CREDENTIAL_ISSUER.version);
+      expect(await anonAaadHaarCredentialIssuerUpdated.connect(owner).VERSION()).to.equal(
+        contractsInfo.ANONAADHAAR_CREDENTIAL_ISSUER.version,
+      );
       expect(await anonAaadHaarCredentialIssuerUpdated.getNullifierSeed()).to.equal(nullifierSeed);
 
       for (const publicKeyHash of publicKeyHashes) {
-        expect(await anonAaadHaarCredentialIssuerUpdated.publicKeyHashExists(publicKeyHash)).to.equal(true);
+        expect(
+          await anonAaadHaarCredentialIssuerUpdated.publicKeyHashExists(publicKeyHash),
+        ).to.equal(true);
       }
 
       const implementationSlot =
@@ -173,7 +201,7 @@ describe("Unit Tests for AnonAadhaarCredentialIssuerImplV1", () => {
         implementationSlot,
       );
       expect(ethers.zeroPadValue(implementationAddress, 32)).to.equal(
-        ethers.zeroPadValue(newAnonAadHaarCredentialIssuerImpl.target.toString(), 32),
+        ethers.zeroPadValue(newAnonAadhaarCredentialIssuerImpl.target.toString(), 32),
       );
     });
   });

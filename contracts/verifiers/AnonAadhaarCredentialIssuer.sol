@@ -7,7 +7,6 @@ import {IZKPVerifier} from "@iden3/contracts/interfaces/IZKPVerifier.sol";
 import {IAnonAadhaarCircuitVerifier} from "../interfaces/IAnonAadhaarCircuitVerifier.sol";
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 
-error InvalidResponsesLength(uint256 length, uint256 expectedLength);
 error NoVerifierSet();
 error InvalidAnonAadhaarProof();
 error InvalidHashIndex();
@@ -24,50 +23,59 @@ error InvalidVerifierAddress();
 error InvalidStateContractAddress();
 error UnsupportedQrVersion(uint256 qrVersion);
 error InvalidRevocationNonce(uint64 revocationNonce);
+error LengthMismatch(uint256 length1, uint256 length2);
+error NoAnonAadhaarCircuitIdFound(string circuitId);
 
 event IssuerDidHashUpdated(uint256 issuerDidHash);
 event TemplateRootUpdated(uint256 templateRoot);
 event PublicKeyHashAdded(uint256 publicKeyHash);
 event CredentialRevoked(uint256 nullifier, uint64 revocationNonce);
+event AnonAadhaarCircuitVerifierUpdated(string circuitId, address verifierAddress);
 
 /**
  * @dev Address ownership credential issuer.
  * This issuer issues non-merklized credentials in a decentralized manner.
  */
-contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
+contract AnonAadhaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
     using IdentityLib for IdentityLib.Data;
 
     string public constant VERSION = "1.0.0";
+    string private constant defaultCircuitId = "anon_aadhaar_v1";
 
     struct StateInfo {
         address stateAddress;
         bytes2 idType;
     }
+    
+    struct CredentialProof {
+        string circuitId;
+        bytes proof;
+    }
 
-    /// @custom:storage-location erc7201:polygonid.storage.AnonAadHaarCredentialIssuer
-    struct AnonAadHaarCredentialIssuerStorage {
+    /// @custom:storage-location erc7201:polygonid.storage.AnonAadhaarCredentialIssuer
+    struct AnonAadhaarCredentialIssuerStorage {
         uint256 nullifierSeed;
         uint256 expirationTime;
         uint256 templateRoot;
         uint256 issuerDidHash;
-        address anonAadhaarVerifier;
+        mapping(string circuitId => address verifier) _anonAadhaarVerifiers;
         mapping(uint256 => bool) publicKeysHashes;
         mapping(uint256 nullifier => uint64 revocationNonce) _nullifiersToRevocationNonce;
         mapping(uint256 qrVersion => bool) qrVersions;
     }
 
     // check if the hash was calculated correctly
-    // keccak256(abi.encode(uint256(keccak256("polygonid.storage.AnonAadHaarCredentialIssuer")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant AnonAadHaarCredentialIssuerStorageLocation =
-        0xd7b67dfa0b696efff184817a0c9ee230163dea5764902b4907e6bf55ee464700;
+    // keccak256(abi.encode(uint256(keccak256("polygonid.storage.AnonAadhaarCredentialIssuer")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant AnonAadhaarCredentialIssuerStorageLocation =
+        0x45045675f3efe2ec0ccfad8aa4c678179d3e20b95a34ad9d981fab6f95ba1e00;
 
-    function _getAnonAadHaarCredentialIssuerStorage()
+    function _getAnonAadhaarCredentialIssuerStorage()
         private
         pure
-        returns (AnonAadHaarCredentialIssuerStorage storage store)
+        returns (AnonAadhaarCredentialIssuerStorage storage store)
     {
         assembly {
-            store.slot := AnonAadHaarCredentialIssuerStorageLocation
+            store.slot := AnonAadhaarCredentialIssuerStorageLocation
         }
     }
 
@@ -95,18 +103,19 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
         super.initialize(stateInfo.stateAddress, stateInfo.idType);
         __Ownable_init(owner);
 
-        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
+        AnonAadhaarCredentialIssuerStorage storage $ = _getAnonAadhaarCredentialIssuerStorage();
         $.nullifierSeed = nullifierSeed;
         $.expirationTime = expirationTime;
         $.templateRoot = templateRoot;
-        $.anonAadhaarVerifier = anonAadhaarVerifier;
+        // Set the default circuit verifier
+        $._anonAadhaarVerifiers[defaultCircuitId] = anonAadhaarVerifier;
 
         _addPublicKeyHashesBatch(publicKeysHashes);
         _addQrVersionBatch(qrVersions);
     }
 
     function _setNullifierSeed(uint256 nullifierSeed) internal {
-        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
+        AnonAadhaarCredentialIssuerStorage storage $ = _getAnonAadhaarCredentialIssuerStorage();
         $.nullifierSeed = nullifierSeed;
     }
 
@@ -115,13 +124,13 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
      * @param issuerDidHash The new issuer DID hash.
      */
     function setIssuerDidHash(uint256 issuerDidHash) public onlyOwner {
-        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
+        AnonAadhaarCredentialIssuerStorage storage $ = _getAnonAadhaarCredentialIssuerStorage();
         $.issuerDidHash = issuerDidHash;
         emit IssuerDidHashUpdated(issuerDidHash);
     }
 
     function nullifierExists(uint256 nullifier) external view returns (bool) {
-        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
+        AnonAadhaarCredentialIssuerStorage storage $ = _getAnonAadhaarCredentialIssuerStorage();
         return $._nullifiersToRevocationNonce[nullifier] != 0;
     }
 
@@ -130,7 +139,7 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
      * @param templateRoot The new template root.
      */
     function setTemplateRoot(uint256 templateRoot) public onlyOwner {
-        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
+        AnonAadhaarCredentialIssuerStorage storage $ = _getAnonAadhaarCredentialIssuerStorage();
         $.templateRoot = templateRoot;
         emit TemplateRootUpdated(templateRoot);
     }
@@ -140,7 +149,7 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
      * @param nullifier credential nullifier.
      */
     function revokeCredential(uint256 nullifier) external onlyOwner {
-        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
+        AnonAadhaarCredentialIssuerStorage storage $ = _getAnonAadhaarCredentialIssuerStorage();
         uint64 nonce = $._nullifiersToRevocationNonce[nullifier];
         if (nonce == 0) revert NullifierDoesNotExist();
         _revokeClaimAndTransit(nonce);
@@ -153,7 +162,7 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
      * @param publicKeyHash The public key hash to add.
      */
     function addPublicKeyHash(uint256 publicKeyHash) public onlyOwner {
-        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
+        AnonAadhaarCredentialIssuerStorage storage $ = _getAnonAadhaarCredentialIssuerStorage();
         $.publicKeysHashes[publicKeyHash] = true;
         emit PublicKeyHashAdded(publicKeyHash);
     }
@@ -171,19 +180,45 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
      * @param publicKeyHash The public key hash to remove.
      */
     function removePublicKeyHash(uint256 publicKeyHash) public onlyOwner {
-        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
+        AnonAadhaarCredentialIssuerStorage storage $ = _getAnonAadhaarCredentialIssuerStorage();
         if (!$.publicKeysHashes[publicKeyHash]) {
             revert InvalidPubKeyHash();
         }
         $.publicKeysHashes[publicKeyHash] = false;
     }
 
-    function submitZKPResponseV2(
-        IZKPVerifier.ZKPResponse[] memory responses,
-        bytes memory crossChainProofs
+    /**
+     * @dev Updates the AnonAadhar circuit verifiers for a specific circuit identifiers.
+     * @param circuitIds The AnonAadhar circuit identifiers.
+     * @param verifierAddresses The new AnonAadhar circuit verifier addresses.
+     */
+    function updateAnonAadhaarVerifiers(
+        string[] calldata circuitIds,
+        address[] calldata verifierAddresses
+    ) public virtual onlyOwner {
+        _updateAnonAadhaarVerifiers(circuitIds, verifierAddresses);
+    }
+
+    /**
+     * @notice Retrieves the anonAadhaar verifier address for a given circuit id.
+     * @param circuitId The circuit id identifier.
+     * @return The anonAadhaar verifier address.
+     */
+    function anonAadhaarVerifiers(string memory circuitId) external view virtual returns (address) {
+        return _getAnonAadhaarCredentialIssuerStorage()._anonAadhaarVerifiers[circuitId];
+    }
+
+    /**
+     * @notice Verifies the passport credential.
+     * @param credentialProof Credential proof for the passport credential
+     * @param passportSignatureProof Signature proof of the validation of the passport credential
+     */
+    function verifyAadhaar(
+        CredentialProof memory credentialProof,
+        bytes memory passportSignatureProof
     ) external {
-        if (responses.length != 1) {
-            revert InvalidResponsesLength(responses.length, 1);
+        if (bytes(credentialProof.circuitId).length == 0) {
+            revert NoAnonAadhaarCircuitIdFound(credentialProof.circuitId);
         }
 
         (
@@ -191,7 +226,7 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
             uint256[2] memory a1,
             uint256[2][2] memory b1,
             uint256[2] memory c1
-        ) = abi.decode(responses[0].zkProof, (uint256[], uint256[2], uint256[2][2], uint256[2]));
+        ) = abi.decode(credentialProof.proof, (uint256[], uint256[2], uint256[2][2], uint256[2]));
 
         IAnonAadhaarCircuitVerifier.AnonAadhaarCircuitProof
             memory groth16Proof = IAnonAadhaarCircuitVerifier.AnonAadhaarCircuitProof(
@@ -214,8 +249,8 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
                 ]
             );
 
-        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
-        address verifier = $.anonAadhaarVerifier;
+        AnonAadhaarCredentialIssuerStorage storage $ = _getAnonAadhaarCredentialIssuerStorage();
+        address verifier = $._anonAadhaarVerifiers[credentialProof.circuitId];
         if (verifier == address(0)) {
             revert NoVerifierSet();
         }
@@ -238,7 +273,7 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
      * @return The nullifier seed.
      */
     function getNullifierSeed() public view returns (uint256) {
-        return _getAnonAadHaarCredentialIssuerStorage().nullifierSeed;
+        return _getAnonAadhaarCredentialIssuerStorage().nullifierSeed;
     }
 
     /**
@@ -247,7 +282,7 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
      * @return True if the public key hash exists, false otherwise.
      */
     function publicKeyHashExists(uint256 publicKeyHash) public view returns (bool) {
-        return _getAnonAadHaarCredentialIssuerStorage().publicKeysHashes[publicKeyHash];
+        return _getAnonAadhaarCredentialIssuerStorage().publicKeysHashes[publicKeyHash];
     }
 
     /**
@@ -255,7 +290,7 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
      * @return The template root.
      */
     function getTemplateRoot() public view returns (uint256) {
-        return _getAnonAadHaarCredentialIssuerStorage().templateRoot;
+        return _getAnonAadhaarCredentialIssuerStorage().templateRoot;
     }
 
     /**
@@ -263,7 +298,7 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
      * @return The expiration time.
      */
     function getExpirationTime() public view returns (uint256) {
-        return _getAnonAadHaarCredentialIssuerStorage().expirationTime;
+        return _getAnonAadhaarCredentialIssuerStorage().expirationTime;
     }
 
     /**
@@ -271,7 +306,7 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
      * @param qrVersion The QR version to add.
      */
     function addQrVersion(uint256 qrVersion) public onlyOwner {
-        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
+        AnonAadhaarCredentialIssuerStorage storage $ = _getAnonAadhaarCredentialIssuerStorage();
         $.qrVersions[qrVersion] = true;
     }
 
@@ -288,7 +323,7 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
      * @param qrVersion The QR version to remove.
      */
     function removeQrVersion(uint256 qrVersion) public onlyOwner {
-        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
+        AnonAadhaarCredentialIssuerStorage storage $ = _getAnonAadhaarCredentialIssuerStorage();
         if (!$.qrVersions[qrVersion]) revert UnsupportedQrVersion(qrVersion);
         $.qrVersions[qrVersion] = false;
     }
@@ -299,7 +334,7 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
      * @return True if the QR version is supported, false otherwise.
      */
     function qrVersionSupported(uint256 qrVersion) public view returns (bool) {
-        return _getAnonAadHaarCredentialIssuerStorage().qrVersions[qrVersion];
+        return _getAnonAadhaarCredentialIssuerStorage().qrVersions[qrVersion];
     }
 
     /**
@@ -312,10 +347,25 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
     }
 
     function _addPublicKeyHashesBatch(uint256[] calldata publicKeysHashes) internal {
-        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
+        AnonAadhaarCredentialIssuerStorage storage $ = _getAnonAadhaarCredentialIssuerStorage();
         for (uint256 i = 0; i < publicKeysHashes.length; i++) {
             $.publicKeysHashes[publicKeysHashes[i]] = true;
             emit PublicKeyHashAdded(publicKeysHashes[i]);
+        }
+    }
+
+    function _updateAnonAadhaarVerifiers(
+        string[] calldata circuitIds,
+        address[] calldata verifierAddresses
+    ) internal {
+        AnonAadhaarCredentialIssuerStorage storage $ = _getAnonAadhaarCredentialIssuerStorage();
+        if (circuitIds.length != verifierAddresses.length) {
+            revert LengthMismatch(circuitIds.length, verifierAddresses.length);
+        }
+        for (uint256 i = 0; i < circuitIds.length; i++) {
+            $._anonAadhaarVerifiers[circuitIds[i]] = verifierAddresses[i];
+
+            emit AnonAadhaarCircuitVerifierUpdated(circuitIds[i], verifierAddresses[i]);
         }
     }
 
@@ -364,7 +414,7 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
         uint256 issuerDidHash,
         uint256 qrVersion
     ) internal view {
-        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
+        AnonAadhaarCredentialIssuerStorage storage $ = _getAnonAadhaarCredentialIssuerStorage();
         if (hashIndex == 0) revert InvalidHashIndex();
         if (hashValue == 0) revert InvalidHashValue();
         if (nullifierSeed != $.nullifierSeed) revert InvalidNullifierSeed();
@@ -388,12 +438,12 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
 
     function _setNullifier(uint256 nullifier, uint64 revocationNonce) private {
         if (revocationNonce == 0) revert InvalidRevocationNonce(revocationNonce);
-        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
+        AnonAadhaarCredentialIssuerStorage storage $ = _getAnonAadhaarCredentialIssuerStorage();
         $._nullifiersToRevocationNonce[nullifier] = revocationNonce;
     }
 
     function _addQrVersionBatch(uint256[] calldata qrVersions) internal {
-        AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
+        AnonAadhaarCredentialIssuerStorage storage $ = _getAnonAadhaarCredentialIssuerStorage();
         for (uint256 i = 0; i < qrVersions.length; i++) {
             $.qrVersions[qrVersions[i]] = true;
         }

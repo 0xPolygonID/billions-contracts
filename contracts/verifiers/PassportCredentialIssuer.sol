@@ -370,9 +370,11 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         return nonce != 0;
     }
 
-    /// @notice Verifies the passport credential.
-    /// @param credentialProof Credential proof for the passport credential
-    /// @param passportSignatureProof Signature proof of the validation of the passport credential
+    /**
+     * @notice Verifies the passport credential.
+     * @param credentialProof Credential proof for the passport credential
+     * @param passportSignatureProof Signature proof of the validation of the passport credential
+     */
     function verifyPassport(
         CredentialProof memory credentialProof,
         bytes memory passportSignatureProof

@@ -25,7 +25,7 @@ import {
   Poseidon4Module,
   SmtLibModule,
 } from "../../ignition/modules/identityLib/libraries";
-import AnonAadHaarCredentialIssuerModule from "../../ignition/modules/anonAadhaarCredentialIssuer/deployAnonAadhaarCredentialIssuer";
+import AnonAadhaarCredentialIssuerModule from "../../ignition/modules/anonAadhaarCredentialIssuer/deployAnonAadhaarCredentialIssuer";
 import { CertificatesLibModule } from "../../ignition/modules/attestationValidation/attestationLibraries";
 
 export async function deploySystemFixtures(): Promise<DeployedActors> {
@@ -485,12 +485,12 @@ export async function deployAnonAadhaarIssuerFixtures(
 
   const {
     identityLib,
-    anonAadHaarCredentialIssuer,
-    newAnonAadHaarCredentialIssuerImpl,
+    anonAadhaarCredentialIssuer,
+    newAnonAadhaarCredentialIssuerImpl,
     proxyAdmin,
-  } = await ignition.deploy(AnonAadHaarCredentialIssuerModule, {
+  } = await ignition.deploy(AnonAadhaarCredentialIssuerModule, {
     parameters: {
-      AnonAadHaarCredentialIssuerProxyModule: {
+      AnonAadhaarCredentialIssuerProxyModule: {
         stateContractAddress: stContracts.state.target as string,
         idType: stContracts.defaultIdType,
         expirationTime: expirationTime,
@@ -507,14 +507,14 @@ export async function deployAnonAadhaarIssuerFixtures(
     },
   });
 
-  console.log("AnonAadHaarCredentialIssuer deployed address:", anonAadHaarCredentialIssuer.target);
+  console.log("AnonAadhaarCredentialIssuer deployed address:", anonAadhaarCredentialIssuer.target);
   console.log(
-    "AnonAadHaarCredentialIssuer implementation address:",
-    newAnonAadHaarCredentialIssuerImpl.target,
+    "AnonAadhaarCredentialIssuer implementation address:",
+    newAnonAadhaarCredentialIssuerImpl.target,
   );
 
   // set issuerDidHas
-  const updateIssuerTx = await anonAadHaarCredentialIssuer.setIssuerDidHash(
+  const updateIssuerTx = await anonAadhaarCredentialIssuer.setIssuerDidHash(
     "12146166192964646439780403715116050536535442384123009131510511003232108502337",
   );
   await updateIssuerTx.wait();
@@ -523,7 +523,7 @@ export async function deployAnonAadhaarIssuerFixtures(
     owner,
     user1,
     user2,
-    anonAadhaarIssuer: anonAadHaarCredentialIssuer,
+    anonAadhaarIssuer: anonAadhaarCredentialIssuer,
     proxyAdmin,
     anonAadhaarVerifier: anonAadhaarVerifier,
     state: stContracts.state,

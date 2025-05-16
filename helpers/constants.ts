@@ -397,10 +397,10 @@ export const contractsInfo = Object.freeze({
     create2Calldata: ethers.hexlify(ethers.toUtf8Bytes("iden3.create2.PassportCredentialIssuer")),
   },
   ANONAADHAAR_CREDENTIAL_ISSUER: {
-    name: "AnonAadHaarCredentialIssuer",
+    name: "AnonAadhaarCredentialIssuer",
     version: "1.0.0",
     unifiedAddress: "0xC450Bd8705DF646a14F54b1a86b5E6De55dFEe66",
-    create2Calldata: ethers.hexlify(ethers.toUtf8Bytes("iden3.create2.AnonAadHaarCredentialIssuer")),
+    create2Calldata: ethers.hexlify(ethers.toUtf8Bytes("iden3.create2.AnonAadhaarCredentialIssuer")),
   }
 });
 
