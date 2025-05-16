@@ -1,4 +1,10 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
+import {
+  contractsInfo,
+  TRANSPARENT_UPGRADEABLE_PROXY_ABI,
+  TRANSPARENT_UPGRADEABLE_PROXY_BYTECODE,
+} from "../../../helpers/constants";
+import IdentityLibModule from "../identityLib/identityLib";
 import DeployAnonAadhaarVerifierModule from "./deployAnonAadhaarVerifier";
 
 const productionPublicKeyHash =
@@ -6,63 +12,113 @@ const productionPublicKeyHash =
 const developmentPublicKeyHash =
   15134874015316324267425466444584014077184337590635665158241104437045239495873n;
 
-export default buildModule("DeployAnonAadhaarCredentialIssuer", (m) => {
-  const smtLibAddress = m.contractAt("SmtLib", "0x682364078e26C1626abD2B95109D2019E241F0F6");
-  const poseidonUtil3lAddress = m.contractAt(
-    "PoseidonUnit3L",
-    "0x5Bc89782d5eBF62663Df7Ce5fb4bc7408926A240",
+/**
+ * This is the first module that will be run. It deploys the proxy and the
+ * proxy admin, and returns them so that they can be used by other modules.
+ */
+export const AnonAadhaarCredentialIssuerProxyFirstImplementationModule = buildModule(
+  "AnonAadhaarCredentialIssuerProxyFirstImplementationModule",
+  (m) => {
+    // This address is the owner of the ProxyAdmin contract,
+    // so it will be the only account that can upgrade the proxy when needed.
+    const proxyAdminOwner = m.getAccount(0);
+
+    // This contract is supposed to be deployed to the same address across many networks,
+    // so the first implementation address is a dummy contract that does nothing but accepts any calldata.
+    // Therefore, it is a mechanism to deploy TransparentUpgradeableProxy contract
+    // with constant constructor arguments, so predictable init bytecode and predictable CREATE2 address.
+    // Subsequent upgrades are supposed to switch this proxy to the real implementation.
+
+    const proxy = m.contract(
+      "TransparentUpgradeableProxy",
+      {
+        abi: TRANSPARENT_UPGRADEABLE_PROXY_ABI,
+        contractName: "TransparentUpgradeableProxy",
+        bytecode: TRANSPARENT_UPGRADEABLE_PROXY_BYTECODE,
+        sourceName: "",
+        linkReferences: {},
+      },
+      [
+        contractsInfo.CREATE2_ADDRESS_ANCHOR.unifiedAddress,
+        proxyAdminOwner,
+        contractsInfo.ANONAADHAAR_CREDENTIAL_ISSUER.create2Calldata,
+      ],
+    );
+
+    const proxyAdminAddress = m.readEventArgument(proxy, "AdminChanged", "newAdmin");
+    const proxyAdmin = m.contractAt("ProxyAdmin", proxyAdminAddress);
+    return { proxyAdmin, proxy };
+  },
+);
+
+const AnonAadhaarCredentialIssuerProxyModule = buildModule(
+  "AnonAadhaarCredentialIssuerProxyModule",
+  (m) => {
+    const proxyAdminOwner = m.getAccount(0);
+    const { proxy, proxyAdmin } = m.useModule(
+      AnonAadhaarCredentialIssuerProxyFirstImplementationModule,
+    );
+
+    const stateContractAddress = m.getParameter("stateContractAddress");
+    const idType = m.getParameter("idType");
+    const expirationTime = m.getParameter("expirationTime");
+    const templateRoot = m.getParameter("templateRoot");
+    const nullifierSeed = m.getParameter("nullifierSeed");
+    const publicKeyHashes = m.getParameter("publicKeyHashes");
+    const supportedQrVersions = m.getParameter("supportedQrVersions");
+
+    const { identityLib } = m.useModule(IdentityLibModule);
+
+    const newAnonAadhaarCredentialIssuerImpl = m.contract("AnonAadhaarCredentialIssuer", [], {
+      libraries: {
+        IdentityLib: identityLib,
+      },
+    });
+
+    const { deployedContract: anonAadhaarVerifier } = m.useModule(DeployAnonAadhaarVerifierModule);
+
+    const initializeData = m.encodeFunctionCall(
+      newAnonAadhaarCredentialIssuerImpl,
+      "initializeIssuer",
+      [
+        nullifierSeed,
+        publicKeyHashes,
+        supportedQrVersions,
+        expirationTime,
+        templateRoot,
+        anonAadhaarVerifier,
+        [stateContractAddress, idType],
+        proxyAdminOwner,
+      ],
+    );
+
+    m.call(
+      proxyAdmin,
+      "upgradeAndCall",
+      [proxy, newAnonAadhaarCredentialIssuerImpl, initializeData],
+      {
+        from: proxyAdminOwner,
+      },
+    );
+
+    return { identityLib, newAnonAadhaarCredentialIssuerImpl, proxyAdmin, proxy };
+  },
+);
+
+const AnonAadhaarCredentialIssuerModule = buildModule("AnonAadhaarCredentialIssuerModule", (m) => {
+  const { identityLib, newAnonAadhaarCredentialIssuerImpl, proxy, proxyAdmin } = m.useModule(
+    AnonAadhaarCredentialIssuerProxyModule,
   );
-  const poseidonUtil4lAddress = m.contractAt(
-    "PoseidonUnit4L",
-    "0x0695cF2c6dfc438a4E40508741888198A6ccacC2",
-  );
 
-  const identityLib = m.contract("IdentityLib", [], {
-    libraries: {
-      SmtLib: smtLibAddress,
-      PoseidonUnit3L: poseidonUtil3lAddress,
-      PoseidonUnit4L: poseidonUtil4lAddress,
-    },
-  });
-  const anonAadhaarCredentialIssuerImpl = m.contract("AnonAadhaarCredentialIssuerImplV1", [], {
-    libraries: {
-      IdentityLib: identityLib,
-    },
-  });
-
-  const nullifierSeed = 12345678n;
-  const publicKeyHashes = [productionPublicKeyHash, developmentPublicKeyHash]; // Remove the developmentPublicKeyHash in production
-  const expirationTime = 15776640n;
-  const templateRoot =
-    5086122537745747254581491345739247223240245653900608092926314604019374578867n;
-
-  // TODO (illia-korotia): move to dynamic config [chainId] => [stateContractAddress, idType]
-  const stateContractAddress = "0x3C9acB2205Aa72A05F6D77d708b5Cf85FCa3a896"; //"0x1a4cC30f2aA0377b0c3bc9848766D90cb4404124";
-  const idType = "0x01B2";
-
-  const { deployedContract: anonAadhaarVerifier } = m.useModule(DeployAnonAadhaarVerifierModule);
-
-  const initializeData = m.encodeFunctionCall(
-    anonAadhaarCredentialIssuerImpl,
-    "initialize(uint256,uint256[],uint256,uint256,address,address,bytes2)",
-    [
-      nullifierSeed,
-      publicKeyHashes,
-      expirationTime,
-      templateRoot,
-      anonAadhaarVerifier,
-      stateContractAddress,
-      idType,
-    ],
-  );
-
-  const anonAadhaarCredentialIssuer = m.contract("AnonAadhaarCredentialIssuer", [
-    anonAadhaarCredentialIssuerImpl,
-    initializeData,
-  ]);
+  const anonAadhaarCredentialIssuer = m.contractAt("AnonAadhaarCredentialIssuer", proxy);
 
   return {
     anonAadhaarCredentialIssuer,
-    anonAadhaarCredentialIssuerImpl,
+    identityLib,
+    newAnonAadhaarCredentialIssuerImpl,
+    proxy,
+    proxyAdmin,
   };
 });
+
+export default AnonAadhaarCredentialIssuerModule;

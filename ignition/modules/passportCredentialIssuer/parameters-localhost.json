@@ -1,0 +1,24 @@
+{
+  "PassportCredentialIssuerProxyModule": {
+    "stateContractAddress": "0xaea923d71Bc5ED3A622D4DfCF2f9C338889b1c70",
+    "idType": "0x0112",
+    "expirationTime": 604800,
+    "templateRoot": "3532467563022391950170321692541635800576371972220969617740093781820662149190"
+  },
+  "IdentityLibModule": {
+    "poseidon3ElementAddress": "0x5Bc89782d5eBF62663Df7Ce5fb4bc7408926A240",
+    "poseidon4ElementAddress": "0x0695cF2c6dfc438a4E40508741888198A6ccacC2",
+    "smtLibAddress": "0x682364078e26C1626abD2B95109D2019E241F0F6"
+  },
+  "AnonAadhaarCredentialIssuerProxyModule": {
+    "stateContractAddress": "0x1a4cC30f2aA0377b0c3bc9848766D90cb4404124",
+    "idType": "0x0113",
+    "expirationTime": 15776640,
+    "templateRoot": "13618331910493816144112635202719102044017718006809336112633915446302833345855",
+    "nullifierSeed": "12345678",
+    "publicKeyHashes": [
+      "18063425702624337643644061197836918910810808173893535653269228433734128853484",
+      "15134874015316324267425466444584014077184337590635665158241104437045239495873"
+    ]
+  }
+}

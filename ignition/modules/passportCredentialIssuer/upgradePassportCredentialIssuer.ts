@@ -1,47 +1,42 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
-import hre from "hardhat";
-import fs from "fs";
-import path from "path";
+import { PassportCredentialIssuerProxyFirstImplementationModule } from "./deployPassportCredentialIssuer";
+import IdentityLibModule from "../identityLib/identityLib";
 
-export default buildModule("UpgradePassportCredentialIssuer", (m) => {
-  const networkName = hre.network.config.chainId;
+const UpgradePassportCredentialIssuerModule = buildModule(
+  "UpgradePassportCredentialIssuerModuleV1_0_1",
+  (m) => {
+    const proxyAdminOwner = m.getAccount(0);
+    const { proxy, proxyAdmin } = m.useModule(PassportCredentialIssuerProxyFirstImplementationModule);
+    
+    const { identityLib } = m.useModule(IdentityLibModule);
 
-  const deployedAddressesPath = path.join(
-    __dirname,
-    `../../deployments/chain-${networkName}/deployed_addresses.json`,
-  );
-  const deployedAddresses = JSON.parse(fs.readFileSync(deployedAddressesPath, "utf8"));
+    const newPassportCredentialIssuerImpl = m.contract("PassportCredentialIssuer", [], {
+      libraries: {
+        IdentityLib: identityLib,
+      },
+    });
 
-  // Update the key as needed with latest proxy futureId reference in deployed_addresses.json for PassportCredentialIssuerImplV1
-  const passportCredentialIssuerProxyAddress =
-    deployedAddresses["DeployPassportCredentialIssuer#PassportCredentialIssuer"];
-  if (!passportCredentialIssuerProxyAddress) {
-    throw new Error("PassportCredentialIssuer proxy address not found in deployed_addresses.json");
-  }
+    // As we are working with same proxy the storage is already initialized
+    const initializeData = "0x";
 
-  const identityLibAddress = deployedAddresses["DeployPassportCredentialIssuer#IdentityLib"];
-  const identityLib = m.contractAt("IdentityLib", identityLibAddress);
+    m.call(proxyAdmin, "upgradeAndCall", [proxy, newPassportCredentialIssuerImpl, initializeData], {
+      from: proxyAdminOwner,
+    });
 
-  const newPassportCredentialIssuerImpl = m.contract("PassportCredentialIssuerImplV1", [], {
-    libraries: {
-      IdentityLib: identityLib,
-    },
-    id: "PassportCredentialIssuerImplV1_v1_0_6", // Update the version as needed
-  });
+    return {
+      newPassportCredentialIssuerImpl,
+      proxyAdmin,
+      proxy,
+    };
+  },
+);
 
-  const passportCredentialIssuerProxy = m.contractAt(
-    "PassportCredentialIssuerImplV1",
-    passportCredentialIssuerProxyAddress,
-    { id: "PassportCredentialIssuer_v1_0_6" }
-  );
+const UpgradedPassportCredentialIssuerModule = buildModule("UpgradedPassportCredentialIssuerModule", (m) => {
+  const { newPassportCredentialIssuerImpl, proxy, proxyAdmin } = m.useModule(UpgradePassportCredentialIssuerModule);
 
-  m.call(passportCredentialIssuerProxy, "upgradeToAndCall", [
-    newPassportCredentialIssuerImpl,
-    "0x",
-  ]);
+  const passportCredentialIssuer = m.contractAt("PassportCredentialIssuer", proxy);
 
-  return {
-    newPassportCredentialIssuerImpl,
-    passportCredentialIssuerProxy,
-  };
+  return { passportCredentialIssuer, newPassportCredentialIssuerImpl, proxy, proxyAdmin };
 });
+
+export default UpgradedPassportCredentialIssuerModule;

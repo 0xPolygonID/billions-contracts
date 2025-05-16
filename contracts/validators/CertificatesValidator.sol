@@ -62,7 +62,7 @@ contract CertificatesValidator is Ownable2StepUpgradeable, ICertificatesValidato
      */
     function validateChainOfCertificates(
         bytes[] calldata certificates
-    ) external view returns (bool) {
+    ) external view virtual returns (bool) {
         CertificatesLib.Certificate[] memory certificatesParsed = new CertificatesLib.Certificate[](
             certificates.length + 1
         );

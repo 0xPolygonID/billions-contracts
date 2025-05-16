@@ -1,4 +1,4 @@
-import hre, { ethers, upgrades } from "hardhat";
+import hre, { ethers, ignition, upgrades } from "hardhat";
 import { Contract, Signer } from "ethers";
 import { PassportData, genMockPassportData } from "passport-utils";
 import {
@@ -7,21 +7,28 @@ import {
   DeployedActorsAnonAadhaar,
   AnonAadhaarVerifier,
 } from "./types";
-import { poseidonContract } from "circomlibjs";
 // Verifier artifacts
 import CredentialVerifierArtifact from "../../artifacts/contracts/verifiers/credential/Verifier_credential_sha256.sol/Verifier_credential_sha256.json";
 import AnonAadhaarlVerifierArtifact from "../../artifacts/contracts/verifiers/anonAadhaarV1/Verifier_anon_aadhaar_v1.sol/Verifier_anon_aadhaar_v1.json";
 
-import {
-  PassportCredentialIssuer,
-  PassportCredentialIssuerImplV1,
-  AnonAadhaarCredentialIssuerImplV1,
-} from "../../typechain-types";
 import { chainIdInfoMap } from "./constants";
+import {
+  CREATEX_FACTORY_ADDRESS,
+  SIGNED_SERIALISED_TRANSACTION_GAS_LIMIT_25000000,
+} from "../../helpers/constants";
+import Create2AddressAnchorModule from "../../ignition/modules/create2AddressAnchor/create2AddressAnchor";
+import PassportCredentialIssuerModule from "../../ignition/modules/passportCredentialIssuer/deployPassportCredentialIssuer";
+import {
+  Poseidon1Module,
+  Poseidon2Module,
+  Poseidon3Module,
+  Poseidon4Module,
+  SmtLibModule,
+} from "../../ignition/modules/identityLib/libraries";
+import AnonAadhaarCredentialIssuerModule from "../../ignition/modules/anonAadhaarCredentialIssuer/deployAnonAadhaarCredentialIssuer";
+import { CertificatesLibModule } from "../../ignition/modules/attestationValidation/attestationLibraries";
 
 export async function deploySystemFixtures(): Promise<DeployedActors> {
-  let passportCredentialIssuerProxy: PassportCredentialIssuer;
-  let passportCredentialIssuerImpl: PassportCredentialIssuerImplV1;
   let credentialVerifier: CredentialVerifier;
   let owner: Signer;
   let user1: Signer;
@@ -61,66 +68,67 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
   credentialVerifier = await credentialVerifierFactory.deploy();
   await credentialVerifier.waitForDeployment();
 
-  // Deploy PoseidonT3
-  const poseidonT3 = await deployPoseidon(3);
-  await poseidonT3.waitForDeployment();
+  await deployCreate2Contracts();
 
-  const [poseidon3Elements, poseidon4Elements] = await deployPoseidons([3, 4]);
   const stContracts = await deployStateWithLibraries();
-  const identityLib = await deployIdentityLib(
-    stContracts.smtLib.target as string,
-    poseidon3Elements.target as string,
-    poseidon4Elements.target as string,
-  );
-
-  // Deploy PassportCredentialIssuerImplV1
-  const PassportCredentialIssuerImplFactory = await ethers.getContractFactory(
-    "PassportCredentialIssuerImplV1",
-    {
-      libraries: {
-        IdentityLib: identityLib.target,
-      },
-    },
-    owner,
-  );
-  passportCredentialIssuerImpl = await PassportCredentialIssuerImplFactory.deploy();
-  await passportCredentialIssuerImpl.waitForDeployment();
 
   const expirationTime = BigInt(60 * 60 * 24 * 7); // 1 week
-  const maxExpirationTime = BigInt(15 * 60); // 15 minutes
+  const maxFutureTime = BigInt(15 * 60); // 15 minutes
   const templateRoot = BigInt(
     "20928513831198457326281890226858421791230183718399181538736627412475062693938",
   );
-  const passportCredentialIssuerInitData =
-    passportCredentialIssuerImpl.interface.encodeFunctionData("initializeIssuer", [
-      expirationTime,
-      maxExpirationTime,
-      templateRoot,
-      ["credential_sha256"],
-      [credentialVerifier.target],
-      stContracts.state.target,
-      stContracts.defaultIdType,
-    ]);
-  const passportCredentialIssuerProxyFactory = await ethers.getContractFactory(
-    "PassportCredentialIssuer",
-    owner,
-  );
-  passportCredentialIssuerProxy = await passportCredentialIssuerProxyFactory.deploy(
-    passportCredentialIssuerImpl.target,
-    passportCredentialIssuerInitData,
-  );
-  await passportCredentialIssuerProxy.waitForDeployment();
 
-  const passportCredentialIssuerContract = (await ethers.getContractAt(
-    "PassportCredentialIssuerImplV1",
-    passportCredentialIssuerProxy.target,
-  )) as PassportCredentialIssuerImplV1;
+  const { poseidon: poseidon4Elements } = await ignition.deploy(Poseidon4Module);
+  poseidon4Elements.waitForDeployment();
+  console.log(`Poseidon4 deployed to: ${await poseidon4Elements.getAddress()}`);
 
-  const certificatesLib = await deployCertificatesLib();
-  const nitroAttestationValidator = await deployNitroAttestationValidator(
-    await certificatesLib.getAddress(),
+  const {
+    identityLib,
+    passportCredentialIssuer,
+    newPassportCredentialIssuerImpl,
+    certificatesValidator,
+    certificatesLib,
+    nitroAttestationValidator,
+    proxyAdmin,
+  } = await ignition.deploy(PassportCredentialIssuerModule, {
+    parameters: {
+      PassportCredentialIssuerProxyModule: {
+        stateContractAddress: stContracts.state.target as string,
+        idType: stContracts.defaultIdType,
+        expirationTime: expirationTime,
+        maxFutureTime: maxFutureTime,
+        templateRoot: templateRoot,
+      },
+      IdentityLibModule: {
+        poseidon3ElementAddress: await stContracts.poseidon3.getAddress(),
+        poseidon4ElementAddress: await poseidon4Elements.getAddress(),
+        smtLibAddress: await stContracts.smtLib.getAddress(),
+      },
+    },
+  });
+
+  console.log("PassportCredentialIssuer deployed address:", passportCredentialIssuer.target);
+  console.log(
+    "PassportCredentialIssuer implementation address:",
+    newPassportCredentialIssuerImpl.target,
   );
-  await passportCredentialIssuerContract.setAttestationValidator(nitroAttestationValidator);
+
+  await passportCredentialIssuer.addTransactor(await owner.getAddress());
+  //await passportCredentialIssuer.addSigner(await user1.getAddress());
+  await passportCredentialIssuer.updateCredentialVerifiers(
+    ["credential_sha256"],
+    [credentialVerifier.target as string],
+  );
+
+  const certificatesValidatorStubFactory = await ethers.getContractFactory(
+    "CertificatesValidatorStub",
+    {
+      libraries: {
+        CertificatesLib: await certificatesLib.getAddress(),
+      },
+    },
+  );
+  const certificatesValidatorStub = await certificatesValidatorStubFactory.deploy();
 
   return {
     credentialVerifier,
@@ -128,85 +136,60 @@ export async function deploySystemFixtures(): Promise<DeployedActors> {
     user1,
     user2,
     mockPassport,
-    passportCredentialIssuer: passportCredentialIssuerContract,
-    passportCredentialIssuerImpl: passportCredentialIssuerImpl,
+    passportCredentialIssuer: passportCredentialIssuer,
+    certificatesValidator,
+    certificatesValidatorStub,
+    nitroAttestationValidator,
+    proxyAdmin,
     state: stContracts.state,
     identityLib,
     idType: stContracts.defaultIdType,
     expirationTime,
+    maxFutureTime,
     templateRoot,
+    poseidon3: stContracts.poseidon3,
+    poseidon4: poseidon4Elements,
+    smtLib: stContracts.smtLib,
   };
 }
 
-async function deployPoseidon(nInputs: number) {
-  const abi = poseidonContract.generateABI(nInputs);
-  const bytecode = poseidonContract.createCode(nInputs);
-
-  const Poseidon = await ethers.getContractFactory(abi, bytecode);
-  const poseidon = await Poseidon.deploy();
-  await poseidon.waitForDeployment();
-  return poseidon;
-}
-
-export async function deployPoseidons(poseidonSizeParams: number[]): Promise<Contract[]> {
-  poseidonSizeParams.forEach((size) => {
-    if (![1, 2, 3, 4, 5, 6].includes(size)) {
-      throw new Error(
-        `Poseidon should be integer in a range 1..6. Poseidon size provided: ${size}`,
-      );
-    }
-  });
-
-  const result: any = [];
-
-  for (const size of poseidonSizeParams) {
-    const p = await deployPoseidon(size);
-    result.push(p);
-  }
-
-  return result;
-}
-
-async function deploySmtLib(poseidon2Address: string, poseidon3Address: string): Promise<Contract> {
-  const smtLib = await ethers.deployContract("SmtLib", {
-    libraries: {
-      PoseidonUnit2L: poseidon2Address,
-      PoseidonUnit3L: poseidon3Address,
-    },
-  });
-
-  await smtLib.waitForDeployment();
-  console.log(`SmtLib deployed to:  ${await smtLib.getAddress()}`);
-
-  return smtLib;
-}
-
-export async function deployNitroAttestationValidator(
-  certificatesLibAddress: string,
-): Promise<Contract> {
+async function deployCreate2Contracts() {
   const [owner] = await ethers.getSigners();
-  const NitroAttestationValidatorFactory = await ethers.getContractFactory(
-    "NitroAttestationValidator",
-    {
-      libraries: {
-        CertificatesLib: certificatesLibAddress,
-      },
-    },
+
+  const provider = ethers.provider;
+
+  const nonce = await provider.getTransactionCount(
+    "0xeD456e05CaAb11d66C4c797dD6c1D6f9A7F352b5",
+    "latest",
   );
 
-  const NitroAttestationValidator = await upgrades.deployProxy(
-    NitroAttestationValidatorFactory,
-    [await owner.getAddress()],
-    {
-      unsafeAllow: ["external-library-linking"],
-    },
-  );
-  await NitroAttestationValidator.waitForDeployment();
-  console.log(
-    `NitroAttestationValidator deployed to: ${await NitroAttestationValidator.getAddress()}`,
-  );
+  if (nonce == 0) {
+    await owner.sendTransaction({
+      to: "0xeD456e05CaAb11d66C4c797dD6c1D6f9A7F352b5",
+      value: ethers.parseEther("100.0"),
+    });
 
-  return NitroAttestationValidator;
+    const txResponse = await provider.broadcastTransaction(
+      SIGNED_SERIALISED_TRANSACTION_GAS_LIMIT_25000000,
+    );
+
+    await txResponse.wait();
+
+    const bytecode = await provider.getCode(CREATEX_FACTORY_ADDRESS);
+    if (bytecode === "0x") {
+      throw Error(`CreateX should've been deployed to ${CREATEX_FACTORY_ADDRESS} but it wasn't`);
+    } else {
+      console.log(`CreateX deployed to: ${CREATEX_FACTORY_ADDRESS}`);
+    }
+
+    const { create2AddressAnchor } = await ignition.deploy(Create2AddressAnchorModule, {
+      strategy: "create2",
+      defaultSender: await owner.getAddress(),
+    });
+
+    const contractAddress = await create2AddressAnchor.getAddress();
+    console.log(`Create2AddressAnchor deployed to: ${contractAddress}`);
+  }
 }
 
 export async function deployContractWrapper(contractName: string): Promise<Contract> {
@@ -216,37 +199,8 @@ export async function deployContractWrapper(contractName: string): Promise<Contr
   return contractWrapper;
 }
 
-export async function deployCertificatesValidator(certificatesLib: any): Promise<Contract> {
-  const [owner] = await ethers.getSigners();
-  const CertificatesValidatorFactory = await ethers.getContractFactory("CertificatesValidator", {
-    libraries: {
-      CertificatesLib: await certificatesLib.getAddress(),
-    },
-  });
-
-  const CertificatesValidator = await upgrades.deployProxy(
-    CertificatesValidatorFactory,
-    [await owner.getAddress()],
-    {
-      unsafeAllow: ["external-library-linking"],
-    },
-  );
-  await CertificatesValidator.waitForDeployment();
-  console.log(`CertificatesValidator deployed to: ${await CertificatesValidator.getAddress()}`);
-
-  return CertificatesValidator;
-}
-
-export async function deployCertificatesLib(): Promise<Contract> {
-  const certificatesLib = await ethers.deployContract("CertificatesLib");
-  await certificatesLib.waitForDeployment();
-  console.log(`CertificatesLib deployed to:  ${await certificatesLib.getAddress()}`);
-
-  return certificatesLib;
-}
-
 export async function deployCertificatesLibWrapper(): Promise<Contract> {
-  const certificatesLib = await deployCertificatesLib();
+  const { certificatesLib } = await ignition.deploy(CertificatesLibModule);
   const CertificatesLibWrapperFactory = await ethers.getContractFactory("CertificatesLibWrapper", {
     libraries: {
       CertificatesLib: await certificatesLib.getAddress(),
@@ -327,7 +281,7 @@ async function deployCrossChainProofValidator(
   return crossChainProofValidator;
 }
 
-async function deployIdentityLib(
+export async function deployIdentityLib(
   smtLibAddress: string,
   poseidonUtil3lAddress: string,
   poseidonUtil4lAddress: string,
@@ -358,14 +312,30 @@ export async function deployStateWithLibraries(supportedIdTypes: string[] = []):
   groth16verifier: Contract;
   defaultIdType;
 }> {
-  const [poseidon1Elements, poseidon2Elements, poseidon3Elements] = await deployPoseidons([
-    1, 2, 3,
-  ]);
+  const { poseidon: poseidon1Elements } = await ignition.deploy(Poseidon1Module);
+  poseidon1Elements.waitForDeployment();
+  console.log(`Poseidon1 deployed to: ${await poseidon1Elements.getAddress()}`);
 
-  const smtLib = await deploySmtLib(
-    await poseidon2Elements.getAddress(),
-    await poseidon3Elements.getAddress(),
-  );
+  const { poseidon: poseidon2Elements } = await ignition.deploy(Poseidon2Module);
+
+  poseidon2Elements.waitForDeployment();
+  console.log(`Poseidon2 deployed to: ${await poseidon2Elements.getAddress()}`);
+
+  const { poseidon: poseidon3Elements } = await ignition.deploy(Poseidon3Module);
+  poseidon3Elements.waitForDeployment();
+  console.log(`Poseidon3 deployed to: ${await poseidon3Elements.getAddress()}`);
+
+  const { smtLib } = await ignition.deploy(SmtLibModule, {
+    parameters: {
+      SmtLibModule: {
+        poseidon2ElementAddress: await poseidon2Elements.getAddress(),
+        poseidon3ElementAddress: await poseidon3Elements.getAddress(),
+      },
+    },
+  });
+
+  smtLib.waitForDeployment();
+  console.log(`SmtLib deployed to: ${await smtLib.getAddress()}`);
 
   const {
     state,
@@ -501,61 +471,50 @@ export async function deployAnonAadhaarIssuerFixtures(
   const anonAadhaarVerifier: AnonAadhaarVerifier = await anonAadhaarVerifierFactory.deploy();
   await anonAadhaarVerifier.waitForDeployment();
 
-  const [poseidon3Elements, poseidon4Elements] = await deployPoseidons([3, 4]);
-  const stContracts = await deployStateWithLibraries();
-  const identityLib = await deployIdentityLib(
-    stContracts.smtLib.target as string,
-    poseidon3Elements.target as string,
-    poseidon4Elements.target as string,
-  );
+  await deployCreate2Contracts();
 
-  // Deploy AnonAadhaarCredentialIssuerImplV1
-  const AnonAadhaarIssuerImplFactory = await ethers.getContractFactory(
-    "AnonAadhaarCredentialIssuerImplV1",
-    {
-      libraries: {
-        IdentityLib: identityLib.target,
-      },
-    },
-    owner,
-  );
-  const anonAadhaarIssuerImpl = await AnonAadhaarIssuerImplFactory.deploy();
-  await anonAadhaarIssuerImpl.waitForDeployment();
+  const { poseidon: poseidon4Elements } = await ignition.deploy(Poseidon4Module);
+
+  poseidon4Elements.waitForDeployment();
+  console.log(`Poseidon4 deployed to: ${await poseidon4Elements.getAddress()}`);
+
+  const stContracts = await deployStateWithLibraries();
 
   const nullifierSeed = 12345678n;
   const expirationTime = 15776640n;
 
-  const anonAadhaarIssuerInitData = anonAadhaarIssuerImpl.interface.encodeFunctionData(
-    "initialize(uint256,uint256[],uint256[],uint256,uint256,address,address,bytes2)",
-    [
-      nullifierSeed,
-      publicKeyHashes,
-      supportedQrVersions,
-      expirationTime,
-      templateRoot,
-      await anonAadhaarVerifier.getAddress(),
-      await stContracts.state.getAddress(),
-      stContracts.defaultIdType,
-    ],
-  );
-  const anonAadhaarIssuerProxyFactory = await ethers.getContractFactory(
-    "AnonAadhaarCredentialIssuer",
-    owner,
-  );
+  const {
+    identityLib,
+    anonAadhaarCredentialIssuer,
+    newAnonAadhaarCredentialIssuerImpl,
+    proxyAdmin,
+  } = await ignition.deploy(AnonAadhaarCredentialIssuerModule, {
+    parameters: {
+      AnonAadhaarCredentialIssuerProxyModule: {
+        stateContractAddress: stContracts.state.target as string,
+        idType: stContracts.defaultIdType,
+        expirationTime: expirationTime,
+        templateRoot: templateRoot,
+        nullifierSeed: nullifierSeed,
+        publicKeyHashes: publicKeyHashes,
+        supportedQrVersions: supportedQrVersions,
+      },
+      IdentityLibModule: {
+        poseidon3ElementAddress: await stContracts.poseidon3.getAddress(),
+        poseidon4ElementAddress: await poseidon4Elements.getAddress(),
+        smtLibAddress: await stContracts.smtLib.getAddress(),
+      },
+    },
+  });
 
-  const anonAadhaarIssuerProxy = await anonAadhaarIssuerProxyFactory.deploy(
-    anonAadhaarIssuerImpl.target,
-    anonAadhaarIssuerInitData,
+  console.log("AnonAadhaarCredentialIssuer deployed address:", anonAadhaarCredentialIssuer.target);
+  console.log(
+    "AnonAadhaarCredentialIssuer implementation address:",
+    newAnonAadhaarCredentialIssuerImpl.target,
   );
-  await anonAadhaarIssuerProxy.waitForDeployment();
-
-  const anonAadhaarIssuerContract = (await ethers.getContractAt(
-    "AnonAadhaarCredentialIssuerImplV1",
-    anonAadhaarIssuerProxy.target,
-  )) as AnonAadhaarCredentialIssuerImplV1;
 
   // set issuerDidHas
-  const updateIssuerTx = await anonAadhaarIssuerContract.setIssuerDidHash(
+  const updateIssuerTx = await anonAadhaarCredentialIssuer.setIssuerDidHash(
     "12146166192964646439780403715116050536535442384123009131510511003232108502337",
   );
   await updateIssuerTx.wait();
@@ -564,8 +523,8 @@ export async function deployAnonAadhaarIssuerFixtures(
     owner,
     user1,
     user2,
-    anonAadhaarIssuer: anonAadhaarIssuerContract,
-    anonAadhaarIssuerImpl: anonAadhaarIssuerImpl,
+    anonAadhaarIssuer: anonAadhaarCredentialIssuer,
+    proxyAdmin,
     anonAadhaarVerifier: anonAadhaarVerifier,
     state: stContracts.state,
     identityLib,
@@ -573,5 +532,10 @@ export async function deployAnonAadhaarIssuerFixtures(
     expirationTime,
     templateRoot,
     nullifierSeed,
+    publicKeyHashes,
+    supportedQrVersions,
+    poseidon3: stContracts.poseidon3,
+    poseidon4: poseidon4Elements,
+    smtLib: stContracts.smtLib,
   };
 }

@@ -73,8 +73,8 @@ const config: HardhatUserConfig = {
     "ethereum-sepolia": {
       chainId: 11155111,
       url: `${process.env.ETHEREUM_SEPOLIA_RPC_URL}`,
-      // accounts: process.env.PRIVATE_KEY ? [`0x${process.env.PRIVATE_KEY}`] : DEFAULT_ACCOUNTS,
-      ledgerAccounts: [`${process.env.LEDGER_ACCOUNT}`],
+      accounts: process.env.PRIVATE_KEY ? [`0x${process.env.PRIVATE_KEY}`] : DEFAULT_ACCOUNTS,
+      // ledgerAccounts: [`${process.env.LEDGER_ACCOUNT}`],
     },
     "zkevm-mainnet": {
       chainId: 1101,
@@ -85,8 +85,8 @@ const config: HardhatUserConfig = {
     "zkevm-cardona": {
       chainId: 2442,
       url: `${process.env.ZKEVM_CARDONA_RPC_URL}`,
-      // accounts: process.env.PRIVATE_KEY ? [`0x${process.env.PRIVATE_KEY}`] : DEFAULT_ACCOUNTS,
-      ledgerAccounts: [`${process.env.LEDGER_ACCOUNT}`],
+      accounts: process.env.PRIVATE_KEY ? [`0x${process.env.PRIVATE_KEY}`] : DEFAULT_ACCOUNTS,
+      //ledgerAccounts: [`${process.env.LEDGER_ACCOUNT}`],
     },
     "linea-mainnet": {
       chainId: 59144,
@@ -99,6 +99,17 @@ const config: HardhatUserConfig = {
       url: `${process.env.LINEA_SEPOLIA_RPC_URL}`,
       // accounts: process.env.PRIVATE_KEY ? [`0x${process.env.PRIVATE_KEY}`] : DEFAULT_ACCOUNTS,
       ledgerAccounts: [`${process.env.LEDGER_ACCOUNT}`],
+    },
+    "xlayer-test": {
+      chainId: 195,
+      url: `${process.env.XLAYER_TEST_RPC_URL}`,
+      accounts: process.env.PRIVATE_KEY ? [`0x${process.env.PRIVATE_KEY}`] : DEFAULT_ACCOUNTS,
+    },
+    cdk: {
+      chainId: 10101,
+      url: `${process.env.CDK_RPC_URL}`,
+      accounts: process.env.PRIVATE_KEY ? [`0x${process.env.PRIVATE_KEY}`] : DEFAULT_ACCOUNTS,
+      //ledgerAccounts: [`${process.env.LEDGER_ACCOUNT}`],
     },
     // hardhat: {
     //   chainId: 80002,
@@ -196,6 +207,27 @@ const config: HardhatUserConfig = {
         },
       },
     ],
+  },
+  ignition: {
+    strategyConfig: {
+      create2: {
+        salt: "0x000000000000000000000000000000000000000000f4179bc3e4988a1a06f8d1",
+        // 20 bytes: zero address; 1 byte: 00 - no cross chain protection, 11 bytes - random salt.
+        //
+        // CreateX implements different safeguarding mechanisms depending on the encoded values in the salt
+        // * (`||` stands for byte-wise concatenation):
+        // => salt (32 bytes) = 0xbebebebebebebebebebebebebebebebebebebebe||ff||1212121212121212121212
+        // *   - The first 20 bytes (i.e. `bebebebebebebebebebebebebebebebebebebebe`) may be used to
+        // *     implement a permissioned deploy protection by setting them equal to `msg.sender`,
+        //       -> In our case we set it to zero address to disable this protection
+        // *   - The 21st byte (i.e. `ff`) may be used to implement a cross-chain redeploy protection by
+        // *     setting it equal to `0x01`,
+        //       -> In our case we set it to `0x00` to disable this protection
+        // *   - The last random 11 bytes (i.e. `1212121212121212121212`) allow for 2**88 bits of entropy
+        // *     for mining a salt.
+        //      -> In our case f4179bc3e4988a1a06f8d1
+      },
+    },
   },
   sourcify: {
     enabled: false,

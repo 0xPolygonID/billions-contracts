@@ -10,11 +10,8 @@ contract NitroAttestationValidatorWrapper {
         _attestationValidator = validator;
     }
 
-    function validateAttestation(
-        bytes calldata attestation,
-        bool checkCertificatesValidation
-    ) external {
-        _attestationValidator.validateAttestation(attestation, checkCertificatesValidation);
+    function validateAttestation(bytes calldata attestation) external {
+        _attestationValidator.validateAttestation(attestation);
     }
 
     function parseAttestation(bytes calldata attestation) external view {

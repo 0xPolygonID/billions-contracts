@@ -1,49 +1,52 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
-import hre from "hardhat";
-import fs from "fs";
-import path from "path";
+import { AnonAadhaarCredentialIssuerProxyFirstImplementationModule } from "./deployAnonAadhaarCredentialIssuer";
+import IdentityLibModule from "../identityLib/identityLib";
 
-export default buildModule("UpgradeAnonAadhaarCredentialIssuer", (m) => {
-  const networkName = hre.network.config.chainId;
-
-  const deployedAddressesPath = path.join(
-    __dirname,
-    `../../deployments/chain-${networkName}/deployed_addresses.json`,
-  );
-  const deployedAddresses = JSON.parse(fs.readFileSync(deployedAddressesPath, "utf8"));
-
-  // Update the key as needed with latest proxy futureId reference in deployed_addresses.json for AnonAadhaarCredentialIssuerImplV1
-  const passportCredentialIssuerProxyAddress =
-    deployedAddresses["DeployAnonAadhaarCredentialIssuer#AnonAadhaarCredentialIssuer"];
-  if (!passportCredentialIssuerProxyAddress) {
-    throw new Error(
-      "AnonAadhaarCredentialIssuer proxy address not found in deployed_addresses.json",
+const UpgradeAnonAadhaarCredentialIssuerModule = buildModule(
+  "UpgradeAnonAadhaarCredentialIssuerModuleV1_0_1",
+  (m) => {
+    const proxyAdminOwner = m.getAccount(0);
+    const { proxy, proxyAdmin } = m.useModule(
+      AnonAadhaarCredentialIssuerProxyFirstImplementationModule,
     );
-  }
 
-  const identityLibAddress = deployedAddresses["DeployPassportCredentialIssuer#IdentityLib"];
-  const identityLib = m.contractAt("IdentityLib", identityLibAddress);
+    const { identityLib } = m.useModule(IdentityLibModule);
 
-  const newAnonAadhaarCredentialIssuerImpl = m.contract("AnonAadhaarCredentialIssuerImplV1", [], {
-    libraries: {
-      IdentityLib: identityLib,
-    },
-    id: "AnonAadhaarCredentialIssuerImplV1_v1_0_2", // Update the version as needed
-  });
+    const newAnonAadhaarCredentialIssuerImpl = m.contract("AnonAadhaarCredentialIssuer", [], {
+      libraries: {
+        IdentityLib: identityLib,
+      },
+    });
 
-  const passportCredentialIssuerProxy = m.contractAt(
-    "AnonAadhaarCredentialIssuerImplV1",
-    passportCredentialIssuerProxyAddress,
-    { id: "AnonAadhaarCredentialIssuer_v1_0_2" },
-  );
+    // As we are working with same proxy the storage is already initialized
+    const initializeData = "0x";
 
-  m.call(passportCredentialIssuerProxy, "upgradeToAndCall", [
-    newAnonAadhaarCredentialIssuerImpl,
-    "0x",
-  ]);
+    m.call(
+      proxyAdmin,
+      "upgradeAndCall",
+      [proxy, newAnonAadhaarCredentialIssuerImpl, initializeData],
+      {
+        from: proxyAdminOwner,
+      },
+    );
 
-  return {
-    newAnonAadhaarCredentialIssuerImpl,
-    passportCredentialIssuerProxy,
-  };
-});
+    return {
+      newAnonAadhaarCredentialIssuerImpl,
+      proxyAdmin,
+      proxy,
+    };
+  },
+);
+
+const UpgradedAnonAadhaarCredentialIssuerModule = buildModule(
+  "UpgradedAnonAadhaarCredentialIssuerModule",
+  (m) => {
+    const { newAnonAadhaarCredentialIssuerImpl, proxy, proxyAdmin } = m.useModule(UpgradeAnonAadhaarCredentialIssuerModule);
+
+    const anonAadhaarCredentialIssuer = m.contractAt("AnonAadhaarCredentialIssuer", proxy);
+
+    return { anonAadhaarCredentialIssuer, newAnonAadhaarCredentialIssuerImpl, proxy, proxyAdmin };
+  },
+);
+
+export default UpgradedAnonAadhaarCredentialIssuerModule;

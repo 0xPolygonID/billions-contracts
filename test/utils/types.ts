@@ -5,8 +5,8 @@ import type { PublicSignals, Groth16Proof } from "snarkjs";
 
 // Contract imports
 import {
-  PassportCredentialIssuerImplV1,
-  AnonAadhaarCredentialIssuerImplV1,
+  AnonAadhaarCredentialIssuer,
+  PassportCredentialIssuer,
 } from "../../typechain-types";
 
 export type CircuitProof = any;
@@ -14,7 +14,7 @@ export type CircuitProof = any;
 // Verifier type imports
 import type {
   Verifier_credential_sha256 as ProdCredentialVerifier,
-  Verifier_anon_aadhaar_v1 as ProdAnonAadhaarV1Verifier,
+  Verifier_anon_aadhaar_v1 as ProdAnonAadhaarV1Verifier,  
 } from "../../typechain-types";
 
 // Type definitions
@@ -32,20 +32,32 @@ export interface BaseActors {
 
 export interface DeployedActors extends BaseActors {
   mockPassport: PassportData;
-  passportCredentialIssuer: PassportCredentialIssuerImplV1;
-  passportCredentialIssuerImpl: PassportCredentialIssuerImplV1;
+  passportCredentialIssuer: Contract;
+  certificatesValidator: Contract;
+  certificatesValidatorStub: Contract;
+  nitroAttestationValidator: Contract;
+  proxyAdmin: Contract;
   credentialVerifier: CredentialVerifier;
   expirationTime: bigint;
+  maxFutureTime: bigint;
   templateRoot: bigint;
+  poseidon3: any;
+  poseidon4: any;
+  smtLib: any;
 }
 
 export interface DeployedActorsAnonAadhaar extends BaseActors {
-  anonAadhaarIssuer: AnonAadhaarCredentialIssuerImplV1;
-  anonAadhaarIssuerImpl: AnonAadhaarCredentialIssuerImplV1;
+  anonAadhaarIssuer: Contract;
+  proxyAdmin: Contract;
   anonAadhaarVerifier: ProdAnonAadhaarV1Verifier;
   expirationTime: bigint;
   templateRoot: bigint;
   nullifierSeed: bigint;
+  publicKeyHashes: bigint[];
+  supportedQrVersions: bigint[];
+  poseidon3: any;
+  poseidon4: any;
+  smtLib: any;
 }
 
 // Contract type exports

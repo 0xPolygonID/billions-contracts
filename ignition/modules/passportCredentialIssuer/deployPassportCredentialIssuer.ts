@@ -1,63 +1,130 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
-import { artifacts, ethers } from "hardhat";
+import {
+  contractsInfo,
+  TRANSPARENT_UPGRADEABLE_PROXY_ABI,
+  TRANSPARENT_UPGRADEABLE_PROXY_BYTECODE,
+} from "../../../helpers/constants";
+import IdentityLibModule from "../identityLib/identityLib";
+import { NitroAttestationValidatorModule } from "../attestationValidation/attestationLibraries";
 
-function getPassportCredentialIssuerInitializeData() {
-  const passportCredentialIssuerArtifact = artifacts.readArtifactSync(
-    "PassportCredentialIssuerImplV1",
-  );
-  return new ethers.Interface(passportCredentialIssuerArtifact.abi);
-}
+/**
+ * This is the first module that will be run. It deploys the proxy and the
+ * proxy admin, and returns them so that they can be used by other modules.
+ */
+export const PassportCredentialIssuerProxyFirstImplementationModule = buildModule(
+  "PassportCredentialIssuerProxyFirstImplementationModule",
+  (m) => {
+    // This address is the owner of the ProxyAdmin contract,
+    // so it will be the only account that can upgrade the proxy when needed.
+    const proxyAdminOwner = m.getAccount(0);
 
-export default buildModule("DeployPassportCredentialIssuer", (m) => {
-  const smtLibAddress = m.contractAt("SmtLib", "0x682364078e26C1626abD2B95109D2019E241F0F6");
-  const poseidonUtil3lAddress = m.contractAt(
-    "PoseidonUnit3L",
-    "0x5Bc89782d5eBF62663Df7Ce5fb4bc7408926A240",
-  );
-  const poseidonUtil4lAddress = m.contractAt(
-    "PoseidonUnit4L",
-    "0x0695cF2c6dfc438a4E40508741888198A6ccacC2",
-  );
+    // This contract is supposed to be deployed to the same address across many networks,
+    // so the first implementation address is a dummy contract that does nothing but accepts any calldata.
+    // Therefore, it is a mechanism to deploy TransparentUpgradeableProxy contract
+    // with constant constructor arguments, so predictable init bytecode and predictable CREATE2 address.
+    // Subsequent upgrades are supposed to switch this proxy to the real implementation.
 
-  const identityLib = m.contract("IdentityLib", [], {
-    libraries: {
-      SmtLib: smtLibAddress,
-      PoseidonUnit3L: poseidonUtil3lAddress,
-      PoseidonUnit4L: poseidonUtil4lAddress,
-    },
-  });
-  const passportCredentialIssuerImpl = m.contract("PassportCredentialIssuerImplV1", [], {
-    libraries: {
-      IdentityLib: identityLib,
-    },
-  });
+    const proxy = m.contract(
+      "TransparentUpgradeableProxy",
+      {
+        abi: TRANSPARENT_UPGRADEABLE_PROXY_ABI,
+        contractName: "TransparentUpgradeableProxy",
+        bytecode: TRANSPARENT_UPGRADEABLE_PROXY_BYTECODE,
+        sourceName: "",
+        linkReferences: {},
+      },
+      [
+        contractsInfo.CREATE2_ADDRESS_ANCHOR.unifiedAddress,
+        proxyAdminOwner,
+        contractsInfo.PASSPORT_CREDENTIAL_ISSUER.create2Calldata,
+      ],
+    );
 
-  const passportCredentialIssuerInterface = getPassportCredentialIssuerInitializeData();
+    const proxyAdminAddress = m.readEventArgument(proxy, "AdminChanged", "newAdmin");
+    const proxyAdmin = m.contractAt("ProxyAdmin", proxyAdminAddress);
+    return { proxyAdmin, proxy };
+  },
+);
 
-  const stateContractAddress = "0x3C9acB2205Aa72A05F6D77d708b5Cf85FCa3a896"; //"0x1a4cC30f2aA0377b0c3bc9848766D90cb4404124"; // "<StateContractAddress>"; // Replace with actual state contract address
-  const idType = "0x01B2"; // "0x0113";
-  const maxExpirationTime = BigInt(15 * 60); // 15 minutes
-  const expirationTime = BigInt(60 * 60 * 24 * 7); // 1 week
-  const templateRoot = BigInt(
-    "20928513831198457326281890226858421791230183718399181538736627412475062693938",
-  );
-  const initializeData = passportCredentialIssuerInterface.encodeFunctionData("initializeIssuer", [
-    expirationTime,
-    maxExpirationTime,
-    templateRoot,
-    [],
-    [],
-    stateContractAddress,
-    idType,
-  ]);
+const PassportCredentialIssuerProxyModule = buildModule(
+  "PassportCredentialIssuerProxyModule",
+  (m) => {
+    const proxyAdminOwner = m.getAccount(0);
+    const { proxy, proxyAdmin } = m.useModule(
+      PassportCredentialIssuerProxyFirstImplementationModule,
+    );
 
-  const passportCredentialIssuer = m.contract("PassportCredentialIssuer", [
-    passportCredentialIssuerImpl,
-    initializeData,
-  ]);
+    const stateContractAddress = m.getParameter("stateContractAddress");
+    const idType = m.getParameter("idType");
+    const expirationTime = m.getParameter("expirationTime");
+    const maxFutureTime = m.getParameter("maxFutureTime");
+    const templateRoot = m.getParameter("templateRoot");
+
+    const { identityLib } = m.useModule(IdentityLibModule);
+    const { nitroAttestationValidator, certificatesValidator, certificatesLib } = m.useModule(
+      NitroAttestationValidatorModule,
+    );
+
+    const newPassportCredentialIssuerImpl = m.contract("PassportCredentialIssuer", [], {
+      libraries: {
+        IdentityLib: identityLib,
+      },
+    });
+
+    const initializeData = m.encodeFunctionCall(
+      newPassportCredentialIssuerImpl,
+      "initializeIssuer",
+      [
+        expirationTime,
+        maxFutureTime,
+        templateRoot,
+        [],
+        [],
+        [stateContractAddress, idType],
+        proxyAdminOwner,
+        nitroAttestationValidator,
+      ],
+    );
+
+    m.call(proxyAdmin, "upgradeAndCall", [proxy, newPassportCredentialIssuerImpl, initializeData], {
+      from: proxyAdminOwner,
+    });
+
+    return {
+      identityLib,
+      newPassportCredentialIssuerImpl,
+      certificatesValidator,
+      certificatesLib,
+      nitroAttestationValidator,
+      proxyAdmin,
+      proxy,
+    };
+  },
+);
+
+const PassportCredentialIssuerModule = buildModule("PassportCredentialIssuerModule", (m) => {
+  const {
+    identityLib,
+    newPassportCredentialIssuerImpl,
+    certificatesValidator,
+    certificatesLib,
+    nitroAttestationValidator,
+    proxy,
+    proxyAdmin,
+  } = m.useModule(PassportCredentialIssuerProxyModule);
+
+  const passportCredentialIssuer = m.contractAt("PassportCredentialIssuer", proxy);
 
   return {
     passportCredentialIssuer,
-    passportCredentialIssuerImpl,
+    identityLib,
+    newPassportCredentialIssuerImpl,
+    certificatesValidator,
+    certificatesLib,
+    nitroAttestationValidator,
+    proxy,
+    proxyAdmin,
   };
 });
+
+export default PassportCredentialIssuerModule;
