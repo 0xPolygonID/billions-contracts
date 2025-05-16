@@ -7,7 +7,7 @@ async function main() {
 
   const deployedAddressesPath = path.join(
     __dirname,
-    `../ignition/deployments/chain-${networkName}/deployed_addresses.json`,
+    `../../ignition/deployments/chain-${networkName}/deployed_addresses.json`,
   );
   const deployedAddresses = JSON.parse(fs.readFileSync(deployedAddressesPath, "utf8"));
 

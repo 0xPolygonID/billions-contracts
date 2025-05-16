@@ -1,7 +1,7 @@
 import { ethers } from "hardhat";
 import { base64ToBytes, bytesToHex } from "@0xpolygonid/js-sdk";
-import jsonAttestationWithUserData from "../test/data/TEEAttestationWithUserData.json";
-import { contractsInfo } from "../helpers/constants";
+import jsonAttestationWithUserData from "../../test/data/TEEAttestationWithUserData.json";
+import { contractsInfo } from "../../helpers/constants";
 
 async function main() {
   const [signer] = await ethers.getSigners();

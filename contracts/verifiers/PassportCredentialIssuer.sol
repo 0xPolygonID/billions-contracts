@@ -57,7 +57,6 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
     string public constant DOMAIN_VERSION = "1.0.0";
 
     uint256 private constant DATE_20TH_CENTURY = 500000;
-    uint256 private constant CURRENT_DATE_EXPIRATION_TIME = 7 days;
 
     /**
      * @dev PassportCredential message data type hash
@@ -448,7 +447,7 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
      * @notice Retrieves the issuer DID hash.
      * @return The issuer DID hash.
      */
-    function getIssuerDIDHash() external view onlyOwner returns (uint256) {
+    function getIssuerDIDHash() external view returns (uint256) {
         return _getPassportCredentialIssuerStorage()._issuerDidHash;
     }
 

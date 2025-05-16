@@ -4,8 +4,8 @@ import path from "path";
 import { Id, DID } from "@iden3/js-iden3-core";
 import { Merklizer } from "@iden3/js-jsonld-merklization";
 
-export async function setPassportIssuerDID(address: string, did?: string) {
-  const contract = await ethers.getContractAt("PassportCredentialIssuerImplV1", address);
+export async function setAnonAadhaarIssuerDID(address: string, did?: string) {
+  const contract = await ethers.getContractAt("AnonAadhaarCredentialIssuerImplV1", address);
 
   let issuerDid: DID;
   if (did) {
@@ -17,7 +17,7 @@ export async function setPassportIssuerDID(address: string, did?: string) {
   }
 
   const hashv = await Merklizer.hashValue("", issuerDid.string());
-  const updateIssuerTx = await contract.setIssuerDIDHash(hashv.toString());
+  const updateIssuerTx = await contract.setIssuerDidHash(hashv.toString());
   await updateIssuerTx.wait();
 
   const network = await ethers.provider.getNetwork();
@@ -35,14 +35,14 @@ async function main() {
 
   const deployedAddressesPath = path.join(
     __dirname,
-    `../ignition/deployments/chain-${networkName}/deployed_addresses.json`,
+    `../../ignition/deployments/chain-${networkName}/deployed_addresses.json`,
   );
   const deployedAddresses = JSON.parse(fs.readFileSync(deployedAddressesPath, "utf8"));
 
-  const passportIssuerAddress =
-    deployedAddresses["DeployPassportCredentialIssuer#PassportCredentialIssuer"];
+  const anonAadhaarIssuerAddress =
+    deployedAddresses["DeployAnonAadhaarCredentialIssuer#AnonAadhaarCredentialIssuer"];
 
-  await setPassportIssuerDID(passportIssuerAddress);
+  await setAnonAadhaarIssuerDID(anonAadhaarIssuerAddress);
 }
 
 main()
