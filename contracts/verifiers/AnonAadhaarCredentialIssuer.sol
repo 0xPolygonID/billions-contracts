@@ -88,19 +88,19 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
         address anonAadhaarVerifier,
         StateInfo calldata stateInfo,
         address owner
-    ) public initializer {        
-        if (anonAadhaarVerifier == address(0)) revert InvalidVerifierAddress();        
+    ) public initializer {
+        if (anonAadhaarVerifier == address(0)) revert InvalidVerifierAddress();
         if (stateInfo.stateAddress == address(0)) revert InvalidStateContractAddress();
 
         super.initialize(stateInfo.stateAddress, stateInfo.idType);
         __Ownable_init(owner);
-        
+
         AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
         $.nullifierSeed = nullifierSeed;
         $.expirationTime = expirationTime;
         $.templateRoot = templateRoot;
         $.anonAadhaarVerifier = anonAadhaarVerifier;
-        
+
         _addPublicKeyHashesBatch(publicKeysHashes);
         _addQrVersionBatch(qrVersions);
     }
@@ -156,7 +156,7 @@ contract AnonAadHaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
         AnonAadHaarCredentialIssuerStorage storage $ = _getAnonAadHaarCredentialIssuerStorage();
         $.publicKeysHashes[publicKeyHash] = true;
         emit PublicKeyHashAdded(publicKeyHash);
-    }    
+    }
 
     /**
      * @notice Adds multiple public key hashes in a batch.
