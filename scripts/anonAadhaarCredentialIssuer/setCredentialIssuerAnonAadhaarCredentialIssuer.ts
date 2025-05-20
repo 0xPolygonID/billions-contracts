@@ -5,7 +5,7 @@ import { Id, DID } from "@iden3/js-iden3-core";
 import { Merklizer } from "@iden3/js-jsonld-merklization";
 
 export async function setAnonAadhaarIssuerDID(address: string, did?: string) {
-  const contract = await ethers.getContractAt("AnonAadhaarCredentialIssuerImplV1", address);
+  const contract = await ethers.getContractAt("AnonAadhaarCredentialIssuer", address);
 
   let issuerDid: DID;
   if (did) {
@@ -40,7 +40,7 @@ async function main() {
   const deployedAddresses = JSON.parse(fs.readFileSync(deployedAddressesPath, "utf8"));
 
   const anonAadhaarIssuerAddress =
-    deployedAddresses["DeployAnonAadhaarCredentialIssuer#AnonAadhaarCredentialIssuer"];
+    deployedAddresses["AnonAadhaarCredentialIssuerModule#AnonAadhaarCredentialIssuer"];
 
   await setAnonAadhaarIssuerDID(anonAadhaarIssuerAddress);
 }
