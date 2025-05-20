@@ -19,8 +19,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # - name: Download circuits
-      #   run: ./dl_circuits.sh
+      - name: Download circuits
+        run: ./dl_circuits.sh
 
       # To check if merge conflicts were resolved correctly
       - name: Validate JSON files
