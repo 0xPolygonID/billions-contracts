@@ -49,7 +49,7 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
     /**
      * @dev Version of the contract
      */
-    string public constant VERSION = "1.0.0";
+    string public constant VERSION = "1.0.1";
 
     /**
      * @dev Version of EIP 712 domain
