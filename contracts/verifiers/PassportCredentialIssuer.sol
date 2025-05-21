@@ -49,7 +49,7 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
     /**
      * @dev Version of the contract
      */
-    string public constant VERSION = "1.0.0";
+    string public constant VERSION = "1.0.1";
 
     /**
      * @dev Version of EIP 712 domain
@@ -208,38 +208,48 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         _updateCredentialVerifiers(credentialCircuitIds, credentialVerifierAddresses);
     }
 
-    function addSigner(bytes memory attestation) public onlyTransactors {
+    // function addSigner(bytes memory attestation) public onlyTransactors {
+    //     PassportCredentialIssuerStorage storage $ = _getPassportCredentialIssuerStorage();
+
+    //     (bytes memory userData, bytes32 imageHash, bool validated) = $
+    //         ._attestationValidator
+    //         .validateAttestation(attestation);
+
+    //     if (!isWhitelistedImageHash(imageHash)) {
+    //         revert ImageHashIsNotWhitelisted(imageHash);
+    //     }
+
+    //     if (!validated) {
+    //         revert InvalidAttestation();
+    //     }
+
+    //     if (userData.length < 20) {
+    //         revert InvalidAttestationUserDataLength();
+    //     }
+
+    //     // 1. decode user data
+    //     address userDataDecoded;
+    //     assembly {
+    //         userDataDecoded := mload(add(userData, 20))
+    //     }
+
+    //     if (userDataDecoded == address(0)) {
+    //         revert InvalidSignerAddress();
+    //     }
+
+    //     // 2. add signer
+    //     $._signers.add(userDataDecoded);
+    //     emit SignerAdded(userDataDecoded);
+    // }
+
+    function addSigner(address signer) public onlyTransactors {
         PassportCredentialIssuerStorage storage $ = _getPassportCredentialIssuerStorage();
 
-        (bytes memory userData, bytes32 imageHash, bool validated) = $
-            ._attestationValidator
-            .validateAttestation(attestation);
-
-        if (!isWhitelistedImageHash(imageHash)) {
-            revert ImageHashIsNotWhitelisted(imageHash);
-        }
-
-        if (!validated) {
-            revert InvalidAttestation();
-        }
-
-        if (userData.length < 20) {
-            revert InvalidAttestationUserDataLength();
-        }
-
-        // 1. decode user data
-        address userDataDecoded;
-        assembly {
-            userDataDecoded := mload(add(userData, 20))
-        }
-
-        if (userDataDecoded == address(0)) {
+        if (signer == address(0)) {
             revert InvalidSignerAddress();
         }
-
-        // 2. add signer
-        $._signers.add(userDataDecoded);
-        emit SignerAdded(userDataDecoded);
+        $._signers.add(signer);
+        emit SignerAdded(signer);
     }
 
     /**
