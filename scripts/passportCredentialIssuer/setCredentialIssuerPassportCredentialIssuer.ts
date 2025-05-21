@@ -5,8 +5,19 @@ import { Id, DID } from "@iden3/js-iden3-core";
 import { Merklizer } from "@iden3/js-jsonld-merklization";
 
 export async function setPassportIssuerDID(address: string, did?: string) {
-  const contract = await ethers.getContractAt("PassportCredentialIssuerImplV1", address);
+  const networkName = hre.network.config.chainId;
 
+  const deployedAddressesPath = path.join(
+    __dirname,
+    `../../ignition/deployments/chain-${networkName}/deployed_addresses.json`,
+  );
+  const deployedAddresses = JSON.parse(fs.readFileSync(deployedAddressesPath, "utf8"));
+  const passportCredentialIssuerAddress = deployedAddresses["PassportCredentialIssuerProxyFirstImplementationModule#TransparentUpgradeableProxy"];
+
+  const contract = await ethers.getContractAt(
+    "PassportCredentialIssuer",
+    passportCredentialIssuerAddress,
+  );
   let issuerDid: DID;
   if (did) {
     issuerDid = DID.parse(did);
