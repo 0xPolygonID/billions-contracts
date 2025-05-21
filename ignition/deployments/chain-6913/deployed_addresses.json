@@ -7,5 +7,17 @@
   "IdentityLibModule#IdentityLib": "0x7A8BC55f502B2FBD59bb80D13dCBB2090b4a874c",
   "AnonAadhaarCredentialIssuerProxyFirstImplementationModule#ProxyAdmin": "0xF073f5603339a6435b71566E7682Fe84528543e4",
   "AnonAadhaarCredentialIssuerProxyModule#AnonAadhaarCredentialIssuer": "0xcDC26a5C5bB1072FDe4342Fa1379F76eBcF0E472",
-  "AnonAadhaarCredentialIssuerModule#AnonAadhaarCredentialIssuer": "0x6Efc82132dBfd08Faa03C69fbF2b87D1322736e9"
+  "AnonAadhaarCredentialIssuerModule#AnonAadhaarCredentialIssuer": "0x6Efc82132dBfd08Faa03C69fbF2b87D1322736e9",
+  "CertificatesLibModule#CertificatesLib": "0x3Cc1f55A2Cb9365FD918ef588F7035Bb2a2dC10B",
+  "PassportCredentialIssuerProxyFirstImplementationModule#TransparentUpgradeableProxy": "0xbb3692FF3A721030e4c7E0963062E89A0f297BFE",
+  "PassportCredentialIssuerProxyModule#PassportCredentialIssuer": "0xef66498bDc22979102eB9194F8898b5b01ee9107",
+  "CertificatesValidatorModule#CertificatesValidator": "0x842362C71C7523F7dbd407C8c4c97a2598d7fa07",
+  "NitroAttestationValidatorModule#NitroAttestationValidator": "0x66683DBF23781AE161E7f19879a9aFc69B8E1d07",
+  "PassportCredentialIssuerProxyFirstImplementationModule#ProxyAdmin": "0xF786A824f15eE2718b9f67B4EFb6D5eeCf9204c7",
+  "PassportCredentialIssuerModule#PassportCredentialIssuer": "0xbb3692FF3A721030e4c7E0963062E89A0f297BFE",
+  "DeployCredentialVerifiersV2#Verifier_credential_sha1": "0x040F2e4A77DAD284Bfdb38154cA92852eBC0f7e9",
+  "DeployCredentialVerifiersV2#Verifier_credential_sha224": "0xAaEE1bbdf924849043FD0aBf7dF5E31518b555EE",
+  "DeployCredentialVerifiersV2#Verifier_credential_sha256": "0x52A17519474496F0a37FAA9DC9e7E21EdDC0A5D7",
+  "DeployCredentialVerifiersV2#Verifier_credential_sha384": "0xCf83F950ec9fe7C4F23212157E7e80a2a94281Eb",
+  "DeployCredentialVerifiersV2#Verifier_credential_sha512": "0x9A86F5eB06c2301939A01Eb8B2A144FdBA442977"
 }

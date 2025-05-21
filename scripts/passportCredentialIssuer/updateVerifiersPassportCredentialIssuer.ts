@@ -11,7 +11,7 @@ async function main() {
   );
   const deployedAddresses = JSON.parse(fs.readFileSync(deployedAddressesPath, "utf8"));
 
-  const passportCredentialIssuerAddress = deployedAddresses["PassportCredentialIssuerProxyModule#TransparentUpgradeableProxy"];
+  const passportCredentialIssuerAddress = deployedAddresses["PassportCredentialIssuerProxyFirstImplementationModule#TransparentUpgradeableProxy"];
 
   const passportCredentialIssuer = await ethers.getContractAt(
     "PassportCredentialIssuer",
