@@ -426,7 +426,7 @@ describe("Commitment Registration Tests", function () {
 
       await expect(
         passportCredentialIssuer.addSigner(
-          certificatesValidatorStub.getAddress(),
+          user1.getAddress(),
         ),
       )
       // await expect(

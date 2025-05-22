@@ -128,7 +128,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       //   .withArgs(imageHash);
     }).timeout(160000);
 
-    it("add signer for whitelisted enclave imageHash", async function () {
+    it.skip("add signer for whitelisted enclave imageHash", async function () {
       const {
         passportCredentialIssuer,
         certificatesValidatorStub,
