@@ -392,7 +392,7 @@ export const contractsInfo = Object.freeze({
   },
   PASSPORT_CREDENTIAL_ISSUER: {
     name: "PassportCredentialIssuer",
-    version: "1.0.0",
+    version: "1.0.1",
     unifiedAddress: "0x167aCF1529176C04AacE628FC0ae4883D8462929",
     create2Calldata: ethers.hexlify(ethers.toUtf8Bytes("iden3.create2.PassportCredentialIssuer")),
   },
