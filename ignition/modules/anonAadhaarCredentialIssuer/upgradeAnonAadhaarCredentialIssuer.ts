@@ -3,7 +3,7 @@ import { AnonAadhaarCredentialIssuerProxyFirstImplementationModule } from "./dep
 import IdentityLibModule from "../identityLib/identityLib";
 
 const UpgradeAnonAadhaarCredentialIssuerModule = buildModule(
-  "UpgradeAnonAadhaarCredentialIssuerModuleV1_0_1",
+  "UpgradeAnonAadhaarCredentialIssuerModuleV1_0_2",
   (m) => {
     const proxyAdminOwner = m.getAccount(0);
     const { proxy, proxyAdmin } = m.useModule(
@@ -39,7 +39,7 @@ const UpgradeAnonAadhaarCredentialIssuerModule = buildModule(
 );
 
 const UpgradedAnonAadhaarCredentialIssuerModule = buildModule(
-  "UpgradedAnonAadhaarCredentialIssuerModule",
+  "UpgradedAnonAadhaarCredentialIssuerModuleV1_0_2",
   (m) => {
     const { newAnonAadhaarCredentialIssuerImpl, proxy, proxyAdmin } = m.useModule(UpgradeAnonAadhaarCredentialIssuerModule);
 
