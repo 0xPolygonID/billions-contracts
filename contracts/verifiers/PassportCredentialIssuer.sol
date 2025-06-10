@@ -49,7 +49,7 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
     /**
      * @dev Version of the contract
      */
-    string public constant VERSION = "1.0.1";
+    string public constant VERSION = "1.0.2";
 
     /**
      * @dev Version of EIP 712 domain
@@ -105,8 +105,9 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         IAttestationValidator _attestationValidator;
         mapping(bytes32 imageHash => bool isApproved) _imageHashesWhitelist;
         EnumerableSet.AddressSet _transactors;
-        mapping(uint256 nullifier => uint64 revocationNonce) _nullifiersToRevocationNonce;
+        mapping(uint256 nullifier => uint64 revocationNonce) _nullifiersToRevocationNonceDeprecated;
         uint256 _issuerDidHash;
+        mapping(uint256 nullifier => uint64 revocationNonce) _nullifiersToRevocationNonce;
     }
 
     // check if the hash was calculated correctly

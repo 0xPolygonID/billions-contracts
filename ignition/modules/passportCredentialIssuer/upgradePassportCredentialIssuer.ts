@@ -3,7 +3,7 @@ import { PassportCredentialIssuerProxyFirstImplementationModule } from "./deploy
 import IdentityLibModule from "../identityLib/identityLib";
 
 const UpgradePassportCredentialIssuerModule = buildModule(
-  "UpgradePassportCredentialIssuerModuleV1_0_1",
+  "UpgradePassportCredentialIssuerModuleV1_0_2",
   (m) => {
     const proxyAdminOwner = m.getAccount(0);
     const { proxy, proxyAdmin } = m.useModule(PassportCredentialIssuerProxyFirstImplementationModule);

@@ -39,7 +39,7 @@ event AnonAadhaarCircuitVerifierUpdated(string circuitId, address verifierAddres
 contract AnonAadhaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
     using IdentityLib for IdentityLib.Data;
 
-    string public constant VERSION = "1.0.0";
+    string public constant VERSION = "1.0.1";
     string private constant defaultCircuitId = "anon_aadhaar_v1";
 
     struct StateInfo {
@@ -60,8 +60,9 @@ contract AnonAadhaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
         uint256 issuerDidHash;
         mapping(string circuitId => address verifier) _anonAadhaarVerifiers;
         mapping(uint256 => bool) publicKeysHashes;
-        mapping(uint256 nullifier => uint64 revocationNonce) _nullifiersToRevocationNonce;
+        mapping(uint256 nullifier => uint64 revocationNonce) _nullifiersToRevocationNonceDeprecated;
         mapping(uint256 qrVersion => bool) qrVersions;
+        mapping(uint256 nullifier => uint64 revocationNonce) _nullifiersToRevocationNonce;
     }
 
     // check if the hash was calculated correctly
