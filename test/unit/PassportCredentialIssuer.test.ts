@@ -183,8 +183,7 @@ describe("Unit Tests for PassportCredentialIssuer", () => {
       await expect(
         passportCredentialIssuer
           .connect(user1)
-          // .addSigner(`0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`),
-          .addSigner(user1.getAddress()),
+          .addSigner(`0x${bytesToHex(base64ToBytes(jsonAttestationWithUserData.attestation))}`),
       )
         .to.be.revertedWithCustomError(passportCredentialIssuer, "InvalidTransactor")
         .withArgs(await user1.getAddress());
