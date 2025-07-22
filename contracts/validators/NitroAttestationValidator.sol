@@ -450,7 +450,7 @@ contract NitroAttestationValidator is Ownable2StepUpgradeable, IAttestationValid
                 uint256(uint8(cborData[pointer + 7]));
             lengthBytes = 8;
             pointer += 8;
-        } else if (length == 31) { 
+        } else if (length == 31) {
             // Used for indefinite length encoding
             length = 0; // Indefinite length
             lengthBytes = 0; // No length bytes for indefinite length
