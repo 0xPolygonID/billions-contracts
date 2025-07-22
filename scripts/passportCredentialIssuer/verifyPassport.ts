@@ -9,15 +9,28 @@ async function main() {
 
   // Replace with your values
   const passportCredentialIssuerAddress = "0xF9A2332Ce5D8de57269A77B2835A17630858066c"; //"0xe685CA0179c58C430E3d11532bB21BdFFD06261d" //"0x03466F742d46F89a5125734e09e7934D3E11fbE5"); //"0xAbd91B9d85E83529699166933484687f7C7c8898");
-  const certificatesValidatorAddress = "0x8553A842f6ed324686656BB83340ea62Ed4dE409";
-  const imageHash = "0xededc6be756c1f502dd6be5dfd34aacdc2c59e6518c66dbf8e74a93acff58842";  
+  const certificatesValidatorAddress = "0xf6d7CD93e26069Af0bB2F1f764fA39d20A189B6F";
+  const imageHash = "0xd3a6e9ec7cf2d9346401d696a9a3e25a40f180e123b0ab1443fba5ac15affbb1";
 
+  const certificates = await getChainOfCertificatesRawBytes(
+    JSON.stringify(jsonAttestationWithUserData),
+  );
+
+  for (let i = 0; i < certificates.length - 1; i++) {
+    console.log(
+      `Certificate ${i}: `, certificates[i],
+    );
+  }
+  
   const passportCredentialIssuer = await ethers.getContractAt(
     contractsInfo.PASSPORT_CREDENTIAL_ISSUER.name,
     passportCredentialIssuerAddress,
   );
   // Replace with CertificatesValidator for real tests with valid certificates
-  const certificatesValidator = await ethers.getContractAt("CertificatesValidatorStub", certificatesValidatorAddress);
+  const certificatesValidator = await ethers.getContractAt(
+    "CertificatesValidator", //"CertificatesValidatorStub",
+    certificatesValidatorAddress,
+  );
 
   const imageHashWhitelisted = await passportCredentialIssuer.isWhitelistedImageHash(imageHash);
   const transactors = await passportCredentialIssuer.getTransactors();
@@ -35,10 +48,6 @@ async function main() {
 
   console.log("Transactors:", await passportCredentialIssuer.getTransactors());
   console.log("PassportCredentialIssuer version:", await passportCredentialIssuer.VERSION());
-
-  const certificates = await getChainOfCertificatesRawBytes(
-    JSON.stringify(jsonAttestationWithUserData),
-  );
 
   for (let i = 0; i < certificates.length - 1; i++) {
     await certificatesValidator.addCertificateVerification(
