@@ -34,7 +34,7 @@ const UpgradePassportCredentialIssuerModule = buildModule(
   },
 );
 
-const UpgradedPassportCredentialIssuerModule = buildModule("UpgradedPassportCredentialIssuerModule", (m) => {
+const UpgradedPassportCredentialIssuerModule = buildModule("UpgradedPassportCredentialIssuerModule".concat(version), (m) => {
   const { newPassportCredentialIssuerImpl, proxy, proxyAdmin } = m.useModule(UpgradePassportCredentialIssuerModule);
 
   const passportCredentialIssuer = m.contractAt("PassportCredentialIssuer", proxy);
