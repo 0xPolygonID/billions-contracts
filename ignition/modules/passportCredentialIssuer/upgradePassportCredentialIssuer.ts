@@ -1,9 +1,12 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 import { PassportCredentialIssuerProxyFirstImplementationModule } from "./deployPassportCredentialIssuer";
 import IdentityLibModule from "../identityLib/identityLib";
+import { contractsInfo } from "../../../helpers/constants";
+
+const version = "V".concat(contractsInfo.PASSPORT_CREDENTIAL_ISSUER.version.replaceAll(".", "_").replaceAll("-", "_"));
 
 const UpgradePassportCredentialIssuerModule = buildModule(
-  "UpgradePassportCredentialIssuerModuleV1_0_1",
+  "UpgradePassportCredentialIssuerModule".concat(version),
   (m) => {
     const proxyAdminOwner = m.getAccount(0);
     const { proxy, proxyAdmin } = m.useModule(PassportCredentialIssuerProxyFirstImplementationModule);
@@ -31,7 +34,7 @@ const UpgradePassportCredentialIssuerModule = buildModule(
   },
 );
 
-const UpgradedPassportCredentialIssuerModule = buildModule("UpgradedPassportCredentialIssuerModule", (m) => {
+const UpgradedPassportCredentialIssuerModule = buildModule("UpgradedPassportCredentialIssuerModule".concat(version), (m) => {
   const { newPassportCredentialIssuerImpl, proxy, proxyAdmin } = m.useModule(UpgradePassportCredentialIssuerModule);
 
   const passportCredentialIssuer = m.contractAt("PassportCredentialIssuer", proxy);
