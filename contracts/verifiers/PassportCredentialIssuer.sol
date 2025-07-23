@@ -447,7 +447,7 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
      * @dev Removes a signer from the list of signers
      * @param signer The address of the signer to remove
      */
-    function removeSigner(address signer) public onlyOwner {
+    function removeSigner(address signer) external onlyOwner {
         _getPassportCredentialIssuerStorage()._signers.remove(signer);
     }
 
@@ -455,7 +455,7 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
      * @dev Removes a transactor from the list of transactors
      * @param transactor The address of the transactor to remove
      */
-    function removeTransactor(address transactor) public onlyOwner {
+    function removeTransactor(address transactor) external onlyOwner {
         _getPassportCredentialIssuerStorage()._transactors.remove(transactor);
     }
 
