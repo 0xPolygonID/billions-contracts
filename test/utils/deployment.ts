@@ -481,7 +481,7 @@ export async function deployAnonAadhaarIssuerFixtures(
   const stContracts = await deployStateWithLibraries();
 
   const nullifierSeed = 12345678n;
-  const expirationTime = 1577664000n;
+  const expirationTime = 15776640n;
 
   const {
     identityLib,
