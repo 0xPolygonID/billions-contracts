@@ -36,7 +36,7 @@ contract NitroAttestationValidator is Ownable2StepUpgradeable, IAttestationValid
     /**
      * @dev Version of contract
      */
-    string public constant VERSION = "1.0.0";
+    string public constant VERSION = "1.0.1";
 
     bytes32 private constant FIELD_MODULE_ID =
         0x8ce577cf664c36ba5130242bf5790c2675e9f4e6986a842b607821bee25372ee; // keccak256("module_id")
@@ -248,10 +248,10 @@ contract NitroAttestationValidator is Ownable2StepUpgradeable, IAttestationValid
         bytes memory output;
 
         Payload memory payload;
-
         (majorType, value, pointer, output) = _decodeCBOR(rawPayload, pointer);
 
-        if (majorType != uint8(MajorType.Map) || value != 9) {
+        // 9 fields or 0 for indefinite length
+        if (majorType != uint8(MajorType.Map) || (value != 9 && value != 0)) {
             revert InvalidCOSESign1MessagePayload();
         }
 
@@ -259,36 +259,39 @@ contract NitroAttestationValidator is Ownable2StepUpgradeable, IAttestationValid
             bytes memory field;
             (majorType, value, pointer, field) = _decodeCBOR(rawPayload, pointer);
 
-            (majorType, value, pointer, output) = _decodeCBOR(rawPayload, pointer);
+            if (majorType != uint8(MajorType.SingleValue) || value != 0) {
+                // this is used for break in indefinite length encoding
+                (majorType, value, pointer, output) = _decodeCBOR(rawPayload, pointer);
 
-            if (keccak256(field) == FIELD_MODULE_ID) {
-                payload.moduleId = string(output);
-            } else if (keccak256(field) == FIELD_DIGEST) {
-                payload.digest = string(output);
-            } else if (keccak256(field) == FIELD_TIMESTAMP) {
-                payload.timestamp = value;
-            } else if (keccak256(field) == FIELD_PCRS) {
-                uint256 pcrsLength = value;
-                payload.pcrs = new bytes[](pcrsLength);
+                if (keccak256(field) == FIELD_MODULE_ID) {
+                    payload.moduleId = string(output);
+                } else if (keccak256(field) == FIELD_DIGEST) {
+                    payload.digest = string(output);
+                } else if (keccak256(field) == FIELD_TIMESTAMP) {
+                    payload.timestamp = value;
+                } else if (keccak256(field) == FIELD_PCRS) {
+                    uint256 pcrsLength = value;
+                    payload.pcrs = new bytes[](pcrsLength);
 
-                for (uint256 j = 0; j < pcrsLength; j++) {
-                    (majorType, value, pointer, output) = _decodeCBOR(rawPayload, pointer);
-                    (majorType, value, pointer, output) = _decodeCBOR(rawPayload, pointer);
-                    payload.pcrs[j] = output;
+                    for (uint256 j = 0; j < pcrsLength; j++) {
+                        (majorType, value, pointer, output) = _decodeCBOR(rawPayload, pointer);
+                        (majorType, value, pointer, output) = _decodeCBOR(rawPayload, pointer);
+                        payload.pcrs[j] = output;
+                    }
+                } else if (keccak256(field) == FIELD_CERTIFICATE) {
+                    payload.certificate = output;
+                } else if (keccak256(field) == FIELD_PUBLIC_KEY) {
+                    payload.publicKey = output;
+                } else if (keccak256(field) == FIELD_CABUNDLE) {
+                    uint256 cabundleLength = value;
+                    payload.cabundle = new bytes[](cabundleLength);
+                    for (uint256 j = 0; j < cabundleLength; j++) {
+                        (majorType, value, pointer, output) = _decodeCBOR(rawPayload, pointer);
+                        payload.cabundle[j] = output;
+                    }
+                } else if (keccak256(field) == FIELD_USER_DATA) {
+                    payload.userData = output;
                 }
-            } else if (keccak256(field) == FIELD_CERTIFICATE) {
-                payload.certificate = output;
-            } else if (keccak256(field) == FIELD_PUBLIC_KEY) {
-                payload.publicKey = output;
-            } else if (keccak256(field) == FIELD_CABUNDLE) {
-                uint256 cabundleLength = value;
-                payload.cabundle = new bytes[](cabundleLength);
-                for (uint256 j = 0; j < cabundleLength; j++) {
-                    (majorType, value, pointer, output) = _decodeCBOR(rawPayload, pointer);
-                    payload.cabundle[j] = output;
-                }
-            } else if (keccak256(field) == FIELD_USER_DATA) {
-                payload.userData = output;
             }
         }
 
@@ -447,6 +450,10 @@ contract NitroAttestationValidator is Ownable2StepUpgradeable, IAttestationValid
                 uint256(uint8(cborData[pointer + 7]));
             lengthBytes = 8;
             pointer += 8;
+        } else if (length == 31) {
+            // Used for indefinite length encoding
+            length = 0; // Indefinite length
+            lengthBytes = 0; // No length bytes for indefinite length
         } else {
             revert UnsupportedIntegerSize(length);
         }
@@ -508,6 +515,10 @@ contract NitroAttestationValidator is Ownable2StepUpgradeable, IAttestationValid
         }
         if (value == 0xf4) {
             // False
+            return 0;
+        }
+        if (value == 0xff) {
+            // Break (indefinite length)
             return 0;
         }
         revert UnsupportedSimpleValue(value);

@@ -8,12 +8,15 @@ export const CertificatesLibModule = buildModule("CertificatesLibModule", (m) =>
 
 export const CertificatesValidatorModule = buildModule("CertificatesValidatorModule", (m) => {
   const { certificatesLib } = m.useModule(CertificatesLibModule);
-
+  
+  const owner = m.getAccount(0);
   const certificatesValidator = m.contract("CertificatesValidator", [], {
     libraries: {
       CertificatesLib: certificatesLib,
     },
   });
+
+  m.call(certificatesValidator, "initialize", [owner]);
 
   return { certificatesValidator };
 });

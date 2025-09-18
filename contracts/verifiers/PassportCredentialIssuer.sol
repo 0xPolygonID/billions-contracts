@@ -49,7 +49,7 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
     /**
      * @dev Version of the contract
      */
-    string public constant VERSION = "1.0.1";
+    string public constant VERSION = "1.0.2";
 
     /**
      * @dev Version of EIP 712 domain
@@ -208,48 +208,38 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
         _updateCredentialVerifiers(credentialCircuitIds, credentialVerifierAddresses);
     }
 
-    // function addSigner(bytes memory attestation) public onlyTransactors {
-    //     PassportCredentialIssuerStorage storage $ = _getPassportCredentialIssuerStorage();
-
-    //     (bytes memory userData, bytes32 imageHash, bool validated) = $
-    //         ._attestationValidator
-    //         .validateAttestation(attestation);
-
-    //     if (!isWhitelistedImageHash(imageHash)) {
-    //         revert ImageHashIsNotWhitelisted(imageHash);
-    //     }
-
-    //     if (!validated) {
-    //         revert InvalidAttestation();
-    //     }
-
-    //     if (userData.length < 20) {
-    //         revert InvalidAttestationUserDataLength();
-    //     }
-
-    //     // 1. decode user data
-    //     address userDataDecoded;
-    //     assembly {
-    //         userDataDecoded := mload(add(userData, 20))
-    //     }
-
-    //     if (userDataDecoded == address(0)) {
-    //         revert InvalidSignerAddress();
-    //     }
-
-    //     // 2. add signer
-    //     $._signers.add(userDataDecoded);
-    //     emit SignerAdded(userDataDecoded);
-    // }
-
-    function addSigner(address signer) public onlyTransactors {
+    function addSigner(bytes memory attestation) public onlyTransactors {
         PassportCredentialIssuerStorage storage $ = _getPassportCredentialIssuerStorage();
 
-        if (signer == address(0)) {
+        (bytes memory userData, bytes32 imageHash, bool validated) = $
+            ._attestationValidator
+            .validateAttestation(attestation);
+
+        if (!isWhitelistedImageHash(imageHash)) {
+            revert ImageHashIsNotWhitelisted(imageHash);
+        }
+
+        if (!validated) {
+            revert InvalidAttestation();
+        }
+
+        if (userData.length < 20) {
+            revert InvalidAttestationUserDataLength();
+        }
+
+        // 1. decode user data
+        address userDataDecoded;
+        assembly {
+            userDataDecoded := mload(add(userData, 20))
+        }
+
+        if (userDataDecoded == address(0)) {
             revert InvalidSignerAddress();
         }
-        $._signers.add(signer);
-        emit SignerAdded(signer);
+
+        // 2. add signer
+        $._signers.add(userDataDecoded);
+        emit SignerAdded(userDataDecoded);
     }
 
     /**
@@ -451,6 +441,22 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
      */
     function removeImageHashFromWhitelist(bytes32 imageHash) public onlyOwner {
         _getPassportCredentialIssuerStorage()._imageHashesWhitelist[imageHash] = false;
+    }
+
+    /**
+     * @dev Removes a signer from the list of signers
+     * @param signer The address of the signer to remove
+     */
+    function removeSigner(address signer) external onlyOwner {
+        _getPassportCredentialIssuerStorage()._signers.remove(signer);
+    }
+
+    /**
+     * @dev Removes a transactor from the list of transactors
+     * @param transactor The address of the transactor to remove
+     */
+    function removeTransactor(address transactor) external onlyOwner {
+        _getPassportCredentialIssuerStorage()._transactors.remove(transactor);
     }
 
     /**
