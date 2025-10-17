@@ -17,7 +17,6 @@ error InvalidIssuerDidHash();
 error InvalidExpirationDate(uint256 expected, uint256 provided);
 error ProofExpired();
 error InvalidPubKeyHash();
-error NullifierAlreadyExists();
 error NullifierDoesNotExist();
 error InvalidVerifierAddress();
 error InvalidStateContractAddress();
@@ -428,7 +427,6 @@ contract AnonAadhaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
         if (expirationDate <= block.timestamp) revert ProofExpired();
         if (!$.publicKeysHashes[pubKeyHash]) revert InvalidPubKeyHash();
         if (!$.qrVersions[qrVersion]) revert UnsupportedQrVersion(qrVersion);
-        if ($._nullifiersToRevocationNonce[nullifier] != 0) revert NullifierAlreadyExists();
     }
 
     function _addHashAndTransit(uint256 hi, uint256 hv) internal {
@@ -439,6 +437,12 @@ contract AnonAadhaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
     function _setNullifier(uint256 nullifier, uint64 revocationNonce) private {
         if (revocationNonce == 0) revert InvalidRevocationNonce(revocationNonce);
         AnonAadhaarCredentialIssuerStorage storage $ = _getAnonAadhaarCredentialIssuerStorage();
+        if ($._nullifiersToRevocationNonce[nullifier] != 0) {
+            uint64 nonceExisted = $._nullifiersToRevocationNonce[nullifier];
+            if (nonceExisted == 0) revert NullifierDoesNotExist();
+             _getIdentityBaseStorage().identity.revokeClaim(nonceExisted);
+             emit CredentialRevoked(nullifier, nonceExisted);
+        }
         $._nullifiersToRevocationNonce[nullifier] = revocationNonce;
     }
 

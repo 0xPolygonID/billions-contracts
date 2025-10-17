@@ -54,15 +54,8 @@ describe("Anon aadhaar credential issuer", function () {
       // Get proof from the contract
       const proof = anonAadhaarIssuer.getClaimProof(anonAadhaarProof.pub_signals[2]);
       expect((await proof).existence).to.be.equal(true);
-
+      
       // Check nullifier
-      await expect(
-        anonAadhaarIssuer.verifyAadhaar(
-          { circuitId: "anon_aadhaar_v1", proof: credentialZkProof },
-          "0x",
-        ),
-      ).to.be.revertedWithCustomError(anonAadhaarIssuer, "NullifierAlreadyExists");
-
       expect(await anonAadhaarIssuer.nullifierExists(anonAadhaarProof.pub_signals[1])).to.be.true;
       await anonAadhaarIssuer.revokeCredential(anonAadhaarProof.pub_signals[1]);
 
@@ -72,6 +65,8 @@ describe("Anon aadhaar credential issuer", function () {
           "0x",
         ),
       ).to.be.revertedWith("Identity trees haven't changed");
+
+    
     });
   });
 });

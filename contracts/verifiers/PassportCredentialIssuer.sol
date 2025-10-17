@@ -20,7 +20,6 @@ error IssuanceDateExpired(uint256 issuanceDate);
 error IssuanceDateInFuture(uint256 issuanceDate);
 error CurrentDateExpired(uint256 currentDate);
 error CurrentDateInFuture(uint256 currentDate);
-error NullifierAlreadyExists(uint256 nullifier);
 error NullifierDoesNotExist(uint256 nullifier);
 error LengthMismatch(uint256 length1, uint256 length2);
 error NoVerifierSet();
@@ -547,9 +546,6 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
             revert IssuanceDateInFuture(issuanceDate);
 
         if ($._issuerDidHash != issuerDidHash) revert InvalidIssuerDidHash();
-
-        if ($._nullifiersToRevocationNonce[nullifier] != 0)
-            revert NullifierAlreadyExists(nullifier);
     }
 
     function _addHashAndTransit(uint256 hi, uint256 hv) internal {
@@ -565,6 +561,15 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
     function _setNullifier(uint256 nullifier, uint64 revocationNonce) internal {
         if (revocationNonce == 0) revert InvalidRevocationNonce(revocationNonce);
         PassportCredentialIssuerStorage storage $ = _getPassportCredentialIssuerStorage();
+        // revoke claim if nullifier exists
+        if ($._nullifiersToRevocationNonce[nullifier] != 0) {
+            uint64 nonceExisted = $._nullifiersToRevocationNonce[nullifier];
+            if (nonceExisted == 0) {
+                revert NullifierDoesNotExist(nullifier);
+            }
+            _getIdentityBaseStorage().identity.revokeClaim(nonceExisted);
+            emit CredentialRevoked(nullifier, nonceExisted);
+        }
         $._nullifiersToRevocationNonce[nullifier] = revocationNonce;
     }
 
