@@ -437,11 +437,10 @@ contract AnonAadhaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
     function _setNullifier(uint256 nullifier, uint64 revocationNonce) private {
         if (revocationNonce == 0) revert InvalidRevocationNonce(revocationNonce);
         AnonAadhaarCredentialIssuerStorage storage $ = _getAnonAadhaarCredentialIssuerStorage();
-        if ($._nullifiersToRevocationNonce[nullifier] != 0) {
-            uint64 nonceExisted = $._nullifiersToRevocationNonce[nullifier];
-            if (nonceExisted == 0) revert NullifierDoesNotExist();
-             _getIdentityBaseStorage().identity.revokeClaim(nonceExisted);
-             emit CredentialRevoked(nullifier, nonceExisted);
+        uint64 existingNonce = $._nullifiersToRevocationNonce[nullifier];
+        if (existingNonce != 0) {
+            _getIdentityBaseStorage().identity.revokeClaim(existingNonce);
+            emit CredentialRevoked(nullifier, existingNonce);
         }
         $._nullifiersToRevocationNonce[nullifier] = revocationNonce;
     }
