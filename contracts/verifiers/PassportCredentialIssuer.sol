@@ -561,7 +561,6 @@ contract PassportCredentialIssuer is IdentityBase, EIP712Upgradeable, Ownable2St
     function _setNullifier(uint256 nullifier, uint64 revocationNonce) internal {
         if (revocationNonce == 0) revert InvalidRevocationNonce(revocationNonce);
         PassportCredentialIssuerStorage storage $ = _getPassportCredentialIssuerStorage();
-        // revoke claim if nullifier exists
         if ($._nullifiersToRevocationNonce[nullifier] != 0) {
             uint64 nonceExisted = $._nullifiersToRevocationNonce[nullifier];
             if (nonceExisted == 0) {
