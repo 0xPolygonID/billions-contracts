@@ -30,5 +30,9 @@
   "NitroAttestationValidatorModuleV1_0_1#CertificatesValidator": "0xcFbDe80aE93139e487361067bA60E73181080Fdf",
   "NitroAttestationValidatorModuleV1_0_1#NitroAttestationValidator": "0x854575d6683b2640579976299e251cfDDe6d42d2",
   "UpgradedPassportCredentialIssuerModuleV1_0_2#PassportCredentialIssuer": "0xbb3692FF3A721030e4c7E0963062E89A0f297BFE",
-  "UpgradePassportCredentialIssuerModuleV1_0_2#PassportCredentialIssuer": "0x0f72d85ae1D2DA55B43C84Edb59D497E7cC64FEa"
+  "UpgradePassportCredentialIssuerModuleV1_0_2#PassportCredentialIssuer": "0x0f72d85ae1D2DA55B43C84Edb59D497E7cC64FEa",
+  "UpgradedAnonAadhaarCredentialIssuerModuleV1_0_3#AnonAadhaarCredentialIssuer": "0x6Efc82132dBfd08Faa03C69fbF2b87D1322736e9",
+  "UpgradeAnonAadhaarCredentialIssuerModuleV1_0_3#AnonAadhaarCredentialIssuer": "0x7a195047Ed34666584522f24Dc99C7162cE34d76",
+  "UpgradedPassportCredentialIssuerModuleV1_0_3#PassportCredentialIssuer": "0xbb3692FF3A721030e4c7E0963062E89A0f297BFE",
+  "UpgradePassportCredentialIssuerModuleV1_0_3#PassportCredentialIssuer": "0x51478d4bF112DcDb650aa07FE3d10E8a6D736EE0"
 }
