@@ -42,7 +42,7 @@ const UpgradeAnonAadhaarCredentialIssuerModule = buildModule(
 );
 
 const UpgradedAnonAadhaarCredentialIssuerModule = buildModule(
-  "UpgradedAnonAadhaarCredentialIssuerModule",
+  "UpgradedAnonAadhaarCredentialIssuerModule".concat(version),
   (m) => {
     const { newAnonAadhaarCredentialIssuerImpl, proxy, proxyAdmin } = m.useModule(UpgradeAnonAadhaarCredentialIssuerModule);
 
