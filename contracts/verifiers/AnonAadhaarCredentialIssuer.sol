@@ -17,7 +17,6 @@ error InvalidIssuerDidHash();
 error InvalidExpirationDate(uint256 expected, uint256 provided);
 error ProofExpired();
 error InvalidPubKeyHash();
-error NullifierAlreadyExists();
 error NullifierDoesNotExist();
 error InvalidVerifierAddress();
 error InvalidStateContractAddress();
@@ -39,7 +38,7 @@ event AnonAadhaarCircuitVerifierUpdated(string circuitId, address verifierAddres
 contract AnonAadhaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
     using IdentityLib for IdentityLib.Data;
 
-    string public constant VERSION = "1.0.2";
+    string public constant VERSION = "1.0.3";
     string private constant defaultCircuitId = "anon_aadhaar_v1";
 
     struct StateInfo {
@@ -428,7 +427,6 @@ contract AnonAadhaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
         if (expirationDate <= block.timestamp) revert ProofExpired();
         if (!$.publicKeysHashes[pubKeyHash]) revert InvalidPubKeyHash();
         if (!$.qrVersions[qrVersion]) revert UnsupportedQrVersion(qrVersion);
-        if ($._nullifiersToRevocationNonce[nullifier] != 0) revert NullifierAlreadyExists();
     }
 
     function _addHashAndTransit(uint256 hi, uint256 hv) internal {
@@ -439,6 +437,11 @@ contract AnonAadhaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
     function _setNullifier(uint256 nullifier, uint64 revocationNonce) private {
         if (revocationNonce == 0) revert InvalidRevocationNonce(revocationNonce);
         AnonAadhaarCredentialIssuerStorage storage $ = _getAnonAadhaarCredentialIssuerStorage();
+        uint64 existingNonce = $._nullifiersToRevocationNonce[nullifier];
+        if (existingNonce != 0) {
+            _getIdentityBaseStorage().identity.revokeClaim(existingNonce);
+            emit CredentialRevoked(nullifier, existingNonce);
+        }
         $._nullifiersToRevocationNonce[nullifier] = revocationNonce;
     }
 

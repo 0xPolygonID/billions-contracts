@@ -21,7 +21,9 @@ describe("Commitment Registration Tests", function () {
   let deployedActors: DeployedActors;
   let snapshotId: string;
   let baseCredentialProof: any;
+  let baseCredentialProof2: any;
   let credentialProof: any;
+  let credentialProof2: any;
   let baseCredentialProofCurrentDateExpired: any;
   let credentialProofCurrentDateExpired: any;
   let baseCredentialProofIssuanceDateExpired: any;
@@ -34,6 +36,7 @@ describe("Commitment Registration Tests", function () {
     deployedActors = await deploySystemFixtures();
 
     baseCredentialProof = await generateCredentialProof(deployedActors.mockPassport);
+    baseCredentialProof2 = await generateCredentialProof(deployedActors.mockPassport);
     const currentDateExpired = new Date();
     currentDateExpired.setDate(currentDateExpired.getDate() - 10);
     baseCredentialProofCurrentDateExpired = await generateCredentialProof(
@@ -74,6 +77,7 @@ describe("Commitment Registration Tests", function () {
 
   beforeEach(async () => {
     credentialProof = structuredClone(baseCredentialProof);
+    credentialProof2 = structuredClone(baseCredentialProof2);
     credentialProofCurrentDateExpired = structuredClone(baseCredentialProofCurrentDateExpired);
     credentialProofIssuanceDateExpired = structuredClone(baseCredentialProofIssuanceDateExpired);
     credentialProofRevocationNonceZero = structuredClone(credentialProofRevocationNonceZero);
@@ -153,16 +157,30 @@ describe("Commitment Registration Tests", function () {
       expect(await passportCredentialIssuer.nullifierExists(signedPassportData.nullifier)).to.be
         .true;
 
-      // Check nullifier
+      // Reissue passport should work (revoking previous nullifier)
+      const credentialPreparedProof2 = prepareProof(credentialProof2.proof);
+
+      const credentialZkProof2 = packZKProof(
+        credentialProof2.publicSignals,
+        credentialPreparedProof2.pi_a,
+        credentialPreparedProof2.pi_b,
+        credentialPreparedProof2.pi_c,
+      );
+
+      expect(await passportCredentialIssuer.nullifierExists(signedPassportData.nullifier)).to.be
+      .true;
+
       await expect(
         passportCredentialIssuer.verifyPassport(
-          { circuitId: "credential_sha256", proof: credentialZkProof },
+          { circuitId: "credential_sha256", proof: credentialZkProof2 },
           passportSignatureProof,
         ),
-      ).to.be.revertedWithCustomError(passportCredentialIssuer, "NullifierAlreadyExists");
+      ).not.to.be.reverted;
+      expect(await passportCredentialIssuer.nullifierExists(signedPassportData.nullifier)).to.be
+        .true;
 
+      // Check nullifier
       await passportCredentialIssuer.revokeCredential(signedPassportData.nullifier);
-
       expect(await passportCredentialIssuer.nullifierExists(signedPassportData.nullifier)).to.be
         .false;
 

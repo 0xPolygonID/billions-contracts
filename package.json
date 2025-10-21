@@ -23,6 +23,9 @@
     "upgrade:passport:issuer:billions:test": "npx hardhat ignition deploy ignition/modules/passportCredentialIssuer/upgradePassportCredentialIssuer.ts --network billions-test --parameters ignition/modules/parameters-billions-test.json --verify",
     "upgrade:passport:issuer:polygon:amoy": "npx hardhat ignition deploy ignition/modules/passportCredentialIssuer/upgradePassportCredentialIssuer.ts --network polygon-amoy --parameters ignition/modules/parameters-polygon-amoy.json --verify",
     "upgrade:anon-aadhaar:issuer:billions:test": "npx hardhat ignition deploy ignition/modules/anonAadhaarCredentialIssuer/upgradeAnonAadhaarCredentialIssuer.ts --network billions-test --parameters ignition/modules/parameters-billions-test.json --verify",
+    "upgrade:anon-aadhaar:issuer:localhost": "npx hardhat ignition deploy ignition/modules/anonAadhaarCredentialIssuer/upgradeAnonAadhaarCredentialIssuer.ts --network localhost --parameters ignition/modules/parameters-localhost.json --verify",
+    "verify:anon-aadhaar:issuer:billions:test": "npx hardhat run scripts/verifications/aadhaar.ts --network billions-test",
+    "verify:passport:issuer:issuer:billions:test": "npx hardhat run scripts/verifications/passport.ts --network billions-test",
     "setIssuerDID:passport:polygon:amoy": "npx hardhat run scripts/passportCredentialIssuer/setCredentialIssuerPassportCredentialIssuer.ts --network polygon-amoy",
     "setIssuerDID:passport:billions:test": "npx hardhat run scripts/passportCredentialIssuer/setCredentialIssuerPassportCredentialIssuer.ts --network billions-test"
   },
