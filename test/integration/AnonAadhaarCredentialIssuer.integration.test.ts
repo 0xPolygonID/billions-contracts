@@ -64,8 +64,6 @@ describe("Anon aadhaar credential issuer", function () {
           "0x",
         ),
       ).to.be.revertedWith("Identity trees haven't changed");
-
-    
     });
   });
 });
