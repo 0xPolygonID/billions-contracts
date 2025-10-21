@@ -1,9 +1,12 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 import { AnonAadhaarCredentialIssuerProxyFirstImplementationModule } from "./deployAnonAadhaarCredentialIssuer";
 import IdentityLibModule from "../identityLib/identityLib";
+import { contractsInfo } from "../../../helpers/constants";
+
+const version = "V".concat(contractsInfo.ANONAADHAAR_CREDENTIAL_ISSUER.version.replaceAll(".", "_").replaceAll("-", "_"));
 
 const UpgradeAnonAadhaarCredentialIssuerModule = buildModule(
-  "UpgradeAnonAadhaarCredentialIssuerModuleV1_0_2",
+  "UpgradeAnonAadhaarCredentialIssuerModule".concat(version),
   (m) => {
     const proxyAdminOwner = m.getAccount(0);
     const { proxy, proxyAdmin } = m.useModule(
@@ -39,7 +42,7 @@ const UpgradeAnonAadhaarCredentialIssuerModule = buildModule(
 );
 
 const UpgradedAnonAadhaarCredentialIssuerModule = buildModule(
-  "UpgradedAnonAadhaarCredentialIssuerModuleV1_0_2",
+  "UpgradedAnonAadhaarCredentialIssuerModule",
   (m) => {
     const { newAnonAadhaarCredentialIssuerImpl, proxy, proxyAdmin } = m.useModule(UpgradeAnonAadhaarCredentialIssuerModule);
 

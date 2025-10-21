@@ -38,7 +38,7 @@ event AnonAadhaarCircuitVerifierUpdated(string circuitId, address verifierAddres
 contract AnonAadhaarCredentialIssuer is IdentityBase, Ownable2StepUpgradeable {
     using IdentityLib for IdentityLib.Data;
 
-    string public constant VERSION = "1.0.2";
+    string public constant VERSION = "1.0.3";
     string private constant defaultCircuitId = "anon_aadhaar_v1";
 
     struct StateInfo {
