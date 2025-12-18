@@ -34,5 +34,10 @@
   "UpgradedAnonAadhaarCredentialIssuerModuleV1_0_3#AnonAadhaarCredentialIssuer": "0x6Efc82132dBfd08Faa03C69fbF2b87D1322736e9",
   "UpgradeAnonAadhaarCredentialIssuerModuleV1_0_3#AnonAadhaarCredentialIssuer": "0x7a195047Ed34666584522f24Dc99C7162cE34d76",
   "UpgradedPassportCredentialIssuerModuleV1_0_3#PassportCredentialIssuer": "0xbb3692FF3A721030e4c7E0963062E89A0f297BFE",
-  "UpgradePassportCredentialIssuerModuleV1_0_3#PassportCredentialIssuer": "0x51478d4bF112DcDb650aa07FE3d10E8a6D736EE0"
+  "UpgradePassportCredentialIssuerModuleV1_0_3#PassportCredentialIssuer": "0x51478d4bF112DcDb650aa07FE3d10E8a6D736EE0",
+  "DeployIdCardVerifiers#Verifier_idcard_sha1": "0x252cC24AE6F18235E249f46e2BA76FF17383FB3a",
+  "DeployIdCardVerifiers#Verifier_idcard_sha224": "0x19bf079EfA912B1234eB9d2341174eDDE31E9a78",
+  "DeployIdCardVerifiers#Verifier_idcard_sha256": "0x2A76394E2e321b084a2169dBF75ba4e7B593d98c",
+  "DeployIdCardVerifiers#Verifier_idcard_sha384": "0xd1bBc0f4602cB2ae6908C1e790BB1D71Be8994d3",
+  "DeployIdCardVerifiers#Verifier_idcard_sha512": "0x38c2458D2681FFfB0d30656FeF24665F0FD58a10"
 }
