@@ -2,7 +2,12 @@
 
 ## Overview
 
-This is the implementation of contracts for passport verification and management of passport credentials in Privado ID.
+This repository contains smart contracts used for passport-style credential verification within the Privado ID (Billions) ecosystem.
+
+### What these contracts enable
+- On-chain verification of passport credentials
+- Zero-knowledge proof-based validation without exposing user data
+- Reusable verification logic for applications integrating Billions
 
 ## Building contracts
 
